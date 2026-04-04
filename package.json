@@ -1,0 +1,25 @@
+{
+  "name": "project-voltron",
+  "version": "1.0.0",
+  "description": "MCP server providing Unity subagent templates for Claude Code — scene architect, C# dev, shader artist, build validator, and asset manager.",
+  "main": "src/index.js",
+  "type": "module",
+  "bin": {
+    "project-voltron": "src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "keywords": [
+    "mcp",
+    "unity",
+    "claude",
+    "subagent",
+    "game-development"
+  ],
+  "author": "7ports",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1"
+  }
+}

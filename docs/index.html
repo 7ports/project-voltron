@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project Voltron — Unity Agent Templates for Claude Code</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --accent-subtle: #1f6feb22;
+      --green: #3fb950;
+      --purple: #bc8cff;
+      --orange: #d29922;
+      --red: #f85149;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .container { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 80px 0 60px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .hero h1 {
+      font-size: 3rem;
+      font-weight: 800;
+      margin-bottom: 16px;
+      background: linear-gradient(135deg, var(--accent), var(--purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: 1.25rem;
+      color: var(--text-muted);
+      max-width: 600px;
+      margin: 0 auto 32px;
+    }
+
+    .badge-row {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    /* Agents */
+    .agents {
+      padding: 60px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .agents h2 {
+      font-size: 1.75rem;
+      margin-bottom: 32px;
+      text-align: center;
+    }
+
+    .agent-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .agent-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      transition: border-color 0.2s;
+    }
+
+    .agent-card:hover { border-color: var(--accent); }
+
+    .agent-card h3 {
+      font-size: 1.1rem;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .agent-card .invoke {
+      font-size: 0.75rem;
+      color: var(--accent);
+      font-family: monospace;
+      background: var(--accent-subtle);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .agent-card p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-top: 8px;
+    }
+
+    /* Install */
+    .install {
+      padding: 60px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .install h2 {
+      font-size: 1.75rem;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .step {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+    }
+
+    .step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: var(--bg);
+      font-weight: 700;
+      font-size: 0.85rem;
+      margin-bottom: 12px;
+    }
+
+    .step h3 { font-size: 1rem; margin-bottom: 8px; }
+    .step p { color: var(--text-muted); font-size: 0.9rem; }
+
+    pre {
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      margin-top: 12px;
+    }
+
+    code { font-family: 'SF Mono', 'Fira Code', Consolas, monospace; }
+
+    /* Tools */
+    .tools {
+      padding: 60px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tools h2 {
+      font-size: 1.75rem;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--surface);
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    th, td {
+      text-align: left;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      background: #1c2128;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    td code {
+      color: var(--accent);
+      background: var(--accent-subtle);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+    }
+
+    /* Workflow */
+    .workflow {
+      padding: 60px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .workflow h2 {
+      font-size: 1.75rem;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .flow {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .flow-step {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .flow-icon {
+      font-size: 1.5rem;
+      min-width: 40px;
+      text-align: center;
+    }
+
+    .flow-step strong { display: block; margin-bottom: 2px; }
+    .flow-step span { color: var(--text-muted); font-size: 0.9rem; }
+
+    .arrow {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 1.2rem;
+    }
+
+    /* Footer */
+    footer {
+      padding: 40px 0;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 600px) {
+      .hero h1 { font-size: 2rem; }
+      .hero p { font-size: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <h1>Project Voltron</h1>
+      <p>A team of specialized Unity subagent templates for Claude Code, served via MCP.</p>
+      <div class="badge-row">
+        <span class="badge">MCP Server</span>
+        <span class="badge">Unity</span>
+        <span class="badge">Claude Code</span>
+        <span class="badge">5 Agents</span>
+        <span class="badge">MIT License</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Agents -->
+  <section class="agents">
+    <div class="container">
+      <h2>The Agent Team</h2>
+      <div class="agent-grid">
+        <div class="agent-card">
+          <h3>Scene Architect <span class="invoke">@agent-scene-architect</span></h3>
+          <p>GameObject hierarchy, prefabs, scene composition, transforms, and components. Builds the world.</p>
+        </div>
+        <div class="agent-card">
+          <h3>C# Dev <span class="invoke">@agent-csharp-dev</span></h3>
+          <p>MonoBehaviours, ScriptableObjects, gameplay systems, and editor tools. Writes clean, performant Unity C#.</p>
+        </div>
+        <div class="agent-card">
+          <h3>Shader Artist <span class="invoke">@agent-shader-artist</span></h3>
+          <p>Shaders, materials, VFX Graph, post-processing, and render features. Knows URP, HDRP, and Built-in.</p>
+        </div>
+        <div class="agent-card">
+          <h3>Build Validator <span class="invoke">@agent-build-validator</span></h3>
+          <p>Console monitoring, compile checks, Play Mode smoke tests, pre-commit validation. Read-only watchdog.</p>
+        </div>
+        <div class="agent-card">
+          <h3>Asset Manager <span class="invoke">@agent-asset-manager</span></h3>
+          <p>Folder structure, import settings, naming conventions, and project audits. Keeps things organized.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Install -->
+  <section class="install">
+    <div class="container">
+      <h2>Quick Start</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <h3>Clone</h3>
+          <p>Get the source:</p>
+          <pre><code>git clone https://github.com/7ports/project-voltron.git
+cd project-voltron
+npm install</code></pre>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <h3>Register</h3>
+          <p>Add as a global MCP server:</p>
+          <pre><code>claude mcp add --scope user \
+  project-voltron -- \
+  node /path/to/project-voltron/src/index.js</code></pre>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <h3>Scaffold</h3>
+          <p>In any Unity project, ask Claude:</p>
+          <pre><code>"Scaffold this project with Voltron agents"</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tools -->
+  <section class="tools">
+    <div class="container">
+      <h2>MCP Tools</h2>
+      <table>
+        <thead>
+          <tr><th>Tool</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>list_templates</code></td>
+            <td>List all available templates with descriptions and destinations</td>
+          </tr>
+          <tr>
+            <td><code>get_template</code></td>
+            <td>Retrieve the full content of a specific agent template or CLAUDE.md</td>
+          </tr>
+          <tr>
+            <td><code>scaffold_unity_project</code></td>
+            <td>Get all files needed to scaffold a Unity project with the full agent team</td>
+          </tr>
+          <tr>
+            <td><code>get_agent_usage_guide</code></td>
+            <td>Usage guide for invoking and coordinating agents</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Workflow -->
+  <section class="workflow">
+    <div class="container">
+      <h2>Recommended Workflow</h2>
+      <div class="flow">
+        <div class="flow-step">
+          <div class="flow-icon">1</div>
+          <div>
+            <strong>Scaffold</strong>
+            <span>Run scaffold_unity_project to write CLAUDE.md + all agent files</span>
+          </div>
+        </div>
+        <div class="arrow">|</div>
+        <div class="flow-step">
+          <div class="flow-icon">2</div>
+          <div>
+            <strong>Configure</strong>
+            <span>Fill in CLAUDE.md with your project name, Unity version, render pipeline, etc.</span>
+          </div>
+        </div>
+        <div class="arrow">|</div>
+        <div class="flow-step">
+          <div class="flow-icon">3</div>
+          <div>
+            <strong>Develop</strong>
+            <span>Invoke agents as needed: csharp-dev for scripts, scene-architect for hierarchy, shader-artist for visuals</span>
+          </div>
+        </div>
+        <div class="arrow">|</div>
+        <div class="flow-step">
+          <div class="flow-icon">4</div>
+          <div>
+            <strong>Validate</strong>
+            <span>Always run build-validator before committing to catch errors early</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <p>
+        <a href="https://github.com/7ports/project-voltron">GitHub</a> &middot;
+        MIT License &middot;
+        Built by <a href="https://github.com/7ports">7ports</a>
+      </p>
+    </div>
+  </footer>
+
+</body>
+</html>

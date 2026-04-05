@@ -1,0 +1,40 @@
+{
+  "timestamp": "2026-04-05T21:38:20.664Z",
+  "project_name": "toronto-ferry-tracker-v2",
+  "project_type": "fullstack",
+  "session_summary": "Phase 4 production-readiness sprint completed: Terraform infra (S3/CloudFront OAC/ACM/Route53), GitHub Actions CI/CD pipelines, PWA with Workbox caching strategies, WakeTrail line-gradient effect, WeatherStrip with Environment Canada GeoMet SWOB, OfflineBanner, disruption banner, schedule.json rewrite, useSchedule hook, and 131 unit tests. PR #1 opened against main on branch claude/unruffled-agnesi.",
+  "agents_used": [
+    "scrum-master",
+    "fullstack-dev",
+    "devops-engineer",
+    "qa-tester"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "qa-tester",
+      "worked_well": "Good coverage of business logic — useSchedule season selection, useServiceStatus, aisProxy, and weather route all had meaningful tests that caught real bugs.",
+      "needs_improvement": "Test fixtures used simplified mock field names (wind_spd, present_weather) that did not match the real GeoMet SWOB API response schema (avg_wnd_spd_10m_pst2mts, prsnt_wx_1). Tests passed green while the live integration was silently broken until manual preview verification caught it.",
+      "suggested_change": "When testing external API integrations, the agent should always source fixture data from actual API responses (curl the real endpoint once and save as a fixture file) rather than inventing plausible-looking field names. Add a note to the template: 'For external APIs, record a real response as your test fixture — never invent field names.'"
+    },
+    {
+      "agent": "fullstack-dev",
+      "worked_well": "Solid component implementations across the board — WakeTrail interpolation, WeatherStrip data transformation, PanelShell disruption banner with keyboard toggle, and OfflineBanner all implemented cleanly with TypeScript.",
+      "needs_improvement": "Two recurring issues: (1) MapErrorBoundary was scoped too broadly, wrapping the entire App so WeatherStrip errors displayed as 'Map failed to load' — error boundaries should wrap only the subtree they are named for. (2) WeatherStrip trusted TypeScript types (temperatureCelsius: number | null) but runtime had undefined from malformed API responses, causing NaN renders — external API data needs runtime guards beyond what TS types promise.",
+      "suggested_change": "Add to template: 'Scope ErrorBoundary components to the specific subtree they protect — never wrap the whole App unless you intend all errors to show the same fallback.' Also add: 'When consuming external API data, add runtime guards for undefined even when TypeScript types say the field cannot be undefined — API responses are uncontrolled at runtime.'"
+    },
+    {
+      "agent": "devops-engineer",
+      "worked_well": "Terraform modules for S3+CloudFront OAC+ACM+Route53 were well-structured. GitHub Actions path filtering (server/**) for backend deploy and two-pass S3 deploy (immutable assets first, then HTML) were correct patterns.",
+      "needs_improvement": "vite-plugin-pwa required --legacy-peer-deps due to Vite 8 peer dependency range conflict — this was discovered at install time but not proactively flagged before attempting npm install.",
+      "suggested_change": "Add to template: 'Before installing vite-plugin-pwa with Vite 5+, check peer dep compatibility — as of 2026 this requires --legacy-peer-deps. Document this in the Alexandria vite-plugin-pwa guide.'"
+    },
+    {
+      "agent": "scrum-master",
+      "worked_well": "Phase decomposition was clean — infrastructure, PWA, UI components, data layer, and testing were correctly sequenced with dependencies. The worktree branch strategy prevented conflicts with main throughout the sprint.",
+      "needs_improvement": "The plan did not flag the external API field name verification step as an explicit task — it was implicit in 'implement WeatherStrip' but should be a named acceptance criterion.",
+      "suggested_change": "When a task involves a third-party API integration, add an explicit acceptance criterion: 'Verify field names against a live API response before writing tests. Save one real response as a fixture file in __fixtures__/.'"
+    }
+  ],
+  "overall_notes": "The worktree environment worked well for branch isolation. The biggest systemic risk this session was the gap between TypeScript types and runtime reality when consuming external APIs — both the GeoMet field name mismatch and the undefined-vs-null guard issue stem from the same root cause: trusting compile-time contracts for data that arrives at runtime from an external party. A project-wide convention of 'validate external API shapes at the boundary with a Zod schema or equivalent' would have prevented both issues. Worth adding as a project-level note in CLAUDE.md for future sessions.",
+  "processed": false
+}

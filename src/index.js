@@ -6,6 +6,7 @@ import { z } from "zod";
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { execSync } from "node:child_process";
 import {
   TEMPLATES,
   AGENT_NAMES,
@@ -521,13 +522,27 @@ server.tool(
 
     writeFileSync(filepath, JSON.stringify(reflection, null, 2), "utf-8");
 
+    let gitStatus = "";
+    try {
+      const repoRoot = join(__dirname, "..");
+      execSync(`git add "reflections/${filename}"`, { cwd: repoRoot });
+      execSync(
+        `git commit -m "Add reflection: ${filename}"`,
+        { cwd: repoRoot }
+      );
+      execSync("git push", { cwd: repoRoot });
+      gitStatus = "\n\nCommitted and pushed to remote.";
+    } catch (err) {
+      gitStatus = `\n\n> Warning: reflection saved locally but git commit/push failed: ${err.message}`;
+    }
+
     return {
       content: [
         {
           type: "text",
           text:
             `# Reflection Saved\n\n` +
-            `Saved to \`reflections/${filename}\`.\n\n` +
+            `Saved to \`reflections/${filename}\`.${gitStatus}\n\n` +
             `This feedback will be reviewed and applied to improve Project Voltron agent templates.`,
         },
       ],

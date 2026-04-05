@@ -285,7 +285,7 @@
       <h1>Project Voltron</h1>
       <p>Specialized agent teams for Claude Code, served via MCP. Scaffold Unity, web, or general projects with battle-tested subagent templates — Alexandria-aware, self-improving, and auto-updating.</p>
       <div class="badge-row">
-        <span class="badge">v2.3.1</span>
+        <span class="badge">v2.3.2</span>
         <span class="badge">MCP Server</span>
         <span class="badge">Unity</span>
         <span class="badge">Web / Fullstack</span>
@@ -299,43 +299,39 @@
   <section>
     <div class="container">
       <h2>Docker Execution</h2>
-      <p class="section-sub">All Voltron agents run inside Docker containers with <code>--dangerously-skip-permissions</code> for fully autonomous operation. No manual approval prompts — agents plan, build, test, and iterate without waiting for confirmation.</p>
+      <p class="section-sub">The scrum-master launches each specialist agent inside a Docker container with <code>--dangerously-skip-permissions</code> via the <code>run_agent_in_docker</code> MCP tool. You run Claude Code normally on your desktop — Docker is handled behind the scenes.</p>
 
-      <div class="steps">
-        <div class="step">
-          <div class="step-num">1</div>
-          <h3>Dockerfile.voltron</h3>
-          <p>Created by <code>scaffold_project</code>. Installs Claude Code CLI on a slim Node 20 base image.</p>
-          <pre><code>FROM node:20-slim
-RUN npm install -g @anthropic-ai/claude-code
-RUN useradd -m -s /bin/bash voltron
-USER voltron
-WORKDIR /workspace
-ENTRYPOINT ["claude"]</code></pre>
+      <div class="flow">
+        <div class="flow-step">
+          <div class="flow-icon">🎯</div>
+          <div>
+            <strong>Scrum-master creates a work plan</strong>
+            <span>Plans tasks, assigns agents, registers progress. Checks that Docker is available and <code>Dockerfile.voltron</code> exists.</span>
+          </div>
         </div>
-        <div class="step">
-          <div class="step-num">2</div>
-          <h3>scripts/voltron-run.sh</h3>
-          <p>Launch script that builds the image, mounts your project, and passes through your Claude Max OAuth credentials.</p>
-          <pre><code>#!/bin/bash
-docker build -t voltron-agent -f Dockerfile.voltron . 2>/dev/null
-docker run --rm -it \
-  -v "$(pwd):/workspace" \
-  -v "$HOME/.claude:/home/voltron/.claude" \
-  -v "$HOME/.claude.json:/home/voltron/.claude.json:ro" \
-  voltron-agent \
-  --dangerously-skip-permissions \
-  "$@"</code></pre>
+        <div class="arrow">↓</div>
+        <div class="flow-step">
+          <div class="flow-icon">🐳</div>
+          <div>
+            <strong>Calls <code>run_agent_in_docker</code> for each task</strong>
+            <span>The tool builds the image (cached), mounts the project + OAuth credentials, composes the prompt from the agent template + CLAUDE.md + task description, and launches Claude Code inside the container.</span>
+          </div>
         </div>
-        <div class="step">
-          <div class="step-num">3</div>
-          <h3>Run</h3>
-          <p>Start an interactive session or pass a prompt directly. Agents execute autonomously inside the container.</p>
-          <pre><code># Interactive session
-./scripts/voltron-run.sh
-
-# Direct prompt
-./scripts/voltron-run.sh -p "invoke @agent-scrum-master to plan the backlog"</code></pre>
+        <div class="arrow">↓</div>
+        <div class="flow-step">
+          <div class="flow-icon">⚡</div>
+          <div>
+            <strong>Agent executes autonomously</strong>
+            <span>Inside Docker with <code>--dangerously-skip-permissions</code> — creates files, runs tests, fixes errors, iterates — with zero manual approval prompts. File changes are visible on the host via volume mount.</span>
+          </div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-step">
+          <div class="flow-icon">✅</div>
+          <div>
+            <strong>Output returned to scrum-master</strong>
+            <span>Scrum-master reviews the result, updates progress, and proceeds to the next task. Dashboard auto-refreshes every 5 seconds to reflect each transition.</span>
+          </div>
         </div>
       </div>
 
@@ -345,12 +341,8 @@ docker run --rm -it \
           <span>Docker provides OS-level isolation from your host system, making <code>--dangerously-skip-permissions</code> safe to use. Agents can create files, run tests, install packages, and iterate on errors without any human gating — while your host stays protected.</span>
         </div>
         <div class="loop-node" style="margin-top: 12px;">
-          <strong>Single container model</strong>
-          <span>One Docker container runs the entire Claude Code session. The scrum-master and all specialist agents run inside it via the built-in Agent tool. This keeps coordination simple and fast while still isolating from the host.</span>
-        </div>
-        <div class="loop-node" style="margin-top: 12px;">
-          <strong>Future: per-agent containers</strong>
-          <span>A planned enhancement will launch each specialist agent in its own container for blast-radius isolation — if one agent corrupts files, it can't affect the others. Shared volumes handle inter-agent file passing.</span>
+          <strong>No workflow change needed</strong>
+          <span>Run Claude Code normally on your desktop. The scrum-master handles Docker automatically — just ensure Docker is installed and running, and <code>Dockerfile.voltron</code> exists (generated by <code>scaffold_project</code>).</span>
         </div>
       </div>
     </div>
@@ -548,7 +540,7 @@ claude mcp add --scope user \
           </tr>
           <tr>
             <td><code>get_auto_update_hook</code></td>
-            <td>Get the <code>.claude/settings.json</code> hook that keeps agents current automatically — for projects scaffolded before v2.3.1</td>
+            <td>Get the <code>.claude/settings.json</code> hook that keeps agents current automatically — for projects scaffolded before v2.3.2</td>
           </tr>
           <tr>
             <td><code>get_agent_usage_guide</code></td>
@@ -569,6 +561,10 @@ claude mcp add --scope user \
           <tr>
             <td><code>list_reflections</code></td>
             <td>List stored reflections with pending improvement suggestions</td>
+          </tr>
+          <tr>
+            <td><code>run_agent_in_docker</code></td>
+            <td>Launch a specialist agent inside a Docker container with full permissions — called by scrum-master</td>
           </tr>
           <tr>
             <td><code>update_progress</code></td>
@@ -717,7 +713,7 @@ claude mcp add --scope user \
     <div class="container">
       <p>
         <a href="https://github.com/7ports/project-voltron">GitHub</a> &middot;
-        v2.3.1 &middot;
+        v2.3.2 &middot;
         MIT License &middot;
         Built by <a href="https://github.com/7ports">7ports</a>
       </p>

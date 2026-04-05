@@ -9,6 +9,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { execSync } from "node:child_process";
+import os from "node:os";
 import {
   TEMPLATES,
   AGENT_NAMES,
@@ -309,13 +310,13 @@ server.tool(
       `> **Important:** If \`.claude/settings.json\` already exists in this project, merge the \`hooks.UserPromptSubmit\` entry below into it rather than overwriting.\n\n` +
       `\`\`\`json\n${settingsContent}\n\`\`\`\n\n` +
       `This hook runs \`auto-update-agents.js\` at the start of each Claude Code session. If your installed agent templates are outdated, they are silently updated in place. You will see a \`[VOLTRON]\` message in context when an update occurs.` +
-      `\n\n---\n\n## Docker Execution (Required)\n\n` +
-      `The scaffold includes \`Dockerfile.voltron\` and \`scripts/voltron-run.sh\` above. After writing all files, make the launch script executable:\n\n` +
+      `\n\n---\n\n## Docker Execution\n\n` +
+      `The scaffold includes \`Dockerfile.voltron\` and \`scripts/voltron-run.sh\` above.\n\n` +
+      `The scrum-master uses these files automatically via the \`run_agent_in_docker\` MCP tool — each specialist agent is launched inside a Docker container with \`--dangerously-skip-permissions\` for fully autonomous execution. You do not need to start your Claude Code session in Docker.\n\n` +
+      `**Prerequisites:** Docker must be installed and running. After writing all files, make the launch script executable:\n\n` +
       "```bash\nchmod +x scripts/voltron-run.sh\n```\n\n" +
-      `**Start every Voltron session via Docker:**\n\n` +
-      "```bash\n# Interactive session with full agent autonomy\n./scripts/voltron-run.sh\n\n# Direct prompt execution\n./scripts/voltron-run.sh -p \"invoke @agent-scrum-master to plan the backlog\"\n```\n\n" +
-      `> **Important:** Do not start Voltron sessions with bare \`claude\` on the host. Without Docker, every tool call requires manual approval, breaking multi-step agent tasks. ` +
-      `The scrum-master will detect if it is not running inside Docker and warn the user to restart via \`./scripts/voltron-run.sh\`.`;
+      `The launch script can also be used manually for standalone agent sessions:\n\n` +
+      "```bash\n./scripts/voltron-run.sh -p \"invoke @agent-scrum-master to plan the backlog\"\n```";
 
     return {
       content: [{ type: "text", text: instructions }],
@@ -847,21 +848,8 @@ server.tool(
     progress.updated_at = now;
     await fs.writeFile(progressFile, JSON.stringify(progress, null, 2));
 
-    // Auto-regenerate dashboard after every progress update
+    // Auto-regenerate dashboard (also auto-opens browser on first call)
     await regenerateDashboard();
-
-    // Auto-open dashboard in browser on the first update_progress call
-    const dashboardFile = path.join(progressDir, "dashboard.html");
-    if (!globalThis.__voltronDashboardOpened) {
-      globalThis.__voltronDashboardOpened = true;
-      try {
-        const openCmd = process.platform === "win32" ? "start" :
-                        process.platform === "darwin" ? "open" : "xdg-open";
-        execSync(`${openCmd} "${dashboardFile}"`, { stdio: "ignore" });
-      } catch {
-        // Browser open failed — user can open manually
-      }
-    }
 
     return {
       content: [{ type: "text", text: `Progress updated: task ${task_id} (${agent}) → ${status}` }],
@@ -1018,6 +1006,22 @@ async function regenerateDashboard() {
   try {
     const progress = JSON.parse(await fs.readFile(progressFile, "utf-8"));
     await fs.writeFile(outFile, buildDashboardHtml(progress));
+
+    // Auto-open dashboard in browser on the first regeneration
+    if (!globalThis.__voltronDashboardOpened) {
+      globalThis.__voltronDashboardOpened = true;
+      try {
+        const openCmd =
+          process.platform === "win32"
+            ? "start"
+            : process.platform === "darwin"
+              ? "open"
+              : "xdg-open";
+        execSync(`${openCmd} "${outFile}"`, { stdio: "ignore" });
+      } catch {
+        // Browser open failed — user can open manually
+      }
+    }
   } catch {
     // No progress data yet — skip silently
   }
@@ -1048,6 +1052,176 @@ server.tool(
     return {
       content: [{ type: "text", text: `Dashboard generated at ${outFile}\nAuto-refreshes every 5 seconds. Open in a browser to monitor agent progress live.` }],
     };
+  }
+);
+
+// ─── Tool: run_agent_in_docker ─────────────────────────────────────────────
+
+server.tool(
+  "run_agent_in_docker",
+  "Launch a specialist agent inside a Docker container with --dangerously-skip-permissions for fully autonomous execution. The scrum-master calls this instead of the Agent tool to run specialists.",
+  {
+    agent_name: z
+      .string()
+      .describe(
+        "The agent template name (e.g., 'fullstack-dev', 'csharp-dev', 'qa-tester')"
+      ),
+    task: z
+      .string()
+      .describe(
+        "Complete task description including context, relevant file paths, acceptance criteria, and any outputs from prior tasks"
+      ),
+    max_turns: z
+      .number()
+      .optional()
+      .describe("Maximum agent turns (default: 30)"),
+  },
+  async ({ agent_name, task, max_turns = 30 }) => {
+    // 1. Look up the template
+    const template = TEMPLATES[agent_name];
+    if (!template || template.category !== "agent") {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error: Unknown agent '${agent_name}'. Run list_templates to see available agents.`,
+          },
+        ],
+      };
+    }
+
+    // 2. Read CLAUDE.md for project context
+    let claudeMd = "";
+    try {
+      claudeMd = await fs.readFile(
+        path.join(process.cwd(), "CLAUDE.md"),
+        "utf-8"
+      );
+    } catch {
+      // No CLAUDE.md — proceed without project context
+    }
+
+    // 3. Compose the full prompt
+    const prompt = [
+      template.content,
+      "",
+      "## Project Context (from CLAUDE.md)",
+      "",
+      claudeMd || "(No CLAUDE.md found — work without project context)",
+      "",
+      "## Your Task",
+      "",
+      task,
+    ].join("\n");
+
+    // 4. Write prompt to temp file (avoids shell escaping issues)
+    const tmpFile = path.join(
+      os.tmpdir(),
+      `voltron-${agent_name}-${Date.now()}.md`
+    );
+    await fs.writeFile(tmpFile, prompt);
+
+    // 5. Check Docker is available
+    try {
+      execSync("docker --version", { stdio: "ignore" });
+    } catch {
+      await fs.unlink(tmpFile).catch(() => {});
+      return {
+        content: [
+          {
+            type: "text",
+            text: "Error: Docker is not installed or not running. Install Docker and ensure it is running, then try again.",
+          },
+        ],
+      };
+    }
+
+    // 6. Check Dockerfile.voltron exists
+    const cwd = process.cwd();
+    const dockerfilePath = path.join(cwd, "Dockerfile.voltron");
+    try {
+      await fs.access(dockerfilePath);
+    } catch {
+      await fs.unlink(tmpFile).catch(() => {});
+      return {
+        content: [
+          {
+            type: "text",
+            text: "Error: Dockerfile.voltron not found in project root. Run scaffold_project first to generate it.",
+          },
+        ],
+      };
+    }
+
+    // 7. Build image (silently, reuses cache)
+    try {
+      execSync(`docker build -t voltron-agent -f "${dockerfilePath}" "${cwd}"`, {
+        stdio: "ignore",
+        timeout: 120000,
+      });
+    } catch (err) {
+      await fs.unlink(tmpFile).catch(() => {});
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error: Docker image build failed. ${err.message}`,
+          },
+        ],
+      };
+    }
+
+    // 8. Regenerate dashboard to show this agent as active
+    await regenerateDashboard();
+
+    // 9. Run agent in Docker
+    const homeDir = process.env.HOME || process.env.USERPROFILE || os.homedir();
+    const dockerCmd =
+      `docker run --rm ` +
+      `--entrypoint bash ` +
+      `-v "${cwd}:/workspace" ` +
+      `-v "${homeDir}/.claude:/home/voltron/.claude" ` +
+      `-v "${homeDir}/.claude.json:/home/voltron/.claude.json:ro" ` +
+      `-v "${tmpFile}:/tmp/task.md:ro" ` +
+      `voltron-agent ` +
+      `-c 'claude --dangerously-skip-permissions --max-turns ${max_turns} -p "$(cat /tmp/task.md)"'`;
+
+    try {
+      const output = execSync(dockerCmd, {
+        encoding: "utf-8",
+        maxBuffer: 10 * 1024 * 1024,
+        timeout: 600000,
+        cwd,
+      });
+
+      await fs.unlink(tmpFile).catch(() => {});
+
+      // Regenerate dashboard after completion
+      await regenerateDashboard();
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `## Agent ${agent_name} completed\n\n${output}`,
+          },
+        ],
+      };
+    } catch (err) {
+      await fs.unlink(tmpFile).catch(() => {});
+      await regenerateDashboard();
+
+      const stderr = err.stderr || "";
+      const stdout = err.stdout || "";
+      return {
+        content: [
+          {
+            type: "text",
+            text: `## Agent ${agent_name} failed\n\n**Exit code:** ${err.status}\n\n**Output:**\n${stdout}\n\n**Error:**\n${stderr || err.message}`,
+          },
+        ],
+      };
+    }
   }
 );
 

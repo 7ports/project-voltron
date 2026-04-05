@@ -222,20 +222,57 @@ server.tool(
       };
     });
 
+    // Build the auto-update hook settings file
+    // Use the voltron root (parent of __dirname which is src/)
+    const voltronRoot = join(__dirname, "..").replace(/\\/g, "/");
+    const autoUpdateScript = `${voltronRoot}/scripts/auto-update-agents.js`;
+
+    const settingsContent = JSON.stringify(
+      {
+        hooks: {
+          UserPromptSubmit: [
+            {
+              hooks: [
+                {
+                  type: "command",
+                  command: `node "${autoUpdateScript}"`,
+                },
+              ],
+            },
+          ],
+        },
+      },
+      null,
+      2
+    );
+
+    const settingsFile = {
+      path: ".claude/settings.json",
+      content: settingsContent,
+      note: "Auto-update hook — merge with existing .claude/settings.json if one already exists",
+    };
+
     const typeLabel = project_type
       ? `${project_type} project`
       : "all available agents";
 
+    const agentFileInstructions = files
+      .map(
+        (f, i) =>
+          `## File ${i + 1}: \`${f.path}\`\n\n\`\`\`markdown\n${f.content}\n\`\`\``
+      )
+      .join("\n\n---\n\n");
+
     const instructions =
       `# Scaffold Instructions — ${typeLabel}\n\n` +
       `**Project Voltron v${VERSION}**\n\n` +
-      `Write the following ${files.length} files to the project root:\n\n` +
-      files
-        .map(
-          (f, i) =>
-            `## File ${i + 1}: \`${f.path}\`\n\n\`\`\`markdown\n${f.content}\n\`\`\``
-        )
-        .join("\n\n---\n\n");
+      `Write the following ${files.length} agent files to the project root:\n\n` +
+      agentFileInstructions +
+      `\n\n---\n\n` +
+      `## Auto-Update Hook: \`.claude/settings.json\`\n\n` +
+      `> **Important:** If \`.claude/settings.json\` already exists in this project, merge the \`hooks.UserPromptSubmit\` entry below into it rather than overwriting.\n\n` +
+      `\`\`\`json\n${settingsContent}\n\`\`\`\n\n` +
+      `This hook runs \`auto-update-agents.js\` at the start of each Claude Code session. If your installed agent templates are outdated, they are silently updated in place. You will see a \`[VOLTRON]\` message in context when an update occurs.`;
 
     return {
       content: [{ type: "text", text: instructions }],
@@ -271,6 +308,49 @@ server.tool(
 
     return {
       content: [{ type: "text", text: instructions }],
+    };
+  }
+);
+
+// ─── Tool: get_auto_update_hook ────────────────────────────────────────────
+
+server.tool(
+  "get_auto_update_hook",
+  "Returns the .claude/settings.json hook configuration that enables automatic agent updates at session start. Add this to your project's .claude/settings.json to keep Voltron agents current without manual check_for_updates calls.",
+  {},
+  async () => {
+    const voltronRoot = join(__dirname, "..").replace(/\\/g, "/");
+    const autoUpdateScript = `${voltronRoot}/scripts/auto-update-agents.js`;
+
+    const settingsContent = JSON.stringify(
+      {
+        hooks: {
+          UserPromptSubmit: [
+            {
+              hooks: [
+                {
+                  type: "command",
+                  command: `node "${autoUpdateScript}"`,
+                },
+              ],
+            },
+          ],
+        },
+      },
+      null,
+      2
+    );
+
+    const text =
+      `# Auto-Update Hook for Voltron Agents\n\n` +
+      `Add the following to your project's \`.claude/settings.json\` to enable automatic agent updates.\n\n` +
+      `If \`.claude/settings.json\` already exists, merge the \`hooks.UserPromptSubmit\` entry into it.\n\n` +
+      `\`\`\`json\n${settingsContent}\n\`\`\`\n\n` +
+      `**How it works:** At the start of each Claude Code session (on each \`UserPromptSubmit\`), this hook runs \`auto-update-agents.js\`. If the installed agent version differs from your local Voltron installation, all installed agents are silently updated in place. A \`[VOLTRON] Auto-updated N agent(s)\` message appears in context when an update occurs.\n\n` +
+      `**Requirements:** Node.js must be available in the shell PATH used by Claude Code hooks.`;
+
+    return {
+      content: [{ type: "text", text }],
     };
   }
 );

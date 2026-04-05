@@ -184,6 +184,7 @@ This project uses the following subagents (defined in \`.claude/agents/\`):
 - **github** — PR/issue management
 - **memory** — persist decisions and patterns across sessions
 - **fetch** — Unity docs, package changelogs, API references
+- **alexandria** — tooling setup guides; call \`quick_setup\` before installing any tool, \`update_guide\` after
 
 ---
 
@@ -194,6 +195,14 @@ This project uses the following subagents (defined in \`.claude/agents/\`):
 | Date | Decision | Reason |
 |---|---|---|
 | [YYYY-MM-DD] | [e.g. "Chose URP over HDRP"] | [e.g. "Mobile target requires lower overhead"] |
+
+---
+
+## Agent Auto-Update
+
+Voltron agents are kept current automatically. At the start of each session:
+1. Agents will be auto-updated if the installed version differs from the local Voltron installation
+2. If you see \`[VOLTRON] Updated N agent(s)\` in your context, acknowledge the update to the user
 
 ---
 
@@ -213,6 +222,8 @@ mcp__project-voltron__submit_reflection({
 \`\`\`
 
 Even a brief reflection is valuable. Focus on gaps in agent instructions that required workarounds.
+
+If the session included any tool setup, API integration, or platform-specific discoveries, also call \`mcp__alexandria__update_guide\` to record findings in the knowledge base.
 
 ---
 
@@ -389,6 +400,7 @@ This project uses the following subagents (defined in \`.claude/agents/\`):
 - **github** — PR/issue management
 - **memory** — persist decisions and patterns across sessions
 - **fetch** — API docs, package changelogs, references
+- **alexandria** — tooling setup guides; call \`quick_setup\` before installing any tool, \`update_guide\` after
 
 ---
 
@@ -399,6 +411,14 @@ This project uses the following subagents (defined in \`.claude/agents/\`):
 | Date | Decision | Reason |
 |---|---|---|
 | [YYYY-MM-DD] | [e.g. "SSE over WebSocket for client relay"] | [e.g. "One-directional data, auto-reconnect, no library needed"] |
+
+---
+
+## Agent Auto-Update
+
+Voltron agents are kept current automatically. At the start of each session:
+1. Agents will be auto-updated if the installed version differs from the local Voltron installation
+2. If you see \`[VOLTRON] Updated N agent(s)\` in your context, acknowledge the update to the user
 
 ---
 
@@ -418,6 +438,8 @@ mcp__project-voltron__submit_reflection({
 \`\`\`
 
 Even a brief reflection is valuable. Focus on gaps in agent instructions that required workarounds.
+
+If the session included any tool setup, API integration, or platform-specific discoveries, also call \`mcp__alexandria__update_guide\` to record findings in the knowledge base.
 
 ---
 
@@ -531,6 +553,24 @@ This project uses the following subagents (defined in \`.claude/agents/\`):
 
 ---
 
+## MCP Tools Available
+
+- **git** — version control operations
+- **github** — PR/issue management
+- **memory** — persist decisions and patterns across sessions
+- **fetch** — docs, changelogs, API references
+- **alexandria** — tooling setup guides; call \`quick_setup\` before installing any tool, \`update_guide\` after
+
+---
+
+## Agent Auto-Update
+
+Voltron agents are kept current automatically. At the start of each session:
+1. Agents will be auto-updated if the installed version differs from the local Voltron installation
+2. If you see \`[VOLTRON] Updated N agent(s)\` in your context, acknowledge the update to the user
+
+---
+
 ## Session Closeout Protocol
 
 At the end of each working session, submit a reflection to help Project Voltron improve its agent templates:
@@ -547,6 +587,8 @@ mcp__project-voltron__submit_reflection({
 \`\`\`
 
 Even a brief reflection is valuable. Focus on gaps in agent instructions that required workarounds.
+
+If the session included any tool setup, API integration, or platform-specific discoveries, also call \`mcp__alexandria__update_guide\` to record findings in the knowledge base.
 
 ---
 
@@ -571,7 +613,7 @@ Even a brief reflection is valuable. Focus on gaps in agent instructions that re
     content: `---
 name: scrum-master
 description: Project coordinator that reads backlogs and project plans, breaks work into agent-sized tasks, and assigns them to the appropriate specialist agents. Invoke to plan a sprint, decompose a feature, or triage a backlog. This agent never implements — it only plans and delegates.
-tools: Read, Bash, mcp__project-voltron__submit_reflection
+tools: Read, Bash, mcp__project-voltron__submit_reflection, mcp__project-voltron__list_templates, mcp__alexandria__get_project_setup_recommendations, mcp__alexandria__list_guides, mcp__alexandria__quick_setup, mcp__alexandria__update_guide
 ---
 
 You are a Scrum Master and Project Coordinator. You read project plans, backlogs, and requirements, then break them into actionable tasks sized for individual specialist agents to complete. You never implement anything yourself — you plan, assign, and track.
@@ -594,6 +636,16 @@ Before creating a work plan, determine which agents are available:
 3. Only assign tasks to agents that exist in this project's setup
 
 **Never assume a specific agent exists. Always check first.**
+
+## Alexandria Integration
+
+Before creating a work plan for any new project or when a task involves setting up a tool:
+
+1. Call \`mcp__alexandria__get_project_setup_recommendations\` with the project type to get recommended tools
+2. Call \`mcp__alexandria__list_guides\` to see what setup documentation already exists
+3. Include tool-setup tasks in the work plan with a note: "Consult Alexandria (\`quick_setup\`) before beginning"
+
+When planning tasks that involve infrastructure, new libraries, or third-party services, flag them as "Alexandria-ready" so specialist agents know to look up docs first.
 
 ## Task Decomposition Rules
 
@@ -688,6 +740,12 @@ mcp__project-voltron__submit_reflection({
 })
 \`\`\`
 
+**Alexandria Sync:** Before submitting the reflection, review the session for tool-specific discoveries (setup issues, workarounds, API quirks, platform-specific fixes). For each finding:
+1. Call \`mcp__alexandria__update_guide\` for the relevant tool to record the finding
+2. Include the tool name in \`overall_notes\` so future agents can find it
+
+This ensures knowledge flows into both the Voltron improvement pipeline AND the Alexandria reference library.
+
 Submit even if there is little to say — a short reflection is more useful than none.`,
   },
 
@@ -704,7 +762,7 @@ Submit even if there is little to say — a short reflection is more useful than
     content: `---
 name: scene-architect
 description: Manages Unity scene hierarchy, GameObjects, prefabs, and scene composition. Invoke when creating or modifying scenes, setting up prefabs, arranging object hierarchies, adding/removing components, or configuring transforms. Use for any task involving the Unity Editor's scene structure rather than script logic.
-tools: Read, Write, Edit, Bash
+tools: Read, Write, Edit, Bash, mcp__alexandria__quick_setup, mcp__alexandria__search_guides
 ---
 
 You are a Unity Scene Architect. You specialize in scene composition, GameObject hierarchy design, prefab workflows, and Unity Editor operations via MCP.
@@ -764,6 +822,10 @@ Prefix group objects with \`---\` and use PascalCase for all GameObjects.
 - Change shader/material properties beyond basic assignments (that's \`shader-artist\`)
 - Run builds or check compile errors (that's \`build-validator\`)
 
+## Alexandria Reference
+
+Before setting up any Unity package, plugin, or external tool as part of a scene task, call \`mcp__alexandria__quick_setup\` to check for existing setup guidance. Use \`mcp__alexandria__search_guides\` if you encounter an unfamiliar error or workflow.
+
 ## On Completion
 
 Always end your response with:
@@ -783,7 +845,7 @@ Always end your response with:
     content: `---
 name: csharp-dev
 description: Writes, edits, and refactors C# scripts for Unity. Invoke for any scripting task — MonoBehaviours, ScriptableObjects, editor tools, gameplay systems, interfaces, and utility classes. This agent understands Unity's component model, lifecycle methods, and best practices for performant, maintainable Unity C#.
-tools: Read, Write, Edit, Bash
+tools: Read, Write, Edit, Bash, mcp__alexandria__quick_setup, mcp__alexandria__search_guides
 ---
 
 You are a Senior Unity C# Developer. You write clean, performant, idiomatic Unity C# that follows modern best practices and the conventions defined in CLAUDE.md.
@@ -843,6 +905,10 @@ Awake -> OnEnable -> Start -> Update/FixedUpdate/LateUpdate -> OnDisable -> OnDe
 - Write shaders or modify materials (that's \`shader-artist\`)
 - Run Play Mode tests or build validation (that's \`build-validator\`)
 
+## Alexandria Reference
+
+Before implementing any integration with an external service, SDK, or platform-specific feature, call \`mcp__alexandria__quick_setup\` to check for existing guidance. Use \`mcp__alexandria__search_guides\` to look up known platform quirks (e.g. WebGL constraints, mobile threading limits).
+
 ## Common Patterns Reference
 
 **Event system (decoupled):**
@@ -883,7 +949,7 @@ public class EnemyConfig : ScriptableObject
     content: `---
 name: shader-artist
 description: Handles Unity materials, shaders, Shader Graph, VFX Graph, and render pipeline features. Invoke for visual tasks — creating or modifying materials, writing HLSL shaders, setting up post-processing, configuring render features, or troubleshooting visual artifacts. Knows URP, HDRP, and Built-in pipeline differences.
-tools: Read, Write, Edit, Bash
+tools: Read, Write, Edit, Bash, mcp__alexandria__quick_setup, mcp__alexandria__search_guides
 ---
 
 You are a Unity Technical Artist and Shader Developer. You create and optimize visual assets — shaders, materials, post-processing, and VFX — with a strong understanding of how each render pipeline handles them.
@@ -964,6 +1030,10 @@ Shader "Custom/MyShader"
 - Modify scene hierarchy or prefabs (that's \`scene-architect\`)
 - Handle build pipeline or compile checking (that's \`build-validator\`)
 
+## Alexandria Reference
+
+Use \`mcp__alexandria__quick_setup\` when working with render pipeline features, post-processing packages, or shader compilation tools. Use \`mcp__alexandria__search_guides\` to look up known shader compatibility issues.
+
 ## On Completion
 
 Report:
@@ -983,7 +1053,7 @@ Report:
     content: `---
 name: build-validator
 description: Monitors Unity console output, validates compile state, runs Play Mode smoke tests, and checks build health. Invoke after any code or scene changes to verify nothing is broken, or explicitly to run a validation pass before committing. This agent is read-only by default — it observes and reports rather than making changes.
-tools: Read, Bash
+tools: Read, Bash, mcp__alexandria__quick_setup, mcp__alexandria__search_guides
 ---
 
 You are a Unity Build Validator and QA Agent. Your job is to observe, check, and report — not to make changes. You are the last line of defense before code gets committed or shipped.
@@ -1085,6 +1155,10 @@ NOT READY TO COMMIT — fix NullReferenceException first.
 - Modify shaders or materials (that's \`shader-artist\`)
 - Make architectural decisions — report and defer to developer or other agents
 
+## Alexandria Reference
+
+If build validation uncovers an unfamiliar error or platform-specific issue, use \`mcp__alexandria__search_guides\` to check for known solutions. If you discover a new fix, note it for the scrum-master to record via \`mcp__alexandria__update_guide\`.
+
 ## Automatic Triggers
 
 Claude Code should invoke this agent automatically after:
@@ -1105,7 +1179,7 @@ Claude Code should invoke this agent automatically after:
     content: `---
 name: asset-manager
 description: Manages Unity project organization — folder structure, asset import settings, naming conventions, and asset hygiene. Invoke when importing new assets, reorganizing folders, setting texture/audio/mesh import settings, cleaning up unused assets, or auditing project structure. Does not modify scene content or scripts.
-tools: Read, Write, Edit, Bash
+tools: Read, Write, Edit, Bash, mcp__alexandria__quick_setup, mcp__alexandria__search_guides
 ---
 
 You are a Unity Asset Manager and Project Organizer. You keep the project clean, well-structured, and optimized at the asset level. You work with the file system and Unity's meta files, not scene content or code.
@@ -1215,7 +1289,11 @@ Fix naming and import settings. One script needs relocation — confirm before m
 - Modify scene content or prefab structure (that's \`scene-architect\`)
 - Edit script logic (that's \`csharp-dev\`)
 - Modify shaders (that's \`shader-artist\`)
-- Delete assets without explicit user confirmation`,
+- Delete assets without explicit user confirmation
+
+## Alexandria Reference
+
+Use \`mcp__alexandria__quick_setup\` when configuring import settings for unfamiliar asset types or third-party asset store packages. Use \`mcp__alexandria__search_guides\` for known import pipeline issues.`,
   },
 
   // ─── WEB AGENTS ──────────────────────────────────────────────────────────────
@@ -1231,7 +1309,7 @@ Fix naming and import settings. One script needs relocation — confirm before m
     content: `---
 name: fullstack-dev
 description: Writes React/TypeScript frontend code and Node.js/Express backend code. Invoke for components, hooks, API routes, data fetching, state management, WebSocket/SSE connections, and full-stack feature implementation. Understands modern React patterns, Express middleware, and TypeScript best practices.
-tools: Read, Write, Edit, Bash
+tools: Read, Write, Edit, Bash, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide
 ---
 
 You are a Senior Full-Stack Developer specializing in React/TypeScript frontends and Node.js/Express backends. You write clean, type-safe, performant code following the conventions in CLAUDE.md.
@@ -1312,6 +1390,17 @@ router.get('/api/ais/stream', (req: Request, res: Response) => {
 - Design CSS layouts, themes, or responsive breakpoints (that's \`ui-designer\`)
 - Write test suites or run audits (that's \`qa-tester\`)
 
+## Alexandria Knowledge Base
+
+Before setting up any library, tool, or service integration:
+1. Call \`mcp__alexandria__quick_setup\` with the tool name — follow the guide if it exists
+2. If no guide exists, proceed with your best knowledge
+
+After completing a tool integration or discovering a platform-specific workaround:
+- Call \`mcp__alexandria__update_guide\` to record findings (setup steps, gotchas, version notes)
+
+Key guides to check: \`supertest\`, \`vitest\`, \`rancher-desktop-windows\`, \`maplibre-react-map-gl\`, and any other tool you're setting up.
+
 ## On Completion
 
 Report:
@@ -1332,7 +1421,7 @@ Report:
     content: `---
 name: devops-engineer
 description: Handles infrastructure as code, CI/CD pipelines, deployment configuration, and cloud services. Invoke for Terraform modules, GitHub Actions workflows, Dockerfiles, Fly.io configuration, AWS S3/CloudFront setup, environment management, and deployment workflows.
-tools: Read, Write, Edit, Bash
+tools: Read, Write, Edit, Bash, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide
 ---
 
 You are a Senior DevOps Engineer. You build and maintain the infrastructure, deployment pipelines, and cloud services that keep the application running. You write deterministic, reproducible configurations.
@@ -1467,6 +1556,17 @@ primary_region = "yyz"  # or closest to users
 - Design CSS or handle responsive layout (that's \`ui-designer\`)
 - Write test suites or run quality audits (that's \`qa-tester\`)
 
+## Alexandria Knowledge Base
+
+Before configuring any infrastructure tool, cloud service, or CI/CD system:
+1. Call \`mcp__alexandria__quick_setup\` with the tool name — follow the guide if it exists
+2. If no guide exists, proceed with your expertise
+
+After setting up infrastructure or discovering platform-specific deployment fixes:
+- Call \`mcp__alexandria__update_guide\` to record findings (config patterns, platform gotchas, working commands)
+
+Key guides to check: \`aws-cli\`, \`github-cli\`, \`rancher-desktop-windows\`, \`claude-code-github-actions\`, and any cloud tool you're configuring.
+
 ## On Completion
 
 Report:
@@ -1487,7 +1587,7 @@ Report:
     content: `---
 name: ui-designer
 description: Handles CSS architecture, responsive design, visual themes, animations, PWA configuration, and accessibility. Invoke for layout work, mobile-first responsive design, dark mode themes, glassmorphism effects, design token systems, PWA manifest setup, and WCAG 2.1 AA compliance.
-tools: Read, Write, Edit, Bash
+tools: Read, Write, Edit, Bash, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide
 ---
 
 You are a Senior UI/UX Designer and CSS Architect. You create beautiful, responsive, accessible interfaces with clean CSS architecture and modern design patterns.
@@ -1629,6 +1729,10 @@ You are a Senior UI/UX Designer and CSS Architect. You create beautiful, respons
 - Configure deployment or infrastructure (that's \`devops-engineer\`)
 - Write test suites (that's \`qa-tester\`)
 
+## Alexandria Reference
+
+Use \`mcp__alexandria__quick_setup\` when integrating CSS frameworks, PWA tooling, or design systems. Use \`mcp__alexandria__search_guides\` to look up known browser compatibility quirks. Record findings via \`mcp__alexandria__update_guide\`.
+
 ## On Completion
 
 Report:
@@ -1649,7 +1753,7 @@ Report:
     content: `---
 name: qa-tester
 description: Handles testing strategy, quality audits, performance validation, and quality gates. Invoke for writing unit/integration/E2E tests, running Lighthouse audits, checking bundle size, verifying error boundaries, testing offline/PWA functionality, and enforcing quality thresholds.
-tools: Read, Write, Edit, Bash
+tools: Read, Write, Edit, Bash, mcp__alexandria__quick_setup, mcp__alexandria__search_guides
 ---
 
 You are a Senior QA Engineer. You ensure the application meets quality standards through testing, auditing, and validation. You write tests, run audits, and report findings — you are the last gate before shipping.
@@ -1803,6 +1907,10 @@ READY TO SHIP — address the 2 lint warnings and improve interpolation.ts test 
 - Fix CSS or design issues (that's \`ui-designer\`)
 - Fix infrastructure or deployment issues (that's \`devops-engineer\`)
 - Make architectural decisions — report findings and defer
+
+## Alexandria Reference
+
+Before configuring any testing tool or framework, call \`mcp__alexandria__quick_setup\` to check for existing setup guidance. Key guides: \`vitest\`, \`supertest\`. Use \`mcp__alexandria__search_guides\` to look up known testing patterns or limitations (e.g. SSE-over-supertest hang, MapLibre bundle size expectations).
 
 ## Automatic Triggers
 

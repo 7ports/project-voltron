@@ -178,11 +178,19 @@ This project uses the following subagents (defined in \`.claude/agents/\`):
 
 ---
 
-## Docker Execution
+## Docker Execution (Required)
 
-All Voltron agents run inside a Docker container with \`--dangerously-skip-permissions\` for fully autonomous execution.
+All Voltron sessions must be started via Docker for fully autonomous agent execution:
 
-**Execution mode:** Docker container (see \`Dockerfile.voltron\` and \`scripts/voltron-run.sh\`)
+\`\`\`bash
+./scripts/voltron-run.sh
+\`\`\`
+
+This launches Claude Code inside a Docker container with \`--dangerously-skip-permissions\`. All sub-agents invoked via the Agent tool inherit this environment automatically.
+
+**Do not start Voltron sessions with bare \`claude\` on the host.** Without Docker, every tool call requires manual approval, breaking multi-step agent tasks.
+
+If \`Dockerfile.voltron\` or \`scripts/voltron-run.sh\` do not exist, run \`mcp__project-voltron__scaffold_project\` to generate them.
 
 ---
 
@@ -404,11 +412,19 @@ This project uses the following subagents (defined in \`.claude/agents/\`):
 
 ---
 
-## Docker Execution
+## Docker Execution (Required)
 
-All Voltron agents run inside a Docker container with \`--dangerously-skip-permissions\` for fully autonomous execution.
+All Voltron sessions must be started via Docker for fully autonomous agent execution:
 
-**Execution mode:** Docker container (see \`Dockerfile.voltron\` and \`scripts/voltron-run.sh\`)
+\`\`\`bash
+./scripts/voltron-run.sh
+\`\`\`
+
+This launches Claude Code inside a Docker container with \`--dangerously-skip-permissions\`. All sub-agents invoked via the Agent tool inherit this environment automatically.
+
+**Do not start Voltron sessions with bare \`claude\` on the host.** Without Docker, every tool call requires manual approval, breaking multi-step agent tasks.
+
+If \`Dockerfile.voltron\` or \`scripts/voltron-run.sh\` do not exist, run \`mcp__project-voltron__scaffold_project\` to generate them.
 
 ---
 
@@ -564,11 +580,19 @@ This project uses the following subagents (defined in \`.claude/agents/\`):
 
 ---
 
-## Docker Execution
+## Docker Execution (Required)
 
-All Voltron agents run inside a Docker container with \`--dangerously-skip-permissions\` for fully autonomous execution.
+All Voltron sessions must be started via Docker for fully autonomous agent execution:
 
-**Execution mode:** Docker container (see \`Dockerfile.voltron\` and \`scripts/voltron-run.sh\`)
+\`\`\`bash
+./scripts/voltron-run.sh
+\`\`\`
+
+This launches Claude Code inside a Docker container with \`--dangerously-skip-permissions\`. All sub-agents invoked via the Agent tool inherit this environment automatically.
+
+**Do not start Voltron sessions with bare \`claude\` on the host.** Without Docker, every tool call requires manual approval, breaking multi-step agent tasks.
+
+If \`Dockerfile.voltron\` or \`scripts/voltron-run.sh\` do not exist, run \`mcp__project-voltron__scaffold_project\` to generate them.
 
 ---
 
@@ -741,22 +765,56 @@ Always output your plan as a structured table:
 
 ## Agent Execution Environment
 
-Voltron agents run inside Docker containers with \`--dangerously-skip-permissions\`. This means:
+Voltron agents require Docker for fully autonomous execution. The user must start their Claude Code session via \`./scripts/voltron-run.sh\`, which runs inside a Docker container with \`--dangerously-skip-permissions\`.
 
-- **No per-tool approval bottleneck** — agents execute autonomously without waiting for human confirmation on each tool call
-- **Larger task sizing** — agents can handle multi-step tasks (create files, run tests, fix errors) in a single invocation since there is no approval delay between steps
+### Pre-Flight Check (Required)
+
+Before creating a work plan, verify you are running inside Docker:
+
+1. Run this command via Bash: \`test -f /.dockerenv && echo "DOCKER" || echo "NOT_DOCKER"\`
+2. If the output is **"DOCKER"** — proceed normally. All agents will execute autonomously.
+3. If the output is **"NOT_DOCKER"** — warn the user:
+
+   > **You are not running inside Docker.** Agents will require manual approval for every tool call, which slows execution and breaks multi-step tasks.
+   >
+   > To run with full autonomy, exit this session and restart via:
+   > \`\`\`
+   > ./scripts/voltron-run.sh
+   > \`\`\`
+   > If \`Dockerfile.voltron\` or \`scripts/voltron-run.sh\` do not exist, run \`mcp__project-voltron__scaffold_project\` to generate them.
+
+4. If the user acknowledges and wants to continue without Docker, proceed but note in the work plan that agents may pause for manual approval on each tool call.
+
+### What Docker Provides
+
+- **No per-tool approval bottleneck** — agents execute autonomously without waiting for human confirmation
+- **Larger task sizing** — agents can handle multi-step tasks (create files, run tests, fix errors) in one invocation
 - **Host isolation** — Docker contains any agent mistakes within the container, protecting the host system
-
-Check the project's CLAUDE.md for Docker configuration details (Dockerfile and launch script). If the project is not yet configured for Docker execution, refer to the scaffold output from \`mcp__project-voltron__scaffold_project\`.
+- **Inherited permissions** — sub-agents invoked via the Agent tool inherit the Docker environment and \`--dangerously-skip-permissions\` automatically
 
 ## Progress Tracking
 
-Track agent work using the Voltron progress tools so the user can monitor progress:
+Track agent work using the Voltron progress tools so the user can monitor progress via the live dashboard.
 
-- **Before invoking an agent:** call \`mcp__project-voltron__update_progress\` with status \`"in_progress"\`, the agent name, task description, and current phase
-- **After an agent completes:** call \`mcp__project-voltron__update_progress\` with status \`"completed"\` (or \`"failed"\` if it failed)
-- **Before starting a new phase:** update all upcoming phase tasks to \`"queued"\`
-- **At end of work plan:** call \`mcp__project-voltron__generate_dashboard\` to produce a visual summary
+### Work Plan Initialization (Critical)
+
+Immediately after producing the work plan table, register every task with the progress system:
+
+1. For each task in the work plan, call \`mcp__project-voltron__update_progress\` with:
+   - \`task_id\`: the task number from the plan (e.g., "1", "2a")
+   - \`agent\`: the assigned agent name
+   - \`status\`: \`"queued"\`
+   - \`description\`: the task description from the plan
+   - \`phase\`: the phase name (e.g., "Phase 1: Scaffolding")
+2. Call these in sequence — the **first** \`update_progress\` call automatically opens the dashboard in the user's browser
+3. After registering all tasks, call \`mcp__project-voltron__generate_dashboard\` to ensure the full dashboard is rendered
+
+This upfront registration is what opens the dashboard immediately when the work plan is ready, rather than waiting until the first agent is actually invoked.
+
+### During Execution
+
+- **Before invoking an agent:** call \`update_progress\` with status \`"in_progress"\`
+- **After an agent completes:** call \`update_progress\` with status \`"completed"\` (or \`"failed"\` / \`"blocked"\`)
 
 Call \`mcp__project-voltron__get_progress\` at any time to review the current state of the work plan.
 
@@ -776,6 +834,9 @@ Always end your response with:
 2. A summary of total tasks and phases
 3. The critical path highlighted
 4. Any blockers or questions that need human input before work can start
+5. **Register all tasks** in the progress system (call \`update_progress\` for each task with status \`"queued"\`) and confirm the dashboard is open in the user's browser
+
+Step 5 is not optional — it is what opens the live progress dashboard for the user to monitor agent work.
 
 ## Reflection Protocol
 

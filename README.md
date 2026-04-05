@@ -137,17 +137,25 @@ Once merged, projects with the auto-update hook installed will automatically rec
 
 ## Docker Execution
 
-All Voltron agents run inside Docker containers with `--dangerously-skip-permissions` for fully autonomous execution. The `scaffold_project` output includes a `Dockerfile.voltron` and `scripts/voltron-run.sh` launch script. This provides OS-level isolation while allowing agents to execute without per-tool approval prompts.
+All Voltron sessions must be started via Docker for fully autonomous agent execution:
+
+```bash
+./scripts/voltron-run.sh
+```
+
+The `scaffold_project` output includes `Dockerfile.voltron` and `scripts/voltron-run.sh` as actual scaffold files. Docker provides OS-level isolation, making `--dangerously-skip-permissions` safe. All sub-agents invoked via the Agent tool inherit the Docker environment automatically.
+
+The scrum-master performs a **pre-flight check** at the start of every session — it detects whether the session is running inside Docker and warns the user to restart via `./scripts/voltron-run.sh` if not.
 
 > **Future enhancement:** Separate per-agent containers for blast-radius isolation between specialist agents.
 
 ## Progress Visualization
 
-The scrum-master tracks agent task progress using built-in MCP tools:
+The scrum-master tracks agent task progress using built-in MCP tools. When a work plan is created, the scrum-master immediately registers all tasks as "queued" — this triggers the **live dashboard** to auto-open in the user's browser.
 
-- `update_progress` — logs task status changes (queued, in_progress, completed, failed, blocked)
+- `update_progress` — logs task status changes (queued, in_progress, completed, failed, blocked); auto-regenerates the dashboard HTML on every call
 - `get_progress` — returns a formatted dashboard in the chat window
-- `generate_dashboard` — produces a standalone HTML file at `.voltron/dashboard.html`
+- `generate_dashboard` — produces a standalone HTML file at `.voltron/dashboard.html` (auto-refreshes every 5 seconds)
 
 Progress data is persisted in `.voltron/progress.json`.
 

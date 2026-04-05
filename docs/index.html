@@ -285,7 +285,7 @@
       <h1>Project Voltron</h1>
       <p>Specialized agent teams for Claude Code, served via MCP. Scaffold Unity, web, or general projects with battle-tested subagent templates — Alexandria-aware, self-improving, and auto-updating.</p>
       <div class="badge-row">
-        <span class="badge">v2.3.0</span>
+        <span class="badge">v2.3.1</span>
         <span class="badge">MCP Server</span>
         <span class="badge">Unity</span>
         <span class="badge">Web / Fullstack</span>
@@ -308,6 +308,8 @@
           <p>Created by <code>scaffold_project</code>. Installs Claude Code CLI on a slim Node 20 base image.</p>
           <pre><code>FROM node:20-slim
 RUN npm install -g @anthropic-ai/claude-code
+RUN useradd -m -s /bin/bash voltron
+USER voltron
 WORKDIR /workspace
 ENTRYPOINT ["claude"]</code></pre>
         </div>
@@ -545,7 +547,7 @@ claude mcp add --scope user \
           </tr>
           <tr>
             <td><code>get_auto_update_hook</code></td>
-            <td>Get the <code>.claude/settings.json</code> hook that keeps agents current automatically — for projects scaffolded before v2.3.0</td>
+            <td>Get the <code>.claude/settings.json</code> hook that keeps agents current automatically — for projects scaffolded before v2.3.1</td>
           </tr>
           <tr>
             <td><code>get_agent_usage_guide</code></td>
@@ -594,7 +596,7 @@ claude mcp add --scope user \
           <div class="flow-icon">⚡</div>
           <div>
             <strong>Scaffold</strong>
-            <span>Run <code>scaffold_project</code> to write CLAUDE.md + all agent files + an auto-update hook for your project type</span>
+            <span>Run <code>scaffold_project</code> to write CLAUDE.md, agent files, Dockerfile, launch script, and auto-update hook for your project type</span>
           </div>
         </div>
         <div class="arrow">↓</div>
@@ -714,7 +716,7 @@ claude mcp add --scope user \
     <div class="container">
       <p>
         <a href="https://github.com/7ports/project-voltron">GitHub</a> &middot;
-        v2.3.0 &middot;
+        v2.3.1 &middot;
         MIT License &middot;
         Built by <a href="https://github.com/7ports">7ports</a>
       </p>

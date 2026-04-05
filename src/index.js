@@ -228,6 +228,35 @@ server.tool(
       };
     });
 
+    // Add Docker execution files
+    files.push({
+      path: "Dockerfile.voltron",
+      content:
+        "FROM node:20-slim\n" +
+        "RUN npm install -g @anthropic-ai/claude-code\n" +
+        "RUN useradd -m -s /bin/bash voltron\n" +
+        "USER voltron\n" +
+        "WORKDIR /workspace\n" +
+        'ENTRYPOINT ["claude"]',
+    });
+
+    files.push({
+      path: "scripts/voltron-run.sh",
+      content:
+        "#!/bin/bash\n" +
+        "# Voltron Docker launcher — starts Claude Code with full agent autonomy\n" +
+        "# Usage: ./scripts/voltron-run.sh\n" +
+        '#        ./scripts/voltron-run.sh -p "invoke @agent-scrum-master to plan the backlog"\n' +
+        "\n" +
+        "docker build -t voltron-agent -f Dockerfile.voltron . 2>/dev/null\n" +
+        "docker run --rm -it \\\n" +
+        '  -v "$(pwd):/workspace" \\\n' +
+        "  -e ANTHROPIC_API_KEY \\\n" +
+        "  voltron-agent \\\n" +
+        "  --dangerously-skip-permissions \\\n" +
+        '  "$@"',
+    });
+
     // Build the auto-update hook settings file
     // Use the voltron root (parent of __dirname which is src/)
     const voltronRoot = join(__dirname, "..").replace(/\\/g, "/");
@@ -272,7 +301,7 @@ server.tool(
     const instructions =
       `# Scaffold Instructions — ${typeLabel}\n\n` +
       `**Project Voltron v${VERSION}**\n\n` +
-      `Write the following ${files.length} agent files to the project root:\n\n` +
+      `Write the following ${files.length} files to the project root:\n\n` +
       agentFileInstructions +
       `\n\n---\n\n` +
       `## Auto-Update Hook: \`.claude/settings.json\`\n\n` +
@@ -280,17 +309,12 @@ server.tool(
       `\`\`\`json\n${settingsContent}\n\`\`\`\n\n` +
       `This hook runs \`auto-update-agents.js\` at the start of each Claude Code session. If your installed agent templates are outdated, they are silently updated in place. You will see a \`[VOLTRON]\` message in context when an update occurs.` +
       `\n\n---\n\n## Docker Execution (Required)\n\n` +
-      `Voltron agents run inside Docker containers with \`--dangerously-skip-permissions\` for fully autonomous execution.\n\n` +
-      `### Dockerfile.voltron\n\n` +
-      `Create this file in your project root:\n\n` +
-      "```dockerfile\nFROM node:20-slim\nRUN npm install -g @anthropic-ai/claude-code\nWORKDIR /workspace\nENTRYPOINT [\"claude\"]\n```\n\n" +
-      `### scripts/voltron-run.sh\n\n` +
-      `Create this launch script:\n\n` +
-      "```bash\n#!/bin/bash\ndocker build -t voltron-agent -f Dockerfile.voltron . 2>/dev/null\ndocker run --rm -it \\\\\n  -v \"$(pwd):/workspace\" \\\\\n  -e ANTHROPIC_API_KEY \\\\\n  voltron-agent \\\\\n  --dangerously-skip-permissions \\\\\n  \"$@\"\n```\n\n" +
-      `Make it executable: \`chmod +x scripts/voltron-run.sh\`\n\n` +
-      `### Usage\n\n` +
+      `The scaffold includes \`Dockerfile.voltron\` and \`scripts/voltron-run.sh\` above. After writing all files, make the launch script executable:\n\n` +
+      "```bash\nchmod +x scripts/voltron-run.sh\n```\n\n" +
+      `**Start every Voltron session via Docker:**\n\n` +
       "```bash\n# Interactive session with full agent autonomy\n./scripts/voltron-run.sh\n\n# Direct prompt execution\n./scripts/voltron-run.sh -p \"invoke @agent-scrum-master to plan the backlog\"\n```\n\n" +
-      `> **Future enhancement:** Separate per-agent containers for blast-radius isolation. See the project roadmap for details.`;
+      `> **Important:** Do not start Voltron sessions with bare \`claude\` on the host. Without Docker, every tool call requires manual approval, breaking multi-step agent tasks. ` +
+      `The scrum-master will detect if it is not running inside Docker and warn the user to restart via \`./scripts/voltron-run.sh\`.`;
 
     return {
       content: [{ type: "text", text: instructions }],

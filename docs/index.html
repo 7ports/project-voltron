@@ -283,9 +283,9 @@
   <section class="hero">
     <div class="container">
       <h1>Project Voltron</h1>
-      <p>Specialized agent teams for Claude Code, served via MCP. Scaffold Unity, web, or general projects with battle-tested subagent templates — and a self-improvement loop built in.</p>
+      <p>Specialized agent teams for Claude Code, served via MCP. Scaffold Unity, web, or general projects with battle-tested subagent templates — Alexandria-aware, self-improving, and auto-updating.</p>
       <div class="badge-row">
-        <span class="badge">v2.1.0</span>
+        <span class="badge">v2.2.0</span>
         <span class="badge">MCP Server</span>
         <span class="badge">Unity</span>
         <span class="badge">Web / Fullstack</span>
@@ -404,7 +404,7 @@ claude mcp add --scope user \
   <section class="tools">
     <div class="container">
       <h2>MCP Tools</h2>
-      <p class="section-sub">8 tools for scaffolding, updating, and improving your agent team.</p>
+      <p class="section-sub">9 tools for scaffolding, updating, and improving your agent team.</p>
       <table>
         <thead>
           <tr><th>Tool</th><th>Description</th></tr>
@@ -420,7 +420,11 @@ claude mcp add --scope user \
           </tr>
           <tr>
             <td><code>scaffold_project</code></td>
-            <td>Get the right agent set for unity, web, fullstack, or general projects</td>
+            <td>Get the right agent set + auto-update hook for unity, web, fullstack, or general projects</td>
+          </tr>
+          <tr>
+            <td><code>get_auto_update_hook</code></td>
+            <td>Get the <code>.claude/settings.json</code> hook that keeps agents current automatically — for projects scaffolded before v2.2.0</td>
           </tr>
           <tr>
             <td><code>get_agent_usage_guide</code></td>
@@ -428,7 +432,7 @@ claude mcp add --scope user \
           </tr>
           <tr>
             <td><code>check_for_updates</code></td>
-            <td>Check if installed agent files are outdated vs. current templates</td>
+            <td>Manually check if installed agent files are outdated vs. current templates</td>
           </tr>
           <tr>
             <td><code>update_agent</code></td>
@@ -457,7 +461,7 @@ claude mcp add --scope user \
           <div class="flow-icon">⚡</div>
           <div>
             <strong>Scaffold</strong>
-            <span>Run <code>scaffold_project</code> to write CLAUDE.md + all agent files for your project type</span>
+            <span>Run <code>scaffold_project</code> to write CLAUDE.md + all agent files + an auto-update hook for your project type</span>
           </div>
         </div>
         <div class="arrow">↓</div>
@@ -473,7 +477,7 @@ claude mcp add --scope user \
           <div class="flow-icon">🎯</div>
           <div>
             <strong>Plan</strong>
-            <span>Invoke <code>@agent-scrum-master</code> with your backlog to get a structured, sequenced work plan</span>
+            <span>Invoke <code>@agent-scrum-master</code> — it consults Alexandria for tool recommendations before producing a structured, sequenced work plan</span>
           </div>
         </div>
         <div class="arrow">↓</div>
@@ -481,7 +485,7 @@ claude mcp add --scope user \
           <div class="flow-icon">🔨</div>
           <div>
             <strong>Build</strong>
-            <span>Execute the plan — invoke specialist agents per task. Chain them with explicit handoffs.</span>
+            <span>Execute the plan — specialist agents look up setup guides in Alexandria before installing tools, and write findings back after</span>
           </div>
         </div>
         <div class="arrow">↓</div>
@@ -489,7 +493,7 @@ claude mcp add --scope user \
           <div class="flow-icon">💡</div>
           <div>
             <strong>Reflect</strong>
-            <span>At session end, <code>submit_reflection</code> captures what worked and what didn't — feeding improvements back into the templates</span>
+            <span>At session end, <code>submit_reflection</code> captures what worked and what didn't. Tool-specific discoveries are also synced to Alexandria.</span>
           </div>
         </div>
       </div>
@@ -524,7 +528,41 @@ claude mcp add --scope user \
         <div class="loop-arrow">↓</div>
         <div class="loop-node">
           <strong>PR reviewed and merged</strong>
-          <span>human reviews the diff before it reaches main — check_for_updates notifies existing projects</span>
+          <span>human reviews the diff before it reaches main — version bumped in package.json</span>
+        </div>
+        <div class="loop-arrow">↓</div>
+        <div class="loop-node">
+          <strong>Projects auto-update at next session start</strong>
+          <span>the <code>UserPromptSubmit</code> hook detects the version mismatch and silently rewrites all installed agent files in place — no manual steps needed</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Alexandria -->
+  <section class="self-improve">
+    <div class="container">
+      <h2>Alexandria Integration</h2>
+      <p class="section-sub">Voltron agents are paired with <strong>Project Alexandria</strong> — a shared tooling knowledge base — so setup knowledge accumulates across every session.</p>
+      <div class="loop-diagram">
+        <div class="loop-node">
+          <strong>scrum-master plans a new project</strong>
+          <span>calls <code>get_project_setup_recommendations</code> from Alexandria to surface required tools before work begins</span>
+        </div>
+        <div class="loop-arrow">↓</div>
+        <div class="loop-node">
+          <strong>specialist agents set up tools</strong>
+          <span>call <code>quick_setup</code> before installing anything — following battle-tested guides rather than training data</span>
+        </div>
+        <div class="loop-arrow">↓</div>
+        <div class="loop-node">
+          <strong>agents discover platform-specific fixes</strong>
+          <span>call <code>update_guide</code> after completing integrations — workarounds, version notes, and gotchas flow into Alexandria</span>
+        </div>
+        <div class="loop-arrow">↓</div>
+        <div class="loop-node">
+          <strong>knowledge is available to every future agent</strong>
+          <span>the next project that touches the same tool gets accurate, up-to-date guidance automatically</span>
         </div>
       </div>
     </div>
@@ -535,7 +573,7 @@ claude mcp add --scope user \
     <div class="container">
       <p>
         <a href="https://github.com/7ports/project-voltron">GitHub</a> &middot;
-        v2.1.0 &middot;
+        v2.2.0 &middot;
         MIT License &middot;
         Built by <a href="https://github.com/7ports">7ports</a>
       </p>

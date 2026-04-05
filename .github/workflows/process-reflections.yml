@@ -93,19 +93,7 @@ jobs:
 
             gh pr create \
               --title "Voltron v${NEW_VERSION}: auto-improvements from reflections" \
-              --body "$(cat <<'PRBODY'
-## Automated Voltron improvement run
-
-A Claude Code agent processed the pending reflections in \`reflections/\` and applied improvements to \`src/templates.js\`.
-
-**Before merging, please review:**
-- The diff on \`src/templates.js\` — do the template changes look correct and safe?
-- The diff on \`reflections/*.json\` — does each processed reflection have \`"processed": true\`?
-- The version bump in \`package.json\`
-
-Triggered by: ${{ github.event_name }}
-PRBODY
-)" \
+              --body $'## Automated Voltron improvement run\n\nA Claude Code agent processed the pending reflections in `reflections/` and applied improvements to `src/templates.js`.\n\n**Before merging, please review:**\n- The diff on `src/templates.js` \u2014 do the template changes look correct and safe?\n- The diff on `reflections/*.json` \u2014 does each processed reflection have `"processed": true`?\n- The version bump in `package.json`\n\nTriggered by: ${{ github.event_name }}' \
               --base main \
               --head "${{ steps.branch.outputs.name }}"
           else

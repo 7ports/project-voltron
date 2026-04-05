@@ -1,0 +1,47 @@
+{
+  "timestamp": "2026-04-05T09:01:04.206Z",
+  "project_name": "toronto-ferry-tracker-v2",
+  "project_type": "fullstack",
+  "session_summary": "Completed Phase 3 (Information Panel) end-to-end: live service status from City of Toronto ferry.json endpoint, schedule view with countdown timers, vessel cards, ticket card, pointer-drag bottom sheet, and map click-to-select. Ran a live demo that surfaced a pre-existing AIS SSE URL mismatch bug (fixed in session). Demo showed real live data: green AIS connection, Marilyn Bell I vessel detected, active disruption banner from City of Toronto advisory.",
+  "agents_used": [
+    "scrum-master",
+    "fullstack-dev",
+    "ui-designer",
+    "qa-tester",
+    "general-purpose"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "scrum-master",
+      "worked_well": "Mid-session plan revision for two user clarifications (service status accuracy + touch-drag gesture) was handled cleanly — the revised plan correctly renumbered all tasks, updated dependencies, and identified the new research task as the critical path blocker. The recommendation to run the research task first before implementing useServiceStatus was exactly right.",
+      "needs_improvement": "The plan did not include a cross-check task verifying that frontend SSE hook URLs match backend route mounting paths. This mismatch (hook used /api/ais/stream, server mounted at /api/ais) existed from Phase 2 and was not caught until a live demo.",
+      "suggested_change": "Add an explicit integration smoke-test task to the QA phase: 'verify each frontend fetch/EventSource URL against the actual Express route mounting points in server/src/index.ts'. This is a 5-minute check that would have caught the Phase 2 URL bug before Phase 3 shipped."
+    },
+    {
+      "agent": "general-purpose",
+      "worked_well": "The service status research agent was the standout performer of the session. It independently discovered the undocumented City of Toronto ferry.json endpoint, documented the full response schema including field meanings, identified the CORS limitation requiring a backend proxy, determined the correct polling interval by reading the City's own widget source code, and explicitly listed what does NOT exist (no GTFS-RT, no RSS, no 311 feed). This level of depth saved hours of trial-and-error.",
+      "needs_improvement": "Nothing significant — the research output was thorough and immediately actionable.",
+      "suggested_change": "No change needed. This pattern (dedicated research agent before implementing a data hook) should be used as a template for any future feature that consumes an external data source."
+    },
+    {
+      "agent": "fullstack-dev",
+      "worked_well": "useServiceStatus correctly implemented seasonal closure logic using month/day arithmetic with no hardcoded year. The backend ferryStatus.ts route correctly strips HTML from the Comments field, maps status codes, and converts naive Eastern Time timestamps to ISO UTC. All hooks used import type correctly under verbatimModuleSyntax.",
+      "needs_improvement": "The AIS SSE URL bug (/api/ais/stream vs /api/ais) was introduced in Phase 2 and survived through Phase 3 QA. The agent that wrote useAISStream.ts did not verify the URL against the actual server route. Similarly, the Phase 3 agents did not notice the mismatch during wiring.",
+      "suggested_change": "When writing any hook that calls a backend endpoint, the agent should explicitly read server/src/index.ts to verify the route mounting path before hardcoding a URL. Add this as a rule: 'before setting any fetch/EventSource URL in a hook, read server/src/index.ts to confirm the exact mounted path'."
+    },
+    {
+      "agent": "ui-designer",
+      "worked_well": "PanelShell pointer-drag gesture was implemented correctly using setPointerCapture, direct DOM ref manipulation during drag (zero re-renders), and CSS transition for snap animation. The prefers-reduced-motion handling (skip transition + skip drag gesture entirely) was thorough. The disruption banner dismiss logic correctly resets when a new advisory appears.",
+      "needs_improvement": "The disruption banner showed the full raw City of Toronto advisory text which is quite verbose ('Due to ongoing infrastructure improvements at the Jack Layton Ferry Terminal, vehicle service will be suspended from Thursday, April 2, 2026, through Tuesday, April 7, 2026, inclusive.'). In a narrow 360px panel this wraps to 6+ lines.",
+      "suggested_change": "Add a max-height with overflow hidden and a 'Show more' toggle to the disruption banner text, or truncate to 2 lines with ellipsis by default. Long advisory messages from government sources are common and the current layout doesn't handle them gracefully."
+    },
+    {
+      "agent": "qa-tester",
+      "worked_well": "Caught the missing docs/ directory immediately and flagged it as a blocker. Correctly identified and fixed the PanelShell and ScheduleView react-hooks/set-state-in-effect lint violations that the implementation agents missed. The no-any audit across 8 files was thorough.",
+      "needs_improvement": "The QA gate did not include any check that verifies client-side API endpoint URLs match server route definitions. This is the category of bug that survived two phases undetected.",
+      "suggested_change": "Add a step to the QA checklist: 'grep for fetch( and EventSource( in src/hooks/, extract the URL patterns, and verify each against app.use() calls in server/src/index.ts'. This can be done with two grep commands and takes under a minute."
+    }
+  ],
+  "overall_notes": "The live demo workflow (start backend, start frontend preview, take screenshots across viewports) is very effective for validating real integration behaviour — it caught the AIS URL bug that three rounds of static analysis missed. Recommend running a live demo check as a standard step at the end of every phase, not just at explicit user request. The City of Toronto ferry.json live endpoint discovery was a genuine surprise — real-time government data with no auth, updating every ~30 seconds, currently showing a live disruption. This validated the entire service status feature in a way that no unit test could have.",
+  "processed": false
+}

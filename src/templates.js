@@ -637,6 +637,14 @@ Before creating a work plan, determine which agents are available:
 
 **Never assume a specific agent exists. Always check first.**
 
+## Invoking Specialist Agents
+
+When delegating a task to a specialist agent:
+
+- **Inject the role content** — include the full content of the agent's `.md` file directly in the invocation prompt. Do not tell the agent to "read your own file" — the agent starts with a fresh context window and cannot self-read its template without help.
+- **Provide full context** — include the task description, relevant file paths, acceptance criteria, and any outputs from prior tasks it depends on.
+- **One task per invocation** — each agent call should correspond to exactly one task from the work plan.
+
 ## Alexandria Integration
 
 Before creating a work plan for any new project or when a task involves setting up a tool:
@@ -654,6 +662,7 @@ When planning tasks that involve infrastructure, new libraries, or third-party s
 - Prefer small tasks over large ones — it's better to chain 3 small tasks than risk 1 large one failing
 - Identify dependencies explicitly — if task B needs task A's output, say so
 - Group related tasks into phases when the work has natural milestones
+- When two tasks touch the same file (stub then fill), merge them into one task or explicitly annotate the second: "replaces the stub from task #N"
 - Flag tasks that require **human input** (API keys, design decisions, account setup) as blockers
 
 ## Reading the Backlog
@@ -702,6 +711,15 @@ Always output your plan as a structured table:
 - Don't make architectural decisions without flagging them — present options and let the human or specialist agent decide
 - Don't assign tasks to agents that don't exist in the project
 - Don't skip reading the full context before planning
+
+## Platform-Specific Planning Notes
+
+**Web / Fullstack projects:**
+- Include an integration smoke-test task in every QA phase: "verify each frontend \`fetch\`/\`EventSource\` URL against the actual Express route mounting paths in \`server/src/index.ts\`". This 5-minute check catches URL mismatches that survive typecheck, lint, and code review.
+- When a feature consumes an external data source, add a dedicated research task before the implementation task. The research agent should document the API schema, CORS posture, polling interval, and what does NOT exist — this prevents trial-and-error during implementation.
+
+**Unity projects:**
+- When planning tasks that touch multiple scenes or involve scene transitions, flag singleton/component availability across scene boundaries as a risk. Ask the developer how persistent objects are handled (DontDestroyOnLoad, scene-loaded callbacks, etc.) before sequencing implementation tasks.
 
 ## On Completion
 
@@ -1376,13 +1394,29 @@ router.get('/api/ais/stream', (req: Request, res: Response) => {
 1. Read existing relevant files — understand what's already there
 2. Check CLAUDE.md for tech stack, conventions, and package list
 3. Check \`package.json\` for available dependencies before adding new ones
+4. **Before setting any \`fetch\` or \`EventSource\` URL in a hook**, read \`server/src/index.ts\` (or equivalent entry point) to confirm the exact route mounting path. URL mismatches between client hooks and server mounts are a silent failure — they survive typecheck and lint but break at runtime.
 
 ## After Writing Code
 
-1. Run \`npm run typecheck\` (or \`npx tsc --noEmit\`) to verify no type errors
-2. Run \`npm run lint\` if configured
-3. If errors exist, fix them before reporting back
+1. Run \`npm run typecheck\` (or \`npx tsc --noEmit\`) — fix all type errors before reporting back
+2. Run \`npm run lint\` — fix all errors before reporting back (warnings should be reviewed)
+3. Do not report done while typecheck or lint errors remain
 4. Summarize: files created/modified, what the code does, how to test it
+
+## Common Pitfalls
+
+**TypeScript + Vitest backends (Docker/CommonJS):**
+Always exclude test files from \`tsconfig.json\`:
+\`\`\`json
+"exclude": ["src/**/*.test.ts", "src/**/*.spec.ts", "src/__tests__/**"]
+\`\`\`
+Vitest handles its own transpilation. Test files that use top-level \`await\` are incompatible with CommonJS \`tsc\` output and will break Docker builds silently with no obvious error.
+
+**Dockerfiles:**
+Always produce a \`.dockerignore\` alongside any backend Dockerfile. Exclude \`node_modules\`, \`.env\`, \`.git\` — but **never exclude \`src/\`** or your source directory. If \`src/\` is accidentally ignored, \`dist/\` will be empty and the container will fail silently.
+
+**SSE routes + supertest:**
+\`supertest\` hangs on SSE endpoints because it waits for the response to close. Use raw \`http.request\` for SSE integration tests instead.
 
 ## What You Don't Do
 

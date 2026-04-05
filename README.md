@@ -92,7 +92,14 @@ Once installed, ask Claude Code:
 
 ## Self-Improvement
 
-Agents submit post-session reflections via `submit_reflection`. Reflections accumulate in the `reflections/` directory and are periodically reviewed and applied to improve the agent templates. This is how Voltron gets better over time.
+Agents submit post-session reflections via `submit_reflection`. Reflections accumulate in the `reflections/` directory and are automatically processed by a GitHub Actions workflow that runs **Mon/Wed/Fri at 10:00 UTC**:
+
+1. A Claude Code agent reads all unprocessed reflections
+2. Applies targeted improvements to `src/templates.js`
+3. Bumps the patch version and commits
+4. Opens a PR for human review before changes reach `main`
+
+Once merged, existing projects can pull the improvements via `check_for_updates`. The workflow can also be triggered manually from the Actions tab. Requires `ANTHROPIC_API_KEY` set as a repository secret.
 
 ## License
 

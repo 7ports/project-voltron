@@ -1,0 +1,113 @@
+name: Process Voltron Reflections
+
+# Runs on a schedule 3x/week and applies any unprocessed reflection feedback
+# to the agent templates in src/templates.js, then opens a PR for review.
+#
+# Required secret: ANTHROPIC_API_KEY
+# Required permissions: contents:write, pull-requests:write (set below)
+
+on:
+  schedule:
+    - cron: '0 10 * * 1,3,5'   # Mon, Wed, Fri at 10:00 UTC
+  workflow_dispatch:             # allow manual trigger from Actions tab
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  process-reflections:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Fast pre-check — skip everything if there's nothing to process
+      - name: Count unprocessed reflections
+        id: check
+        run: |
+          COUNT=$(node -e "
+            const fs = require('fs');
+            if (!fs.existsSync('reflections')) { process.stdout.write('0'); process.exit(0); }
+            const files = fs.readdirSync('reflections').filter(f => f.endsWith('.json'));
+            const n = files.filter(f => {
+              try { return !JSON.parse(fs.readFileSync('reflections/' + f, 'utf-8')).processed; }
+              catch { return false; }
+            }).length;
+            process.stdout.write(String(n));
+          ")
+          echo "count=$COUNT" >> $GITHUB_OUTPUT
+          echo "Unprocessed reflections: $COUNT"
+
+      - name: No pending reflections — exiting
+        if: steps.check.outputs.count == '0'
+        run: echo "Nothing to process. Exiting cleanly."
+
+      # ── Everything below only runs when there are unprocessed reflections ──
+
+      - name: Install Claude Code
+        if: steps.check.outputs.count != '0'
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Configure git identity
+        if: steps.check.outputs.count != '0'
+        run: |
+          git config user.name "voltron-agent[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Create improvement branch
+        if: steps.check.outputs.count != '0'
+        id: branch
+        run: |
+          BRANCH="voltron/auto-improve-$(date +%Y-%m-%d)"
+          git checkout -b "$BRANCH"
+          echo "name=$BRANCH" >> $GITHUB_OUTPUT
+
+      - name: Run Claude Code agent
+        if: steps.check.outputs.count != '0'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          claude \
+            --dangerously-skip-permissions \
+            --max-turns 40 \
+            -p "$(cat .github/prompts/process-reflections.md)"
+
+      - name: Push branch and open PR
+        if: steps.check.outputs.count != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Only proceed if the agent actually committed something
+          if git log origin/main..HEAD --oneline | grep -q .; then
+            git push origin "${{ steps.branch.outputs.name }}"
+
+            NEW_VERSION=$(node -p "require('./package.json').version")
+
+            gh pr create \
+              --title "Voltron v${NEW_VERSION}: auto-improvements from reflections" \
+              --body "$(cat <<'PRBODY'
+## Automated Voltron improvement run
+
+A Claude Code agent processed the pending reflections in \`reflections/\` and applied improvements to \`src/templates.js\`.
+
+**Before merging, please review:**
+- The diff on \`src/templates.js\` — do the template changes look correct and safe?
+- The diff on \`reflections/*.json\` — does each processed reflection have \`"processed": true\`?
+- The version bump in \`package.json\`
+
+Triggered by: ${{ github.event_name }}
+PRBODY
+)" \
+              --base main \
+              --head "${{ steps.branch.outputs.name }}"
+          else
+            echo "Agent made no commits — no changes to push."
+          fi

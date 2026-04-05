@@ -69,13 +69,15 @@ Or add manually to `~/.claude/settings.json`:
 
 ## Alexandria Integration
 
-Voltron agents are designed to work with **Project Alexandria** — a companion MCP server that maintains a shared library of tooling setup guides. When both are installed, agents can look up setup procedures before attempting tool installations and write back discoveries afterward.
+Voltron agents are designed to work with **Project Alexandria** — a companion MCP server that maintains a shared library of tooling setup guides. When both are installed, agents consult Alexandria **before** any tool installation — this is mandatory, not optional.
 
 **What this enables:**
-- `devops-engineer` and `fullstack-dev` consult Alexandria before setting up Docker, CI/CD, cloud services, or libraries
-- `scrum-master` calls `get_project_setup_recommendations` when planning a new project
+- All specialist agents call `quick_setup` before installing any tool, library, or service — and `search_guides` if no exact guide exists
+- `scrum-master` calls `get_project_setup_recommendations` when planning a new project and requires specialist agents to check Alexandria in every tool-setup task
 - After completing a setup, agents call `update_guide` to record findings (platform quirks, version notes, working commands)
 - Tool knowledge from sessions flows back into Alexandria — not just into Voltron's reflection pipeline
+
+**Content boundary:** Alexandria is for non-project-specific, reusable documentation only — tool setup guides, platform quirks, version notes, API patterns. Project-specific knowledge (business logic, custom architecture, team conventions) belongs in `CLAUDE.md` and local project docs, not Alexandria.
 
 **Setup:** Install both MCP servers globally in `~/.claude.json`. No additional configuration is needed — agent templates already include the relevant `mcp__alexandria__*` tools.
 

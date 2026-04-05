@@ -197,7 +197,7 @@ You do not need to change how you start Claude Code. Run it normally on your des
 - **github** — PR/issue management
 - **memory** — persist decisions and patterns across sessions
 - **fetch** — Unity docs, package changelogs, API references
-- **alexandria** — tooling setup guides; call \`quick_setup\` before installing any tool, \`update_guide\` after
+- **alexandria** — tooling setup guides; **mandatory** — call \`quick_setup\` before installing any tool (no exceptions), \`update_guide\` after. Alexandria is for non-project-specific documentation only (tool setup, platform quirks, version notes) — project-specific knowledge stays in CLAUDE.md
 
 ---
 
@@ -426,7 +426,7 @@ You do not need to change how you start Claude Code. Run it normally on your des
 - **github** — PR/issue management
 - **memory** — persist decisions and patterns across sessions
 - **fetch** — API docs, package changelogs, references
-- **alexandria** — tooling setup guides; call \`quick_setup\` before installing any tool, \`update_guide\` after
+- **alexandria** — tooling setup guides; **mandatory** — call \`quick_setup\` before installing any tool (no exceptions), \`update_guide\` after. Alexandria is for non-project-specific documentation only (tool setup, platform quirks, version notes) — project-specific knowledge stays in CLAUDE.md
 
 ---
 
@@ -465,7 +465,7 @@ mcp__project-voltron__submit_reflection({
 
 Even a brief reflection is valuable. Focus on gaps in agent instructions that required workarounds.
 
-If the session included any tool setup, API integration, or platform-specific discoveries, also call \`mcp__alexandria__update_guide\` to record findings in the knowledge base.
+If the session included any tool setup, API integration, or platform-specific discoveries, call \`mcp__alexandria__update_guide\` to record findings. Record only non-project-specific knowledge — tool setup steps, platform gotchas, version compatibility. Never record project-specific content (business logic, custom architecture, project configs) in Alexandria; that belongs in CLAUDE.md.
 
 ---
 
@@ -598,7 +598,7 @@ You do not need to change how you start Claude Code. Run it normally on your des
 - **github** — PR/issue management
 - **memory** — persist decisions and patterns across sessions
 - **fetch** — docs, changelogs, API references
-- **alexandria** — tooling setup guides; call \`quick_setup\` before installing any tool, \`update_guide\` after
+- **alexandria** — tooling setup guides; **mandatory** — call \`quick_setup\` before installing any tool (no exceptions), \`update_guide\` after. Alexandria is for non-project-specific documentation only (tool setup, platform quirks, version notes) — project-specific knowledge stays in CLAUDE.md
 
 ---
 
@@ -627,7 +627,7 @@ mcp__project-voltron__submit_reflection({
 
 Even a brief reflection is valuable. Focus on gaps in agent instructions that required workarounds.
 
-If the session included any tool setup, API integration, or platform-specific discoveries, also call \`mcp__alexandria__update_guide\` to record findings in the knowledge base.
+If the session included any tool setup, API integration, or platform-specific discoveries, call \`mcp__alexandria__update_guide\` to record findings. Record only non-project-specific knowledge — tool setup steps, platform gotchas, version compatibility. Never record project-specific content (business logic, custom architecture, project configs) in Alexandria; that belongs in CLAUDE.md.
 
 ---
 
@@ -703,13 +703,14 @@ The tool automatically:
 
 ## Alexandria Integration
 
-Before creating a work plan for any new project or when a task involves setting up a tool:
+**Mandatory:** Before creating any work plan, you MUST consult Alexandria. Specialist agents are required to check Alexandria before any tool setup — your task descriptions must enforce this explicitly.
 
 1. Call \`mcp__alexandria__get_project_setup_recommendations\` with the project type to get recommended tools
 2. Call \`mcp__alexandria__list_guides\` to see what setup documentation already exists
-3. Include tool-setup tasks in the work plan with a note: "Consult Alexandria (\`quick_setup\`) before beginning"
+3. For every task involving tool setup, library installation, or infrastructure, include this requirement verbatim in the task description: "**Check Alexandria first** — call \`mcp__alexandria__quick_setup\` before any setup step. This is mandatory."
+4. If a specialist agent reports completing a setup without consulting Alexandria, flag it as a process gap in the next reflection
 
-When planning tasks that involve infrastructure, new libraries, or third-party services, flag them as "Alexandria-ready" so specialist agents know to look up docs first.
+**Alexandria content boundary:** Alexandria is for non-project-specific, reusable documentation only — tool setup guides, platform quirks, version notes, API patterns. When prompting specialist agents to update Alexandria, remind them: project-specific content (business logic, project architecture, custom configs, team conventions) belongs in CLAUDE.md and local project docs, not Alexandria.
 
 ## Task Decomposition Rules
 
@@ -1090,13 +1091,19 @@ Do **not** attempt task decomposition yourself — that is the scrum-master's re
 
 ## Alexandria Integration
 
+**Mandatory:** Consult Alexandria at the start of research, not just at the end. Before researching any tool or technology:
+
+1. Call \`mcp__alexandria__get_project_setup_recommendations\` with the project type
+2. Call \`mcp__alexandria__search_guides\` for each major tool or framework in the stack
+3. Read existing guides — they contain hard-won knowledge from prior sessions that directly informs architecture decisions
+
 After completing research, call \`mcp__alexandria__update_guide\` for any tool-specific findings:
 - Version compatibility notes
 - Configuration gotchas discovered during research
-- Architectural patterns that worked well for this tech stack
+- API patterns and integration approaches
 - Links to authoritative documentation
 
-This ensures your research benefits future projects.
+**Alexandria content boundary:** Alexandria is for non-project-specific, reusable documentation only. Record only knowledge that applies to a tool or framework in general — not project-specific decisions (custom data models, feature requirements, client-specific architecture). Project-specific documentation belongs in the plan document and CLAUDE.md, not Alexandria.
 
 ## On Completion
 
@@ -1182,7 +1189,9 @@ Prefix group objects with \`---\` and use PascalCase for all GameObjects.
 
 ## Alexandria Reference
 
-Before setting up any Unity package, plugin, or external tool as part of a scene task, call \`mcp__alexandria__quick_setup\` to check for existing setup guidance. Use \`mcp__alexandria__search_guides\` if you encounter an unfamiliar error or workflow.
+**Mandatory:** Before setting up any Unity package, plugin, or external tool, you MUST call \`mcp__alexandria__quick_setup\` first. Use \`mcp__alexandria__search_guides\` if no exact guide exists or you encounter an unfamiliar error. Never proceed with a package or plugin installation without checking Alexandria first.
+
+**Alexandria content boundary:** Alexandria is for non-project-specific, reusable documentation only — Unity package setup, plugin configuration, known workflow issues. Never record project-specific content (scene hierarchies, project-specific prefab layouts, game design decisions) in Alexandria. That belongs in CLAUDE.md.
 
 ## On Completion
 
@@ -1265,7 +1274,9 @@ Awake -> OnEnable -> Start -> Update/FixedUpdate/LateUpdate -> OnDisable -> OnDe
 
 ## Alexandria Reference
 
-Before implementing any integration with an external service, SDK, or platform-specific feature, call \`mcp__alexandria__quick_setup\` to check for existing guidance. Use \`mcp__alexandria__search_guides\` to look up known platform quirks (e.g. WebGL constraints, mobile threading limits).
+**Mandatory:** Before integrating any external service, SDK, or platform-specific feature, you MUST call \`mcp__alexandria__quick_setup\` first. Use \`mcp__alexandria__search_guides\` if no exact guide exists. Never skip this step — platform quirks and SDK setup details are exactly what Alexandria is built to capture.
+
+**Alexandria content boundary:** Alexandria is for non-project-specific, reusable documentation only — SDK setup, platform constraints, known C#/Unity quirks. Never record project-specific content (game-specific logic, custom MonoBehaviour designs, project architecture decisions) in Alexandria. That belongs in CLAUDE.md.
 
 ## Common Patterns Reference
 
@@ -1390,7 +1401,9 @@ Shader "Custom/MyShader"
 
 ## Alexandria Reference
 
-Use \`mcp__alexandria__quick_setup\` when working with render pipeline features, post-processing packages, or shader compilation tools. Use \`mcp__alexandria__search_guides\` to look up known shader compatibility issues.
+**Mandatory:** Before working with any render pipeline features, post-processing packages, or shader compilation tools, you MUST call \`mcp__alexandria__quick_setup\` first. Use \`mcp__alexandria__search_guides\` to check for known compatibility issues if no exact guide exists. Never skip this step.
+
+**Alexandria content boundary:** Alexandria is for non-project-specific, reusable documentation only — render pipeline setup, known shader compatibility issues, post-processing package quirks. Never record project-specific content (project-specific material setups, game visual effect designs) in Alexandria. That belongs in CLAUDE.md.
 
 ## On Completion
 
@@ -1515,7 +1528,11 @@ NOT READY TO COMMIT — fix NullReferenceException first.
 
 ## Alexandria Reference
 
-If build validation uncovers an unfamiliar error or platform-specific issue, use \`mcp__alexandria__search_guides\` to check for known solutions. If you discover a new fix, note it for the scrum-master to record via \`mcp__alexandria__update_guide\`.
+If build validation uncovers an unfamiliar error or platform-specific issue, you MUST call \`mcp__alexandria__search_guides\` to check for known solutions before attempting any fix. Do not guess at solutions when Alexandria may have documented the answer.
+
+If you discover a new fix or workaround, call \`mcp__alexandria__update_guide\` to record it immediately.
+
+**Alexandria content boundary:** Alexandria is for non-project-specific, reusable documentation only — known build errors and fixes, platform-specific compiler quirks, toolchain issues. Never record project-specific content (project-specific compile errors from custom game code) in Alexandria. That belongs in CLAUDE.md.
 
 ## Automatic Triggers
 
@@ -1651,7 +1668,9 @@ Fix naming and import settings. One script needs relocation — confirm before m
 
 ## Alexandria Reference
 
-Use \`mcp__alexandria__quick_setup\` when configuring import settings for unfamiliar asset types or third-party asset store packages. Use \`mcp__alexandria__search_guides\` for known import pipeline issues.`,
+**Mandatory:** Before configuring import settings for any unfamiliar asset type or third-party asset store package, you MUST call \`mcp__alexandria__quick_setup\` first. Use \`mcp__alexandria__search_guides\` for known import pipeline issues if no exact guide exists. Never skip this step.
+
+**Alexandria content boundary:** Alexandria is for non-project-specific, reusable documentation only — asset import settings, known pipeline issues, third-party package configuration. Never record project-specific content (project folder structures, project-specific naming conventions, team workflow rules) in Alexandria. That belongs in CLAUDE.md.`,
   },
 
   // ─── WEB AGENTS ──────────────────────────────────────────────────────────────
@@ -1766,12 +1785,16 @@ Always produce a \`.dockerignore\` alongside any backend Dockerfile. Exclude \`n
 
 ## Alexandria Knowledge Base
 
-Before setting up any library, tool, or service integration:
-1. Call \`mcp__alexandria__quick_setup\` with the tool name — follow the guide if it exists
-2. If no guide exists, proceed with your best knowledge
+**Mandatory:** Before setting up any library, tool, or service integration, you MUST consult Alexandria. This is required — never skip it.
+
+1. Call \`mcp__alexandria__quick_setup\` with the tool name
+2. If no exact guide exists, call \`mcp__alexandria__search_guides\` to find related guides before proceeding
+3. Follow the guide — do not improvise a setup when Alexandria has documented the correct approach
 
 After completing a tool integration or discovering a platform-specific workaround:
 - Call \`mcp__alexandria__update_guide\` to record findings (setup steps, gotchas, version notes)
+
+**Alexandria content boundary:** Alexandria is for non-project-specific, reusable documentation only — library setup steps, platform gotchas, version compatibility. Never record project-specific content (business logic, custom feature implementations, project architecture decisions) in Alexandria. That belongs in CLAUDE.md and local project documentation.
 
 Key guides to check: \`supertest\`, \`vitest\`, \`rancher-desktop-windows\`, \`maplibre-react-map-gl\`, and any other tool you're setting up.
 
@@ -1932,12 +1955,16 @@ primary_region = "yyz"  # or closest to users
 
 ## Alexandria Knowledge Base
 
-Before configuring any infrastructure tool, cloud service, or CI/CD system:
-1. Call \`mcp__alexandria__quick_setup\` with the tool name — follow the guide if it exists
-2. If no guide exists, proceed with your expertise
+**Mandatory:** Before configuring any infrastructure tool, cloud service, or CI/CD system, you MUST consult Alexandria. This is required — never skip it.
+
+1. Call \`mcp__alexandria__quick_setup\` with the tool name
+2. If no exact guide exists, call \`mcp__alexandria__search_guides\` to find related guides before proceeding
+3. Follow the guide — do not improvise a configuration when Alexandria has documented the correct approach
 
 After setting up infrastructure or discovering platform-specific deployment fixes:
 - Call \`mcp__alexandria__update_guide\` to record findings (config patterns, platform gotchas, working commands)
+
+**Alexandria content boundary:** Alexandria is for non-project-specific, reusable documentation only — tool configuration guides, platform deployment quirks, working command patterns. Never record project-specific content (project architecture, environment-specific values, business logic) in Alexandria. That belongs in CLAUDE.md and local project documentation.
 
 Key guides to check: \`aws-cli\`, \`github-cli\`, \`rancher-desktop-windows\`, \`claude-code-github-actions\`, and any cloud tool you're configuring.
 
@@ -2105,7 +2132,12 @@ You are a Senior UI/UX Designer and CSS Architect. You create beautiful, respons
 
 ## Alexandria Reference
 
-Use \`mcp__alexandria__quick_setup\` when integrating CSS frameworks, PWA tooling, or design systems. Use \`mcp__alexandria__search_guides\` to look up known browser compatibility quirks. Record findings via \`mcp__alexandria__update_guide\`.
+**Mandatory:** Before integrating any CSS framework, PWA tooling, or design system, you MUST call \`mcp__alexandria__quick_setup\` first. Use \`mcp__alexandria__search_guides\` if no exact guide exists. Never proceed with a tool integration without checking Alexandria first.
+
+After completing an integration or discovering browser compatibility quirks:
+- Call \`mcp__alexandria__update_guide\` to record findings
+
+**Alexandria content boundary:** Alexandria is for non-project-specific, reusable documentation only — CSS framework setup, browser quirks, PWA tooling configuration. Never record project-specific content (project color palettes, brand guidelines, custom component designs) in Alexandria. That belongs in CLAUDE.md and local project documentation.
 
 ## On Completion
 
@@ -2284,7 +2316,12 @@ READY TO SHIP — address the 2 lint warnings and improve interpolation.ts test 
 
 ## Alexandria Reference
 
-Before configuring any testing tool or framework, call \`mcp__alexandria__quick_setup\` to check for existing setup guidance. Key guides: \`vitest\`, \`supertest\`. Use \`mcp__alexandria__search_guides\` to look up known testing patterns or limitations (e.g. SSE-over-supertest hang, MapLibre bundle size expectations).
+**Mandatory:** Before configuring any testing tool or framework, you MUST call \`mcp__alexandria__quick_setup\` to check for existing setup guidance. Use \`mcp__alexandria__search_guides\` if no exact guide exists. Never skip this step — testing tool setup has many platform-specific gotchas that Alexandria captures.
+
+Key guides: \`vitest\`, \`supertest\`. After discovering a new testing pattern or workaround:
+- Call \`mcp__alexandria__update_guide\` to record it
+
+**Alexandria content boundary:** Alexandria is for non-project-specific, reusable documentation only — testing tool setup, framework quirks, known testing patterns and limitations. Never record project-specific content (test case descriptions, feature-specific test plans, project test coverage goals) in Alexandria. That belongs in local project documentation.
 
 ## Automatic Triggers
 

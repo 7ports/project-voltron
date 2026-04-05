@@ -87,9 +87,21 @@ tools: Read, Write, Edit, Bash, ...
 
 ---
 
+## Documentation Rule
+
+**Any code change must be accompanied by documentation updates in the same commit.** This means:
+
+- `docs/index.html` — update version badges, tool tables, feature sections, and workflow descriptions to reflect the change
+- `README.md` — keep in sync with any new tools, changed behavior, or new workflows
+
+Do not commit code changes without also updating `docs/index.html` and `README.md`. GitHub Pages deploys automatically from `docs/` on `main` — outdated pages will be immediately visible to users.
+
+---
+
 ## Things Claude Should Never Do
 
 - Modify `node_modules/` or `package-lock.json` manually
 - Push directly to `main` — use feature branches if changes are significant
 - Delete reflection files — mark them `processed: true` instead (they're historical record)
 - Bump version without also updating the template content (version must reflect actual template state)
+- Ship code changes without updating `docs/index.html` and `README.md`

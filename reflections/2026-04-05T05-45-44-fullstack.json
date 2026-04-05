@@ -1,0 +1,33 @@
+{
+  "timestamp": "2026-04-05T05:45:44.739Z",
+  "project_name": "toronto-ferry-tracker-v2",
+  "project_type": "fullstack",
+  "session_summary": "Completed Phase 0 (project scaffold — Vite react-ts frontend, Express backend, Voltron agents, CLAUDE.md) and Phase 1 (backend AIS proxy — AISProxy class with exponential backoff, SSE endpoint, weather and health routes, 9 passing tests, Docker multi-stage build, Fly.io config). Docker build required two fixes before smoke test passed.",
+  "agents_used": [
+    "scrum-master",
+    "fullstack-dev",
+    "devops-engineer"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "scrum-master",
+      "worked_well": "Work plan tables with explicit dependencies and acceptance criteria gave fullstack-dev and devops-engineer clear, verifiable targets. Phasing (scaffold -> proxy -> infra) kept the critical path visible.",
+      "needs_improvement": "The initial invocation pattern instructed agents to read their own .md file rather than having role content injected into the prompt. This caused friction on the first agent call.",
+      "suggested_change": "Scrum master prompt should explicitly state: 'When invoking a specialist agent, inject the full content of their .md role definition directly into the prompt — do not tell the agent to read its own file.' Add a note that the agent context window starts fresh and cannot self-read its template without help."
+    },
+    {
+      "agent": "fullstack-dev",
+      "worked_well": "Produced well-structured TypeScript across config.ts (fail-fast env validation), aisProxy.ts (pub/sub with exponential backoff), and route handlers. Test suite with vi.mock and raw http.request for SSE was a good judgment call.",
+      "needs_improvement": "Did not anticipate that test files using top-level await would be included in the server tsconfig.json and break the CommonJS Docker build. Also did not produce a .dockerignore initially, leaving that gap for devops-engineer to discover.",
+      "suggested_change": "Add to fullstack-dev template: 'When writing a backend with vitest, always exclude test files from tsconfig.json (add src/**/*.test.ts and src/__tests__ to the exclude array) because vitest handles its own transpilation and top-level await in test files is incompatible with CommonJS tsc output.' Also note: 'Produce a .dockerignore alongside any Dockerfile-adjacent server code — exclude node_modules and .env but never exclude src/ (build stage needs it).'"
+    },
+    {
+      "agent": "devops-engineer",
+      "worked_well": "Produced a clean multi-stage Dockerfile (node:20-slim, USER node, HEALTHCHECK) and a correct fly.toml for yyz region on the first attempt. Config was deployment-ready.",
+      "needs_improvement": "Did not catch that .dockerignore had src/ listed, causing a silent empty-dist failure. The agent should audit .dockerignore as part of Dockerfile authoring.",
+      "suggested_change": "Add to devops-engineer template: 'Always audit .dockerignore when writing or reviewing a Dockerfile. For compiled TypeScript backends, confirm that src/ (or equivalent source directory) is NOT excluded — the builder stage must be able to copy and compile it. Silent failures occur when dist/ is empty because source was ignored.'"
+    }
+  ],
+  "overall_notes": "Two platform-specific issues worth capturing for future sessions. First, Colima is macOS-only — on Windows the correct Docker-equivalent path is WSL2 + Rancher Desktop with dockerd/moby engine, requiring BIOS VT-x and the Virtual Machine Platform Windows feature. The fullstack-dev and devops-engineer templates should not suggest Colima as a cross-platform option. Second, the GeoMet (Environment Canada) weather API has a broken icao_stn_id filter for CYTZ; the working workaround is a bbox filter around Billy Bishop Airport coordinates — this should be noted in any weather-integration task description rather than discovered at implementation time. The SSE-over-supertest hang is a known pattern: raw http.request is the correct workaround and should be mentioned in qa-tester or fullstack-dev templates when SSE routes are being tested.",
+  "processed": false
+}

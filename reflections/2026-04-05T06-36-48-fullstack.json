@@ -1,0 +1,40 @@
+{
+  "timestamp": "2026-04-05T06:36:48.890Z",
+  "project_name": "toronto-ferry-tracker-v2",
+  "project_type": "fullstack",
+  "session_summary": "Built Phase 2 (Map Foundation) end-to-end: full TypeScript type system, lib utilities (interpolation, constants, OSM-sourced dock/route geo data), SSE hooks with 60fps lerp animation, MapLibre map components (FerryMap, VesselLayer, DockMarkers, RouteLayer, canvas ferry icon), dark maritime design token system, AppShell layout, and QA gate with 20 passing unit tests.",
+  "agents_used": [
+    "scrum-master",
+    "fullstack-dev",
+    "ui-designer",
+    "qa-tester"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "scrum-master",
+      "worked_well": "Work plan was detailed and well-sequenced. Correctly identified parallelizable groups (tasks 1/2/3/5 in Phase A, tasks 6/8 later). Dependency mapping was accurate throughout. Blocker identification (MapTiler key, Vitest install, dock coordinate accuracy) was proactive and all three were resolved before they caused delays.",
+      "needs_improvement": "The plan called for a stub ferryIcon.ts to be created by the FerryMap agent and then replaced by the layer agent — this created a minor coordination artifact where two agents touched the same file sequentially. Could have been a single task.",
+      "suggested_change": "When two tasks touch the same file (stub then replace), either merge them into one task or explicitly note 'this agent replaces the stub written by task N' so the sequence is unambiguous."
+    },
+    {
+      "agent": "fullstack-dev",
+      "worked_well": "Handled verbatimModuleSyntax (import type) correctly without being told. Fixed real type issues independently (CircleLayer → CircleLayerSpecification, attributionControl boolean → object). Caught and fixed a logic bug in useVesselPositions where previousRef was used as both origin and target. Zero errors on every typecheck.",
+      "needs_improvement": "The useAnimationFrame hook had a react-hooks/refs ESLint violation (ref mutation during render) that wasn't caught until the QA pass. The agent should run lint as well as typecheck before declaring a file done.",
+      "suggested_change": "Add 'run npm run lint as well as npm run typecheck after writing each file — fix all errors before reporting done' to the agent instructions."
+    },
+    {
+      "agent": "ui-designer",
+      "worked_well": "Token system was comprehensive (45 custom properties), WCAG contrast ratios were explicitly noted, browser compatibility caveats (100dvh, backdrop-filter prefix, env() safe-area) were all addressed. AppShell slot pattern (mapSlot/overlaySlot/panelSlot) is clean and extensible.",
+      "needs_improvement": "Agent noted that viewport-fit=cover is required for env(safe-area-inset-*) but didn't add it to index.html itself — left it as a note.",
+      "suggested_change": "When the agent notes a dependency (e.g. 'requires viewport-fit=cover in meta viewport'), it should apply the fix immediately rather than flagging it for a future task."
+    },
+    {
+      "agent": "qa-tester",
+      "worked_well": "Caught the ESLint violation, fixed the missing test script, installed missing server deps, and produced a clear structured report. The lerpAngle 180° edge case was correctly documented rather than treated as a bug.",
+      "needs_improvement": "QA agent flagged a 200 KB gzip bundle budget violation, but this budget was self-imposed and not in the project spec — MapLibre GL JS at 272 KB gzipped is expected and unavoidable for a map PWA.",
+      "suggested_change": "Add guidance to qa-tester.md: 'For projects using MapLibre GL JS or Mapbox GL JS, the map library chunk (~250-300 KB gzipped) is expected. Do not flag this as a budget violation unless a specific budget is defined in CLAUDE.md.'"
+    }
+  ],
+  "overall_notes": "Parallel agent execution worked well — Phase 2-A (4 tasks) and 2-D layers (4 tasks) both ran fully in parallel with clean results. The research sub-agent for dock/route coordinates was highly effective, returning OSM-traced curved route geometries rather than straight lines, which is a meaningful quality improvement. The main orchestration pattern (scrum-master plans once, then main Claude dispatches agents) worked smoothly for a 16-task sprint.",
+  "processed": false
+}

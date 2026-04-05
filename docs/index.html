@@ -592,6 +592,123 @@ claude mcp add --scope user \
     </div>
   </section>
 
+  <!-- Docker Execution -->
+  <section>
+    <div class="container">
+      <h2>Docker Execution</h2>
+      <p class="section-sub">All Voltron agents run inside Docker containers with <code>--dangerously-skip-permissions</code> for fully autonomous operation. No manual approval prompts — agents plan, build, test, and iterate without waiting for confirmation.</p>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <h3>Dockerfile.voltron</h3>
+          <p>Created by <code>scaffold_project</code>. Installs Claude Code CLI on a slim Node 20 base image.</p>
+          <pre><code>FROM node:20-slim
+RUN npm install -g @anthropic-ai/claude-code
+WORKDIR /workspace
+ENTRYPOINT ["claude"]</code></pre>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <h3>scripts/voltron-run.sh</h3>
+          <p>Launch script that builds the image, mounts your project, and passes through your API key.</p>
+          <pre><code>#!/bin/bash
+docker build -t voltron-agent -f Dockerfile.voltron . 2>/dev/null
+docker run --rm -it \
+  -v "$(pwd):/workspace" \
+  -e ANTHROPIC_API_KEY \
+  voltron-agent \
+  --dangerously-skip-permissions \
+  "$@"</code></pre>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <h3>Run</h3>
+          <p>Start an interactive session or pass a prompt directly. Agents execute autonomously inside the container.</p>
+          <pre><code># Interactive session
+./scripts/voltron-run.sh
+
+# Direct prompt
+./scripts/voltron-run.sh -p "invoke @agent-scrum-master to plan the backlog"</code></pre>
+        </div>
+      </div>
+
+      <div class="loop-diagram" style="margin-top: 32px;">
+        <div class="loop-node">
+          <strong>Why Docker?</strong>
+          <span>Docker provides OS-level isolation from your host system, making <code>--dangerously-skip-permissions</code> safe to use. Agents can create files, run tests, install packages, and iterate on errors without any human gating — while your host stays protected.</span>
+        </div>
+        <div class="loop-node" style="margin-top: 12px;">
+          <strong>Single container model</strong>
+          <span>One Docker container runs the entire Claude Code session. The scrum-master and all specialist agents run inside it via the built-in Agent tool. This keeps coordination simple and fast while still isolating from the host.</span>
+        </div>
+        <div class="loop-node" style="margin-top: 12px;">
+          <strong>Future: per-agent containers</strong>
+          <span>A planned enhancement will launch each specialist agent in its own container for blast-radius isolation — if one agent corrupts files, it can't affect the others. Shared volumes handle inter-agent file passing.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Progress Dashboard -->
+  <section>
+    <div class="container">
+      <h2>Progress Dashboard</h2>
+      <p class="section-sub">Monitor agent work in real time. The scrum-master tracks every task, and a live HTML dashboard auto-refreshes every 5 seconds.</p>
+
+      <div class="flow">
+        <div class="flow-step">
+          <div class="flow-icon">📊</div>
+          <div>
+            <strong>Automatic tracking</strong>
+            <span>Scrum-master calls <code>update_progress</code> before and after each agent invocation — status, phase, and notes are recorded to <code>.voltron/progress.json</code></span>
+          </div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-step">
+          <div class="flow-icon">🌐</div>
+          <div>
+            <strong>Live dashboard</strong>
+            <span>Every progress update regenerates <code>.voltron/dashboard.html</code> — a self-contained page with phase timelines, status badges, and agent cards. Auto-opens in your browser on the first update.</span>
+          </div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-step">
+          <div class="flow-icon">💬</div>
+          <div>
+            <strong>In-chat view</strong>
+            <span>Call <code>get_progress</code> at any time to see a formatted summary or detailed task table directly in the Claude Code chat window.</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 32px;">
+        <table>
+          <thead>
+            <tr>
+              <th>MCP Tool</th>
+              <th>Purpose</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>update_progress</code></td>
+              <td>Log a task status change (queued, in_progress, completed, failed, blocked). Auto-regenerates the HTML dashboard.</td>
+            </tr>
+            <tr>
+              <td><code>get_progress</code></td>
+              <td>View a formatted progress summary or detailed task table in the chat window.</td>
+            </tr>
+            <tr>
+              <td><code>generate_dashboard</code></td>
+              <td>Manually regenerate the standalone HTML dashboard at a custom path.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
   <!-- Footer -->
   <footer>
     <div class="container">

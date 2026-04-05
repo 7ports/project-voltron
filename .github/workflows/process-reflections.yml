@@ -77,6 +77,7 @@ jobs:
         run: |
           claude \
             --dangerously-skip-permissions \
+            --model claude-sonnet-4-6 \
             --max-turns 40 \
             -p "$(cat .github/prompts/process-reflections.md)"
 

@@ -4,6 +4,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
+import fs from "node:fs/promises";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { execSync } from "node:child_process";
@@ -38,41 +40,44 @@ const server = new McpServer({
 const UNITY_WORKFLOW = `## Recommended Workflow
 
 1. **Start with CLAUDE.md** — Fill in your project details so agents have context
-2. **Use \`scrum-master\` to plan work** — Give it your backlog or feature list and let it break work into agent-sized tasks
-3. **For new features:**
+2. **For new projects, run \`project-planner\` first** — It researches tech stack and architecture, producing a plan document in \`docs/project-plan.md\` for scrum-master to decompose
+3. **Use \`scrum-master\` to plan work** — Give it your backlog or feature list and let it break work into agent-sized tasks
+4. **For new features:**
    - \`csharp-dev\` writes the scripts
    - \`scene-architect\` sets up the scene/prefab structure
    - \`shader-artist\` handles any visual work
    - \`build-validator\` checks everything compiles and runs
-4. **For asset imports:**
+5. **For asset imports:**
    - \`asset-manager\` organizes and configures import settings
    - \`build-validator\` verifies nothing broke
-5. **Before committing:**
+6. **Before committing:**
    - Always run \`build-validator\` for a validation pass
 `;
 
 const WEB_WORKFLOW = `## Recommended Workflow
 
 1. **Start with CLAUDE.md** — Fill in your project details so agents have context
-2. **Use \`scrum-master\` to plan work** — Give it your project plan or feature list and let it break work into agent-sized tasks
-3. **For new features:**
+2. **For new projects, run \`project-planner\` first** — It researches tech stack and architecture, producing a plan document in \`docs/project-plan.md\` for scrum-master to decompose
+3. **Use \`scrum-master\` to plan work** — Give it your project plan or feature list and let it break work into agent-sized tasks
+4. **For new features:**
    - \`fullstack-dev\` implements the frontend + backend code
    - \`ui-designer\` handles CSS, responsive layout, and visual polish
    - \`devops-engineer\` configures deployment and infrastructure
    - \`qa-tester\` validates quality and runs audits
-4. **For deployments:**
+5. **For deployments:**
    - \`devops-engineer\` writes IaC and CI/CD pipelines
    - \`qa-tester\` runs Lighthouse and bundle audits
-5. **Before merging:**
+6. **Before merging:**
    - Always run \`qa-tester\` for a quality pass
 `;
 
 const GENERAL_WORKFLOW = `## Recommended Workflow
 
 1. **Start with CLAUDE.md** — Fill in your project details so agents have context
-2. **Use \`scrum-master\` to plan work** — Give it your backlog or requirements and let it decompose into agent-sized tasks
-3. **Invoke specialist agents** for each task in the plan
-4. **Use \`scrum-master\` again** to review progress and plan next steps
+2. **For new projects, run \`project-planner\` first** — It researches tech stack and architecture, producing a plan document in \`docs/project-plan.md\` for scrum-master to decompose
+3. **Use \`scrum-master\` to plan work** — Give it your backlog or requirements and let it decompose into agent-sized tasks
+4. **Invoke specialist agents** for each task in the plan
+5. **Use \`scrum-master\` again** to review progress and plan next steps
 `;
 
 const KEY_RULES = `## Key Rules
@@ -82,6 +87,7 @@ const KEY_RULES = `## Key Rules
 - All agents read CLAUDE.md for project context — keep it updated
 - Agents coordinate via the task list — chain them for multi-step work
 - Use \`check_for_updates\` periodically to ensure your agent templates are current
+- \`project-planner\` creates architectural blueprints — use it for new projects before \`scrum-master\` decomposes the plan into tasks
 
 ## CLAUDE.md Setup
 
@@ -272,7 +278,19 @@ server.tool(
       `## Auto-Update Hook: \`.claude/settings.json\`\n\n` +
       `> **Important:** If \`.claude/settings.json\` already exists in this project, merge the \`hooks.UserPromptSubmit\` entry below into it rather than overwriting.\n\n` +
       `\`\`\`json\n${settingsContent}\n\`\`\`\n\n` +
-      `This hook runs \`auto-update-agents.js\` at the start of each Claude Code session. If your installed agent templates are outdated, they are silently updated in place. You will see a \`[VOLTRON]\` message in context when an update occurs.`;
+      `This hook runs \`auto-update-agents.js\` at the start of each Claude Code session. If your installed agent templates are outdated, they are silently updated in place. You will see a \`[VOLTRON]\` message in context when an update occurs.` +
+      `\n\n---\n\n## Docker Execution (Required)\n\n` +
+      `Voltron agents run inside Docker containers with \`--dangerously-skip-permissions\` for fully autonomous execution.\n\n` +
+      `### Dockerfile.voltron\n\n` +
+      `Create this file in your project root:\n\n` +
+      "```dockerfile\nFROM node:20-slim\nRUN npm install -g @anthropic-ai/claude-code\nWORKDIR /workspace\nENTRYPOINT [\"claude\"]\n```\n\n" +
+      `### scripts/voltron-run.sh\n\n` +
+      `Create this launch script:\n\n` +
+      "```bash\n#!/bin/bash\ndocker build -t voltron-agent -f Dockerfile.voltron . 2>/dev/null\ndocker run --rm -it \\\\\n  -v \"$(pwd):/workspace\" \\\\\n  -e ANTHROPIC_API_KEY \\\\\n  voltron-agent \\\\\n  --dangerously-skip-permissions \\\\\n  \"$@\"\n```\n\n" +
+      `Make it executable: \`chmod +x scripts/voltron-run.sh\`\n\n` +
+      `### Usage\n\n` +
+      "```bash\n# Interactive session with full agent autonomy\n./scripts/voltron-run.sh\n\n# Direct prompt execution\n./scripts/voltron-run.sh -p \"invoke @agent-scrum-master to plan the backlog\"\n```\n\n" +
+      `> **Future enhancement:** Separate per-agent containers for blast-radius isolation. See the project roadmap for details.`;
 
     return {
       content: [{ type: "text", text: instructions }],
@@ -744,6 +762,266 @@ server.tool(
             text,
         },
       ],
+    };
+  }
+);
+
+// ─── Tool: update_progress ─────────────────────────────────────────────────
+
+server.tool(
+  "update_progress",
+  "Update agent task progress. Call before/after each agent invocation to track work.",
+  {
+    task_id: z.string().describe("Unique task identifier (e.g., '1', '2a', 'phase1-setup')"),
+    agent: z.string().describe("Agent name (e.g., 'fullstack-dev', 'csharp-dev')"),
+    status: z.enum(["queued", "in_progress", "completed", "failed", "blocked"]).describe("Current task status"),
+    description: z.string().describe("Task description"),
+    phase: z.string().optional().describe("Phase name (e.g., 'Phase 1: Scaffolding')"),
+    notes: z.string().optional().describe("Additional notes or error details"),
+  },
+  async ({ task_id, agent, status, description, phase, notes }) => {
+    const progressDir = path.join(process.cwd(), ".voltron");
+    const progressFile = path.join(progressDir, "progress.json");
+
+    await fs.mkdir(progressDir, { recursive: true });
+
+    let progress = { tasks: [], updated_at: null };
+    try {
+      progress = JSON.parse(await fs.readFile(progressFile, "utf-8"));
+    } catch {
+      // File doesn't exist yet
+    }
+
+    const now = new Date().toISOString();
+    const existing = progress.tasks.find((t) => t.task_id === task_id);
+
+    if (existing) {
+      existing.status = status;
+      existing.agent = agent || existing.agent;
+      existing.description = description || existing.description;
+      if (phase) existing.phase = phase;
+      if (notes) existing.notes = notes;
+      if (status === "in_progress" && !existing.started_at) existing.started_at = now;
+      if (status === "completed" || status === "failed") existing.completed_at = now;
+      existing.updated_at = now;
+    } else {
+      progress.tasks.push({
+        task_id,
+        agent,
+        status,
+        description,
+        phase: phase || "",
+        notes: notes || "",
+        created_at: now,
+        started_at: status === "in_progress" ? now : null,
+        completed_at: status === "completed" || status === "failed" ? now : null,
+        updated_at: now,
+      });
+    }
+
+    progress.updated_at = now;
+    await fs.writeFile(progressFile, JSON.stringify(progress, null, 2));
+
+    // Auto-regenerate dashboard after every progress update
+    await regenerateDashboard();
+
+    // Auto-open dashboard in browser on the first update_progress call
+    const dashboardFile = path.join(progressDir, "dashboard.html");
+    if (!globalThis.__voltronDashboardOpened) {
+      globalThis.__voltronDashboardOpened = true;
+      try {
+        const openCmd = process.platform === "win32" ? "start" :
+                        process.platform === "darwin" ? "open" : "xdg-open";
+        execSync(`${openCmd} "${dashboardFile}"`, { stdio: "ignore" });
+      } catch {
+        // Browser open failed — user can open manually
+      }
+    }
+
+    return {
+      content: [{ type: "text", text: `Progress updated: task ${task_id} (${agent}) → ${status}` }],
+    };
+  }
+);
+
+// ─── Tool: get_progress ────────────────────────────────────────────────────
+
+server.tool(
+  "get_progress",
+  "View current agent task progress as a formatted dashboard.",
+  {
+    format: z.enum(["summary", "detailed"]).optional().describe("Output format (default: summary)"),
+  },
+  async ({ format }) => {
+    const progressFile = path.join(process.cwd(), ".voltron", "progress.json");
+
+    let progress;
+    try {
+      progress = JSON.parse(await fs.readFile(progressFile, "utf-8"));
+    } catch {
+      return { content: [{ type: "text", text: "No progress data found. Use update_progress to start tracking." }] };
+    }
+
+    const tasks = progress.tasks || [];
+    const byStatus = { queued: [], in_progress: [], completed: [], failed: [], blocked: [] };
+    for (const t of tasks) {
+      (byStatus[t.status] || []).push(t);
+    }
+
+    const phases = [...new Set(tasks.map((t) => t.phase).filter(Boolean))];
+
+    let output = `# Voltron Progress Dashboard\n\n`;
+    output += `**Last updated:** ${progress.updated_at || "never"}\n\n`;
+    output += `## Summary\n\n`;
+    output += `| Status | Count |\n|--------|-------|\n`;
+    for (const [s, arr] of Object.entries(byStatus)) {
+      if (arr.length > 0) output += `| ${s} | ${arr.length} |\n`;
+    }
+    output += `\n**Total:** ${tasks.length} tasks\n\n`;
+
+    if (byStatus.in_progress.length > 0) {
+      output += `## Currently Active\n\n`;
+      for (const t of byStatus.in_progress) {
+        output += `- **${t.agent}**: ${t.description} (task ${t.task_id})\n`;
+      }
+      output += `\n`;
+    }
+
+    if (byStatus.blocked.length > 0) {
+      output += `## Blocked\n\n`;
+      for (const t of byStatus.blocked) {
+        output += `- **${t.agent}**: ${t.description} — ${t.notes || "no details"}\n`;
+      }
+      output += `\n`;
+    }
+
+    if (format === "detailed" || !format) {
+      for (const phase of phases) {
+        const phaseTasks = tasks.filter((t) => t.phase === phase);
+        output += `## ${phase}\n\n`;
+        output += `| # | Task | Agent | Status | Started | Completed |\n`;
+        output += `|---|------|-------|--------|---------|----------|\n`;
+        for (const t of phaseTasks) {
+          const started = t.started_at ? t.started_at.split("T")[1]?.slice(0, 5) : "—";
+          const completed = t.completed_at ? t.completed_at.split("T")[1]?.slice(0, 5) : "—";
+          output += `| ${t.task_id} | ${t.description} | ${t.agent} | ${t.status} | ${started} | ${completed} |\n`;
+        }
+        output += `\n`;
+      }
+
+      // Tasks without a phase
+      const unphased = tasks.filter((t) => !t.phase);
+      if (unphased.length > 0) {
+        output += `## Unphased Tasks\n\n`;
+        for (const t of unphased) {
+          output += `- [${t.status}] **${t.agent}**: ${t.description}\n`;
+        }
+      }
+    }
+
+    return { content: [{ type: "text", text: output }] };
+  }
+);
+
+// ─── Dashboard HTML generator (shared by update_progress and generate_dashboard)
+
+function buildDashboardHtml(progress) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="refresh" content="5">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voltron Progress Dashboard</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f1117; color: #e1e4e8; padding: 2rem; }
+  h1 { color: #58a6ff; margin-bottom: 0.5rem; }
+  .updated { color: #8b949e; font-size: 0.85rem; margin-bottom: 2rem; }
+  .stats { display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
+  .stat { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1rem 1.5rem; min-width: 120px; }
+  .stat-value { font-size: 2rem; font-weight: 700; }
+  .stat-label { color: #8b949e; font-size: 0.85rem; }
+  .stat.in_progress .stat-value { color: #d29922; }
+  .stat.completed .stat-value { color: #3fb950; }
+  .stat.failed .stat-value { color: #f85149; }
+  .stat.blocked .stat-value { color: #f85149; }
+  .stat.queued .stat-value { color: #8b949e; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 2rem; }
+  th { text-align: left; padding: 0.75rem; border-bottom: 2px solid #30363d; color: #8b949e; font-size: 0.85rem; text-transform: uppercase; }
+  td { padding: 0.75rem; border-bottom: 1px solid #21262d; }
+  .badge { padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+  .badge.queued { background: #30363d; color: #8b949e; }
+  .badge.in_progress { background: #3d2e00; color: #d29922; }
+  .badge.completed { background: #0d2818; color: #3fb950; }
+  .badge.failed { background: #3d1114; color: #f85149; }
+  .badge.blocked { background: #3d1114; color: #f85149; }
+  .phase-header { color: #58a6ff; font-size: 1.1rem; margin: 1.5rem 0 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid #30363d; }
+</style>
+</head>
+<body>
+<h1>Voltron Progress Dashboard</h1>
+<div class="updated">Last updated: ${progress.updated_at || "never"} (auto-refreshes every 5s)</div>
+<div class="stats" id="stats"></div>
+<div id="phases"></div>
+<script>
+const data = ${JSON.stringify(progress)};
+const tasks = data.tasks || [];
+const counts = { queued: 0, in_progress: 0, completed: 0, failed: 0, blocked: 0 };
+tasks.forEach(t => counts[t.status] = (counts[t.status] || 0) + 1);
+const statsEl = document.getElementById('stats');
+for (const [s, c] of Object.entries(counts)) {
+  if (c > 0) statsEl.innerHTML += '<div class="stat ' + s + '"><div class="stat-value">' + c + '</div><div class="stat-label">' + s.replace('_', ' ') + '</div></div>';
+}
+const phases = [...new Set(tasks.map(t => t.phase).filter(Boolean))];
+const phasesEl = document.getElementById('phases');
+phases.forEach(phase => {
+  const pTasks = tasks.filter(t => t.phase === phase);
+  let html = '<div class="phase-header">' + phase + '</div><table><tr><th>#</th><th>Task</th><th>Agent</th><th>Status</th></tr>';
+  pTasks.forEach(t => { html += '<tr><td>' + t.task_id + '</td><td>' + t.description + '</td><td>' + t.agent + '</td><td><span class="badge ' + t.status + '">' + t.status.replace('_', ' ') + '</span></td></tr>'; });
+  html += '</table>';
+  phasesEl.innerHTML += html;
+});
+</script>
+</body>
+</html>`;
+}
+
+async function regenerateDashboard() {
+  const progressFile = path.join(process.cwd(), ".voltron", "progress.json");
+  const outFile = path.join(process.cwd(), ".voltron", "dashboard.html");
+  try {
+    const progress = JSON.parse(await fs.readFile(progressFile, "utf-8"));
+    await fs.writeFile(outFile, buildDashboardHtml(progress));
+  } catch {
+    // No progress data yet — skip silently
+  }
+}
+
+// ─── Tool: generate_dashboard ──────────────────────────────────────────────
+
+server.tool(
+  "generate_dashboard",
+  "Generate a standalone HTML dashboard from progress data.",
+  {
+    output_path: z.string().optional().describe("Output file path (default: .voltron/dashboard.html)"),
+  },
+  async ({ output_path }) => {
+    const progressFile = path.join(process.cwd(), ".voltron", "progress.json");
+    const outFile = output_path || path.join(process.cwd(), ".voltron", "dashboard.html");
+
+    let progress;
+    try {
+      progress = JSON.parse(await fs.readFile(progressFile, "utf-8"));
+    } catch {
+      return { content: [{ type: "text", text: "No progress data found. Use update_progress first." }] };
+    }
+
+    await fs.mkdir(path.dirname(outFile), { recursive: true });
+    await fs.writeFile(outFile, buildDashboardHtml(progress));
+
+    return {
+      content: [{ type: "text", text: `Dashboard generated at ${outFile}\nAuto-refreshes every 5 seconds. Open in a browser to monitor agent progress live.` }],
     };
   }
 );

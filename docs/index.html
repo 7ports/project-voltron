@@ -285,11 +285,11 @@
       <h1>Project Voltron</h1>
       <p>Specialized agent teams for Claude Code, served via MCP. Scaffold Unity, web, or general projects with battle-tested subagent templates — Alexandria-aware, self-improving, and auto-updating.</p>
       <div class="badge-row">
-        <span class="badge">v2.2.0</span>
+        <span class="badge">v2.3.0</span>
         <span class="badge">MCP Server</span>
         <span class="badge">Unity</span>
         <span class="badge">Web / Fullstack</span>
-        <span class="badge">10 Agents</span>
+        <span class="badge">12 Agents</span>
         <span class="badge">MIT License</span>
       </div>
     </div>
@@ -307,6 +307,10 @@
           <div class="agent-card">
             <h3>Scrum Master <span class="invoke">@agent-scrum-master</span></h3>
             <p>Reads backlogs and project plans, breaks work into agent-sized tasks with dependencies and acceptance criteria. Never implements — only plans and delegates.</p>
+          </div>
+          <div class="agent-card">
+            <h3>Project Planner <span class="invoke">@agent-project-planner</span></h3>
+            <p>Researches tech stacks, designs architecture, defines data models and API contracts. Produces comprehensive project plans for scrum-master to decompose.</p>
           </div>
         </div>
       </div>
@@ -424,7 +428,7 @@ claude mcp add --scope user \
           </tr>
           <tr>
             <td><code>get_auto_update_hook</code></td>
-            <td>Get the <code>.claude/settings.json</code> hook that keeps agents current automatically — for projects scaffolded before v2.2.0</td>
+            <td>Get the <code>.claude/settings.json</code> hook that keeps agents current automatically — for projects scaffolded before v2.3.0</td>
           </tr>
           <tr>
             <td><code>get_agent_usage_guide</code></td>
@@ -445,6 +449,18 @@ claude mcp add --scope user \
           <tr>
             <td><code>list_reflections</code></td>
             <td>List stored reflections with pending improvement suggestions</td>
+          </tr>
+          <tr>
+            <td><code>update_progress</code></td>
+            <td>Update agent task progress — called by scrum-master before/after each agent invocation</td>
+          </tr>
+          <tr>
+            <td><code>get_progress</code></td>
+            <td>View current agent task progress as a formatted dashboard in the chat window</td>
+          </tr>
+          <tr>
+            <td><code>generate_dashboard</code></td>
+            <td>Generate a standalone HTML dashboard from progress data at <code>.voltron/dashboard.html</code></td>
           </tr>
         </tbody>
       </table>
@@ -469,7 +485,15 @@ claude mcp add --scope user \
           <div class="flow-icon">📋</div>
           <div>
             <strong>Configure</strong>
-            <span>Fill in CLAUDE.md with your project name, stack, conventions, and current work</span>
+            <span>Fill in CLAUDE.md with your project name, stack, conventions, and current work. Set up Docker execution.</span>
+          </div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-step">
+          <div class="flow-icon">🔬</div>
+          <div>
+            <strong>Research &amp; Design</strong>
+            <span>For new projects, invoke <code>@agent-project-planner</code> to research tech stacks, design architecture, and produce a comprehensive project plan</span>
           </div>
         </div>
         <div class="arrow">↓</div>
@@ -477,7 +501,7 @@ claude mcp add --scope user \
           <div class="flow-icon">🎯</div>
           <div>
             <strong>Plan</strong>
-            <span>Invoke <code>@agent-scrum-master</code> — it consults Alexandria for tool recommendations before producing a structured, sequenced work plan</span>
+            <span>Invoke <code>@agent-scrum-master</code> with the project plan — it decomposes it into agent-sized tasks with dependencies and acceptance criteria</span>
           </div>
         </div>
         <div class="arrow">↓</div>
@@ -493,7 +517,7 @@ claude mcp add --scope user \
           <div class="flow-icon">💡</div>
           <div>
             <strong>Reflect</strong>
-            <span>At session end, <code>submit_reflection</code> captures what worked and what didn't. Tool-specific discoveries are also synced to Alexandria.</span>
+            <span>Scrum-master automatically submits reflections at phase completion, blockers, and session end. Tool-specific discoveries are synced to Alexandria.</span>
           </div>
         </div>
       </div>
@@ -512,8 +536,8 @@ claude mcp add --scope user \
         </div>
         <div class="loop-arrow">↓</div>
         <div class="loop-node">
-          <strong>submit_reflection called at session end</strong>
-          <span>per-agent feedback: what worked, what was missing, suggested changes</span>
+          <strong>Reflections submitted automatically</strong>
+          <span>scrum-master submits at phase completion, blockers, and session end — per-agent feedback with suggested changes</span>
         </div>
         <div class="loop-arrow">↓</div>
         <div class="loop-node">
@@ -523,7 +547,7 @@ claude mcp add --scope user \
         <div class="loop-arrow">↓</div>
         <div class="loop-node">
           <strong>GitHub Actions runs Mon/Wed/Fri</strong>
-          <span>Claude Code agent processes pending reflections, edits templates, opens a PR — automated, no manual steps</span>
+          <span>The <code>reflection-processor</code> agent (Sonnet 4.6) groups feedback by agent, prioritizes by frequency, applies targeted template edits, and opens a PR</span>
         </div>
         <div class="loop-arrow">↓</div>
         <div class="loop-node">
@@ -573,7 +597,7 @@ claude mcp add --scope user \
     <div class="container">
       <p>
         <a href="https://github.com/7ports/project-voltron">GitHub</a> &middot;
-        v2.2.0 &middot;
+        v2.3.0 &middot;
         MIT License &middot;
         Built by <a href="https://github.com/7ports">7ports</a>
       </p>

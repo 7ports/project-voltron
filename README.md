@@ -9,6 +9,7 @@ An MCP server that provides teams of specialized agent templates for Claude Code
 | Agent | Purpose |
 |---|---|
 | **scrum-master** | Reads backlogs, breaks work into agent-sized tasks, assigns to specialists. Never implements. |
+| **project-planner** | Researches tech stacks, designs architecture, defines data models and API contracts, produces comprehensive project plans for scrum-master to decompose. |
 
 ### Unity
 
@@ -28,6 +29,12 @@ An MCP server that provides teams of specialized agent templates for Claude Code
 | **devops-engineer** | Terraform, CI/CD, Docker, Fly.io, AWS |
 | **ui-designer** | CSS, responsive layout, theming, PWA, accessibility |
 | **qa-tester** | Testing (Vitest/Playwright), Lighthouse audits, bundle analysis |
+
+### Internal (not scaffolded into projects)
+
+| Agent | Purpose |
+|---|---|
+| **reflection-processor** | Processes session reflections in CI, applies targeted improvements to agent templates. Runs on Sonnet 4.6. |
 
 ## Installation
 
@@ -87,6 +94,9 @@ See [Project Alexandria](https://github.com/7ports/project-alexandria) for setup
 | `update_agent` | Get the latest content for a specific agent |
 | `submit_reflection` | Submit a post-session reflection on agent performance |
 | `list_reflections` | List stored reflections (for reviewing pending improvements) |
+| `update_progress` | Update agent task progress (called by scrum-master before/after each agent invocation) |
+| `get_progress` | View current agent task progress as a formatted dashboard |
+| `generate_dashboard` | Generate a standalone HTML dashboard from progress data |
 
 ## Usage
 
@@ -101,10 +111,11 @@ Once installed, ask Claude Code:
 ## Workflow
 
 1. **Scaffold** — run `scaffold_project` in your project root with your project type
-2. **Configure** — fill in `CLAUDE.md` with your project specifics
-3. **Plan** — invoke `@agent-scrum-master` with your backlog to get a structured work plan
-4. **Develop** — invoke specialist agents per the plan; they consult Alexandria for tool setup
-5. **Reflect** — at session end, submit a reflection to feed improvements back; scrum-master also syncs tool findings to Alexandria
+2. **Configure** — fill in `CLAUDE.md` with your project specifics and set up Docker execution (see scaffold output)
+3. **Research** — for new projects, invoke `@agent-project-planner` to research tech stack and design architecture
+4. **Plan** — invoke `@agent-scrum-master` with the project plan to get a structured work breakdown
+5. **Develop** — invoke specialist agents per the plan; they consult Alexandria for tool setup
+6. **Reflect** — scrum-master automatically submits reflections at phase completion, blockers, and session end; also syncs tool findings to Alexandria
 
 ## Agent Auto-Update
 
@@ -114,14 +125,31 @@ For projects scaffolded before this feature was added, run `get_auto_update_hook
 
 ## Self-Improvement
 
-Agents submit post-session reflections via `submit_reflection`. Reflections accumulate in the `reflections/` directory and are automatically processed by a GitHub Actions workflow that runs **Mon/Wed/Fri at 10:00 UTC**:
+Agents submit post-session reflections via `submit_reflection`. The scrum-master now submits reflections automatically at phase completion, after significant blockers, and at session end. Reflections accumulate in the `reflections/` directory and are automatically processed by a GitHub Actions workflow that runs **Mon/Wed/Fri at 10:00 UTC**:
 
-1. A Claude Code agent reads all unprocessed reflections
-2. Applies targeted improvements to `src/templates.js`
-3. Bumps the patch version and commits
-4. Opens a PR for human review before changes reach `main`
+1. The `reflection-processor` agent (running on Sonnet 4.6) reads all unprocessed reflections
+2. Groups feedback by agent and prioritizes by frequency
+3. Applies targeted improvements to `src/templates.js`
+4. Bumps the patch version and commits
+5. Opens a PR for human review before changes reach `main`
 
 Once merged, projects with the auto-update hook installed will automatically receive the new templates at the start of their next session. Projects without the hook can pull improvements manually via `check_for_updates`. The workflow can also be triggered manually from the Actions tab. Requires `ANTHROPIC_API_KEY` set as a repository secret.
+
+## Docker Execution
+
+All Voltron agents run inside Docker containers with `--dangerously-skip-permissions` for fully autonomous execution. The `scaffold_project` output includes a `Dockerfile.voltron` and `scripts/voltron-run.sh` launch script. This provides OS-level isolation while allowing agents to execute without per-tool approval prompts.
+
+> **Future enhancement:** Separate per-agent containers for blast-radius isolation between specialist agents.
+
+## Progress Visualization
+
+The scrum-master tracks agent task progress using built-in MCP tools:
+
+- `update_progress` — logs task status changes (queued, in_progress, completed, failed, blocked)
+- `get_progress` — returns a formatted dashboard in the chat window
+- `generate_dashboard` — produces a standalone HTML file at `.voltron/dashboard.html`
+
+Progress data is persisted in `.voltron/progress.json`.
 
 ## License
 

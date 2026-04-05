@@ -1,0 +1,29 @@
+{
+  "timestamp": "2026-04-04T18:30:00.000Z",
+  "project_name": "Project Pepper",
+  "project_type": "unity",
+  "session_summary": "Implemented Firebase Analytics for a Unity WebGL game. Fixed a silent CORS/gtag crash in index.html that blocked all event tracking on localhost, then added game_started, game_won, game_lost, game_draw, and card_played events to the C# scripts.",
+  "agents_used": ["scrum-master", "csharp-dev", "build-validator"],
+  "agent_feedback": [
+    {
+      "agent": "csharp-dev",
+      "worked_well": "MonoBehaviour patterns and C# conventions were clear and matched the project's existing style well.",
+      "needs_improvement": "No guidance on WebGL-specific constraints at all. The agent had no awareness of: (1) the jslib bridge pattern for calling JavaScript from C#, (2) the DllImport + conditional compilation pattern (#if UNITY_WEBGL && !UNITY_EDITOR), (3) the fact that certain C# patterns don't work in WebGL (threading, System.IO, etc.). All of this required external knowledge to implement correctly.",
+      "suggested_change": "Add a 'WebGL Considerations' section that covers: the DllImport bridge pattern for JavaScript interop, which C# APIs are unavailable in WebGL builds (threading, file I/O, System.Net), the correct #if guards (#if UNITY_WEBGL && !UNITY_EDITOR), and how to test WebGL-specific code paths."
+    },
+    {
+      "agent": "build-validator",
+      "worked_well": "Console monitoring and compile-error checking was solid. The Play Mode validation steps were appropriate.",
+      "needs_improvement": "WebGL build validation is completely absent. The agent has no concept of: running a local WebGL server, checking browser console (not Unity console) for errors, or validating that JavaScript/jslib bridges work at runtime. The 'definition of done' is Unity-console-centric and misses the browser side entirely.",
+      "suggested_change": "Add a 'WebGL Build Validation' section covering: triggering a WebGL build (Build Settings → Build), starting a local server (node server.js or python -m http.server), checking the browser DevTools console for JS errors, and using browser network tab to verify Firebase/external service calls. Also update the definition of done to include 'no browser console errors' for WebGL projects."
+    },
+    {
+      "agent": "scrum-master",
+      "worked_well": "Task decomposition was excellent. The Firebase implementation was correctly broken into: fix index.html bug → add C# events → build → test locally → deploy. Dependencies were sequenced correctly.",
+      "needs_improvement": "The scrum-master did not account for the 'scene boundary' problem — the startMenuBehaviour is in a different scene from gameController, so Firebase couldn't be called the same way. This kind of scene-architecture constraint isn't something the scrum-master flagged as a risk upfront.",
+      "suggested_change": "Add a risk-flagging prompt in the scrum-master that says: when planning tasks that touch multiple scenes or scene-switching, flag potential singleton/component availability issues as a blocker question."
+    }
+  ],
+  "overall_notes": "The voltron agents were designed for a 'standard' Unity project (3D, URP, PC). Project Pepper is a WebGL game, which introduces a whole platform-specific layer that none of the agents address. The most impactful improvement would be adding WebGL awareness to csharp-dev and build-validator. A future 'platform-specific' tagging system might let users opt into WebGL, mobile, or console guidance.",
+  "processed": false
+}

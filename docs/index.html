@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Project Voltron — Unity Agent Templates for Claude Code</title>
+  <title>Project Voltron — Agent Templates for Claude Code</title>
   <style>
     :root {
       --bg: #0d1117;
@@ -71,44 +71,49 @@
       color: var(--text-muted);
     }
 
-    /* Agents */
-    .agents {
-      padding: 60px 0;
-      border-bottom: 1px solid var(--border);
-    }
+    /* Section shared */
+    section { padding: 60px 0; border-bottom: 1px solid var(--border); }
+    section h2 { font-size: 1.75rem; margin-bottom: 8px; text-align: center; }
+    .section-sub { text-align: center; color: var(--text-muted); font-size: 0.95rem; margin-bottom: 32px; }
 
-    .agents h2 {
-      font-size: 1.75rem;
-      margin-bottom: 32px;
-      text-align: center;
+    /* Agent groups */
+    .agent-group { margin-bottom: 40px; }
+    .agent-group-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 12px;
     }
 
     .agent-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 16px;
+      gap: 12px;
     }
 
     .agent-card {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 24px;
+      padding: 20px;
       transition: border-color 0.2s;
     }
 
     .agent-card:hover { border-color: var(--accent); }
 
     .agent-card h3 {
-      font-size: 1.1rem;
+      font-size: 1rem;
       margin-bottom: 4px;
       display: flex;
       align-items: center;
       gap: 8px;
+      flex-wrap: wrap;
     }
 
     .agent-card .invoke {
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       color: var(--accent);
       font-family: monospace;
       background: var(--accent-subtle);
@@ -118,22 +123,11 @@
 
     .agent-card p {
       color: var(--text-muted);
-      font-size: 0.9rem;
-      margin-top: 8px;
+      font-size: 0.875rem;
+      margin-top: 6px;
     }
 
     /* Install */
-    .install {
-      padding: 60px 0;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .install h2 {
-      font-size: 1.75rem;
-      margin-bottom: 24px;
-      text-align: center;
-    }
-
     .steps {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -170,24 +164,13 @@
       border-radius: 8px;
       padding: 16px;
       overflow-x: auto;
-      font-size: 0.85rem;
+      font-size: 0.82rem;
       margin-top: 12px;
     }
 
     code { font-family: 'SF Mono', 'Fira Code', Consolas, monospace; }
 
-    /* Tools */
-    .tools {
-      padding: 60px 0;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .tools h2 {
-      font-size: 1.75rem;
-      margin-bottom: 24px;
-      text-align: center;
-    }
-
+    /* Tools table */
     table {
       width: 100%;
       border-collapse: collapse;
@@ -216,32 +199,21 @@
       background: var(--accent-subtle);
       padding: 2px 6px;
       border-radius: 4px;
-      font-size: 0.85rem;
+      font-size: 0.82rem;
     }
 
     /* Workflow */
-    .workflow {
-      padding: 60px 0;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .workflow h2 {
-      font-size: 1.75rem;
-      margin-bottom: 24px;
-      text-align: center;
-    }
-
     .flow {
       display: flex;
       flex-direction: column;
       gap: 12px;
-      max-width: 600px;
+      max-width: 640px;
       margin: 0 auto;
     }
 
     .flow-step {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 16px;
       background: var(--surface);
       border: 1px solid var(--border);
@@ -250,18 +222,42 @@
     }
 
     .flow-icon {
-      font-size: 1.5rem;
-      min-width: 40px;
+      font-size: 1.4rem;
+      min-width: 36px;
       text-align: center;
+      padding-top: 2px;
     }
 
     .flow-step strong { display: block; margin-bottom: 2px; }
-    .flow-step span { color: var(--text-muted); font-size: 0.9rem; }
+    .flow-step span { color: var(--text-muted); font-size: 0.875rem; }
 
-    .arrow {
+    .arrow { text-align: center; color: var(--text-muted); font-size: 1.2rem; }
+
+    /* Self-improvement */
+    .loop-diagram {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      max-width: 580px;
+      margin: 0 auto;
+    }
+
+    .loop-node {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 20px;
       text-align: center;
-      color: var(--text-muted);
-      font-size: 1.2rem;
+    }
+
+    .loop-node strong { display: block; font-size: 0.95rem; }
+    .loop-node span { color: var(--text-muted); font-size: 0.825rem; }
+
+    .loop-arrow {
+      text-align: center;
+      color: var(--accent);
+      font-size: 1.1rem;
+      padding: 4px 0;
     }
 
     /* Footer */
@@ -287,12 +283,13 @@
   <section class="hero">
     <div class="container">
       <h1>Project Voltron</h1>
-      <p>A team of specialized Unity subagent templates for Claude Code, served via MCP.</p>
+      <p>Specialized agent teams for Claude Code, served via MCP. Scaffold Unity, web, or general projects with battle-tested subagent templates — and a self-improvement loop built in.</p>
       <div class="badge-row">
+        <span class="badge">v2.1.0</span>
         <span class="badge">MCP Server</span>
         <span class="badge">Unity</span>
-        <span class="badge">Claude Code</span>
-        <span class="badge">5 Agents</span>
+        <span class="badge">Web / Fullstack</span>
+        <span class="badge">10 Agents</span>
         <span class="badge">MIT License</span>
       </div>
     </div>
@@ -301,27 +298,64 @@
   <!-- Agents -->
   <section class="agents">
     <div class="container">
-      <h2>The Agent Team</h2>
-      <div class="agent-grid">
-        <div class="agent-card">
-          <h3>Scene Architect <span class="invoke">@agent-scene-architect</span></h3>
-          <p>GameObject hierarchy, prefabs, scene composition, transforms, and components. Builds the world.</p>
+      <h2>The Agent Teams</h2>
+      <p class="section-sub">Scaffold the right team for your project type. Every project gets a scrum-master coordinator.</p>
+
+      <div class="agent-group">
+        <div class="agent-group-label">Core — all projects</div>
+        <div class="agent-grid">
+          <div class="agent-card">
+            <h3>Scrum Master <span class="invoke">@agent-scrum-master</span></h3>
+            <p>Reads backlogs and project plans, breaks work into agent-sized tasks with dependencies and acceptance criteria. Never implements — only plans and delegates.</p>
+          </div>
         </div>
-        <div class="agent-card">
-          <h3>C# Dev <span class="invoke">@agent-csharp-dev</span></h3>
-          <p>MonoBehaviours, ScriptableObjects, gameplay systems, and editor tools. Writes clean, performant Unity C#.</p>
+      </div>
+
+      <div class="agent-group">
+        <div class="agent-group-label">Unity</div>
+        <div class="agent-grid">
+          <div class="agent-card">
+            <h3>Scene Architect <span class="invoke">@agent-scene-architect</span></h3>
+            <p>GameObject hierarchy, prefabs, scene composition, transforms, and components. Builds the world.</p>
+          </div>
+          <div class="agent-card">
+            <h3>C# Dev <span class="invoke">@agent-csharp-dev</span></h3>
+            <p>MonoBehaviours, ScriptableObjects, gameplay systems, and editor tools. Writes clean, performant Unity C#.</p>
+          </div>
+          <div class="agent-card">
+            <h3>Shader Artist <span class="invoke">@agent-shader-artist</span></h3>
+            <p>Shaders, materials, VFX Graph, post-processing, and render features. Knows URP, HDRP, and Built-in.</p>
+          </div>
+          <div class="agent-card">
+            <h3>Build Validator <span class="invoke">@agent-build-validator</span></h3>
+            <p>Console monitoring, compile checks, Play Mode smoke tests, pre-commit validation. Read-only watchdog.</p>
+          </div>
+          <div class="agent-card">
+            <h3>Asset Manager <span class="invoke">@agent-asset-manager</span></h3>
+            <p>Folder structure, import settings, naming conventions, and project audits. Keeps things organized.</p>
+          </div>
         </div>
-        <div class="agent-card">
-          <h3>Shader Artist <span class="invoke">@agent-shader-artist</span></h3>
-          <p>Shaders, materials, VFX Graph, post-processing, and render features. Knows URP, HDRP, and Built-in.</p>
-        </div>
-        <div class="agent-card">
-          <h3>Build Validator <span class="invoke">@agent-build-validator</span></h3>
-          <p>Console monitoring, compile checks, Play Mode smoke tests, pre-commit validation. Read-only watchdog.</p>
-        </div>
-        <div class="agent-card">
-          <h3>Asset Manager <span class="invoke">@agent-asset-manager</span></h3>
-          <p>Folder structure, import settings, naming conventions, and project audits. Keeps things organized.</p>
+      </div>
+
+      <div class="agent-group">
+        <div class="agent-group-label">Web / Fullstack</div>
+        <div class="agent-grid">
+          <div class="agent-card">
+            <h3>Fullstack Dev <span class="invoke">@agent-fullstack-dev</span></h3>
+            <p>React/TypeScript frontend and Node.js/Express backend. Handles components, APIs, hooks, and data flow.</p>
+          </div>
+          <div class="agent-card">
+            <h3>DevOps Engineer <span class="invoke">@agent-devops-engineer</span></h3>
+            <p>Terraform, CI/CD pipelines, Docker, Fly.io, and AWS. Infrastructure as code and deployment automation.</p>
+          </div>
+          <div class="agent-card">
+            <h3>UI Designer <span class="invoke">@agent-ui-designer</span></h3>
+            <p>CSS architecture, responsive and mobile-first layouts, theming, PWA manifests, and accessibility.</p>
+          </div>
+          <div class="agent-card">
+            <h3>QA Tester <span class="invoke">@agent-qa-tester</span></h3>
+            <p>Vitest/Playwright tests, Lighthouse audits, bundle size analysis, and quality gates before merging.</p>
+          </div>
         </div>
       </div>
     </div>
@@ -331,28 +365,36 @@
   <section class="install">
     <div class="container">
       <h2>Quick Start</h2>
+      <p class="section-sub">Three steps from zero to a full agent team in your project.</p>
       <div class="steps">
         <div class="step">
           <div class="step-num">1</div>
-          <h3>Clone</h3>
-          <p>Get the source:</p>
+          <h3>Install</h3>
+          <p>Clone and register as a global MCP server:</p>
           <pre><code>git clone https://github.com/7ports/project-voltron.git
-cd project-voltron
-npm install</code></pre>
-        </div>
-        <div class="step">
-          <div class="step-num">2</div>
-          <h3>Register</h3>
-          <p>Add as a global MCP server:</p>
-          <pre><code>claude mcp add --scope user \
+cd project-voltron && npm install
+
+claude mcp add --scope user \
   project-voltron -- \
   node /path/to/project-voltron/src/index.js</code></pre>
         </div>
         <div class="step">
-          <div class="step-num">3</div>
+          <div class="step-num">2</div>
           <h3>Scaffold</h3>
-          <p>In any Unity project, ask Claude:</p>
-          <pre><code>"Scaffold this project with Voltron agents"</code></pre>
+          <p>In any project, ask Claude Code:</p>
+          <pre><code>"Scaffold this Unity project with Voltron agents"
+
+# or for web projects:
+"Scaffold this web project with Voltron agents"</code></pre>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <h3>Develop</h3>
+          <p>Fill in CLAUDE.md, then invoke agents:</p>
+          <pre><code>@agent-scrum-master  ← plan your sprint
+@agent-csharp-dev    ← write Unity scripts
+@agent-fullstack-dev ← build React + API
+@agent-build-validator ← validate before commit</code></pre>
         </div>
       </div>
     </div>
@@ -362,6 +404,7 @@ npm install</code></pre>
   <section class="tools">
     <div class="container">
       <h2>MCP Tools</h2>
+      <p class="section-sub">8 tools for scaffolding, updating, and improving your agent team.</p>
       <table>
         <thead>
           <tr><th>Tool</th><th>Description</th></tr>
@@ -369,19 +412,35 @@ npm install</code></pre>
         <tbody>
           <tr>
             <td><code>list_templates</code></td>
-            <td>List all available templates with descriptions and destinations</td>
+            <td>List all templates, optionally filtered by project type</td>
           </tr>
           <tr>
             <td><code>get_template</code></td>
-            <td>Retrieve the full content of a specific agent template or CLAUDE.md</td>
+            <td>Retrieve the full content of a specific template</td>
           </tr>
           <tr>
-            <td><code>scaffold_unity_project</code></td>
-            <td>Get all files needed to scaffold a Unity project with the full agent team</td>
+            <td><code>scaffold_project</code></td>
+            <td>Get the right agent set for unity, web, fullstack, or general projects</td>
           </tr>
           <tr>
             <td><code>get_agent_usage_guide</code></td>
             <td>Usage guide for invoking and coordinating agents</td>
+          </tr>
+          <tr>
+            <td><code>check_for_updates</code></td>
+            <td>Check if installed agent files are outdated vs. current templates</td>
+          </tr>
+          <tr>
+            <td><code>update_agent</code></td>
+            <td>Get the latest content for a specific agent to replace an outdated file</td>
+          </tr>
+          <tr>
+            <td><code>submit_reflection</code></td>
+            <td>Submit a post-session reflection on agent performance to drive improvements</td>
+          </tr>
+          <tr>
+            <td><code>list_reflections</code></td>
+            <td>List stored reflections with pending improvement suggestions</td>
           </tr>
         </tbody>
       </table>
@@ -392,37 +451,80 @@ npm install</code></pre>
   <section class="workflow">
     <div class="container">
       <h2>Recommended Workflow</h2>
+      <p class="section-sub">From backlog to shipped code, with agents coordinated at every step.</p>
       <div class="flow">
         <div class="flow-step">
-          <div class="flow-icon">1</div>
+          <div class="flow-icon">⚡</div>
           <div>
             <strong>Scaffold</strong>
-            <span>Run scaffold_unity_project to write CLAUDE.md + all agent files</span>
+            <span>Run <code>scaffold_project</code> to write CLAUDE.md + all agent files for your project type</span>
           </div>
         </div>
-        <div class="arrow">|</div>
+        <div class="arrow">↓</div>
         <div class="flow-step">
-          <div class="flow-icon">2</div>
+          <div class="flow-icon">📋</div>
           <div>
             <strong>Configure</strong>
-            <span>Fill in CLAUDE.md with your project name, Unity version, render pipeline, etc.</span>
+            <span>Fill in CLAUDE.md with your project name, stack, conventions, and current work</span>
           </div>
         </div>
-        <div class="arrow">|</div>
+        <div class="arrow">↓</div>
         <div class="flow-step">
-          <div class="flow-icon">3</div>
+          <div class="flow-icon">🎯</div>
           <div>
-            <strong>Develop</strong>
-            <span>Invoke agents as needed: csharp-dev for scripts, scene-architect for hierarchy, shader-artist for visuals</span>
+            <strong>Plan</strong>
+            <span>Invoke <code>@agent-scrum-master</code> with your backlog to get a structured, sequenced work plan</span>
           </div>
         </div>
-        <div class="arrow">|</div>
+        <div class="arrow">↓</div>
         <div class="flow-step">
-          <div class="flow-icon">4</div>
+          <div class="flow-icon">🔨</div>
           <div>
-            <strong>Validate</strong>
-            <span>Always run build-validator before committing to catch errors early</span>
+            <strong>Build</strong>
+            <span>Execute the plan — invoke specialist agents per task. Chain them with explicit handoffs.</span>
           </div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-step">
+          <div class="flow-icon">💡</div>
+          <div>
+            <strong>Reflect</strong>
+            <span>At session end, <code>submit_reflection</code> captures what worked and what didn't — feeding improvements back into the templates</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Self-improvement -->
+  <section class="self-improve">
+    <div class="container">
+      <h2>Self-Improving Agent Templates</h2>
+      <p class="section-sub">Voltron gets better with every session through a built-in feedback loop.</p>
+      <div class="loop-diagram">
+        <div class="loop-node">
+          <strong>Session runs with voltron agents</strong>
+          <span>scrum-master coordinates; specialists execute</span>
+        </div>
+        <div class="loop-arrow">↓</div>
+        <div class="loop-node">
+          <strong>submit_reflection called at session end</strong>
+          <span>per-agent feedback: what worked, what was missing, suggested changes</span>
+        </div>
+        <div class="loop-arrow">↓</div>
+        <div class="loop-node">
+          <strong>Reflections accumulate in reflections/</strong>
+          <span>structured JSON, tied to project type and agents used</span>
+        </div>
+        <div class="loop-arrow">↓</div>
+        <div class="loop-node">
+          <strong>Improvements applied to src/templates.js</strong>
+          <span>patterns from multiple reflections become permanent template updates</span>
+        </div>
+        <div class="loop-arrow">↓</div>
+        <div class="loop-node">
+          <strong>Version bumped, changes committed</strong>
+          <span>check_for_updates notifies existing projects they can pull the improvements</span>
         </div>
       </div>
     </div>
@@ -433,6 +535,7 @@ npm install</code></pre>
     <div class="container">
       <p>
         <a href="https://github.com/7ports/project-voltron">GitHub</a> &middot;
+        v2.1.0 &middot;
         MIT License &middot;
         Built by <a href="https://github.com/7ports">7ports</a>
       </p>

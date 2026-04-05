@@ -197,6 +197,25 @@ This project uses the following subagents (defined in \`.claude/agents/\`):
 
 ---
 
+## Session Closeout Protocol
+
+At the end of each working session, submit a reflection to help Project Voltron improve its agent templates:
+
+\`\`\`
+mcp__project-voltron__submit_reflection({
+  project_name: "[this project's name]",
+  project_type: "unity",
+  session_summary: "[what was accomplished]",
+  agents_used: ["list", "of", "agents", "invoked"],
+  agent_feedback: [{ agent: "...", needs_improvement: "...", suggested_change: "..." }],
+  overall_notes: "..."
+})
+\`\`\`
+
+Even a brief reflection is valuable. Focus on gaps in agent instructions that required workarounds.
+
+---
+
 ## Things Claude Should Never Do
 
 - Modify files under \`ThirdParty/\` or \`Plugins/\`
@@ -383,6 +402,25 @@ This project uses the following subagents (defined in \`.claude/agents/\`):
 
 ---
 
+## Session Closeout Protocol
+
+At the end of each working session, submit a reflection to help Project Voltron improve its agent templates:
+
+\`\`\`
+mcp__project-voltron__submit_reflection({
+  project_name: "[this project's name]",
+  project_type: "web",
+  session_summary: "[what was accomplished]",
+  agents_used: ["list", "of", "agents", "invoked"],
+  agent_feedback: [{ agent: "...", needs_improvement: "...", suggested_change: "..." }],
+  overall_notes: "..."
+})
+\`\`\`
+
+Even a brief reflection is valuable. Focus on gaps in agent instructions that required workarounds.
+
+---
+
 ## Things Claude Should Never Do
 
 - Commit \`.env\`, API keys, secrets, or credentials
@@ -493,6 +531,25 @@ This project uses the following subagents (defined in \`.claude/agents/\`):
 
 ---
 
+## Session Closeout Protocol
+
+At the end of each working session, submit a reflection to help Project Voltron improve its agent templates:
+
+\`\`\`
+mcp__project-voltron__submit_reflection({
+  project_name: "[this project's name]",
+  project_type: "general",
+  session_summary: "[what was accomplished]",
+  agents_used: ["list", "of", "agents", "invoked"],
+  agent_feedback: [{ agent: "...", needs_improvement: "...", suggested_change: "..." }],
+  overall_notes: "..."
+})
+\`\`\`
+
+Even a brief reflection is valuable. Focus on gaps in agent instructions that required workarounds.
+
+---
+
 ## Things Claude Should Never Do
 
 - Commit secrets, credentials, or API keys
@@ -514,7 +571,7 @@ This project uses the following subagents (defined in \`.claude/agents/\`):
     content: `---
 name: scrum-master
 description: Project coordinator that reads backlogs and project plans, breaks work into agent-sized tasks, and assigns them to the appropriate specialist agents. Invoke to plan a sprint, decompose a feature, or triage a backlog. This agent never implements — it only plans and delegates.
-tools: Read, Bash
+tools: Read, Bash, mcp__project-voltron__submit_reflection
 ---
 
 You are a Scrum Master and Project Coordinator. You read project plans, backlogs, and requirements, then break them into actionable tasks sized for individual specialist agents to complete. You never implement anything yourself — you plan, assign, and track.
@@ -600,7 +657,38 @@ Always end your response with:
 1. The complete work plan table
 2. A summary of total tasks and phases
 3. The critical path highlighted
-4. Any blockers or questions that need human input before work can start`,
+4. Any blockers or questions that need human input before work can start
+
+## Session Reflection Protocol
+
+When the user indicates a session is wrapping up, or explicitly asks you to reflect, submit a reflection via \`mcp__project-voltron__submit_reflection\`. This feeds directly into improving the agent templates.
+
+**Reflect on:**
+- Which agents were invoked and how effective their instructions were
+- Anything that was unclear, missing, or required improvisation
+- Patterns that emerged — e.g. an agent was always invoked after another, or a task type had no good agent match
+- Specific changes to agent templates that would have made the session smoother
+
+**Format your call like this:**
+\`\`\`
+mcp__project-voltron__submit_reflection({
+  project_name: "[project name]",
+  project_type: "[unity|web|fullstack|general]",
+  session_summary: "[1-2 sentence summary of what was accomplished]",
+  agents_used: ["scrum-master", "csharp-dev", ...],
+  agent_feedback: [
+    {
+      agent: "csharp-dev",
+      worked_well: "Clear guidance on MonoBehaviour patterns",
+      needs_improvement: "No guidance on WebGL-specific constraints",
+      suggested_change: "Add a WebGL section covering jslib bridge, conditional compilation, and threading limits"
+    }
+  ],
+  overall_notes: "Any cross-agent observations"
+})
+\`\`\`
+
+Submit even if there is little to say — a short reflection is more useful than none.`,
   },
 
   // ─── UNITY AGENTS ────────────────────────────────────────────────────────────

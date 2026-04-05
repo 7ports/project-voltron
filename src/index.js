@@ -3,7 +3,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import {
@@ -440,6 +440,213 @@ server.tool(
             `**Destination:** \`${t.destination}\`\n\n` +
             `Write the following content to \`${t.destination}\`:\n\n` +
             `\`\`\`markdown\n${t.content}\n\`\`\``,
+        },
+      ],
+    };
+  }
+);
+
+// ─── Tool: submit_reflection ────────────────────────────────────────────────
+
+server.tool(
+  "submit_reflection",
+  "Submit a post-session reflection on agent performance. Called by scrum-master (or the main Claude orchestrator) at the end of each session to capture what worked, what didn't, and suggested improvements to agent templates. Reflections accumulate in the project-voltron repo and are reviewed to drive template improvements.",
+  {
+    project_name: z.string().describe("Name of the project this session was for."),
+    project_type: z
+      .enum([...VALID_PROJECT_TYPES, "unknown"])
+      .optional()
+      .describe("Type of project (unity, web, fullstack, general, unknown)."),
+    session_summary: z
+      .string()
+      .describe("Brief summary of what was accomplished this session."),
+    agents_used: z
+      .array(z.string())
+      .describe("Names of agents that were invoked this session."),
+    agent_feedback: z
+      .array(
+        z.object({
+          agent: z.string().describe("Agent name (e.g. 'csharp-dev')"),
+          worked_well: z
+            .string()
+            .optional()
+            .describe("What worked well about this agent's instructions"),
+          needs_improvement: z
+            .string()
+            .optional()
+            .describe("What was unclear, missing, or ineffective"),
+          suggested_change: z
+            .string()
+            .optional()
+            .describe("Specific suggested change to the agent template"),
+        })
+      )
+      .optional()
+      .describe("Per-agent feedback entries"),
+    overall_notes: z
+      .string()
+      .optional()
+      .describe("Any other observations about agent workflow or coordination"),
+  },
+  async ({
+    project_name,
+    project_type,
+    session_summary,
+    agents_used,
+    agent_feedback,
+    overall_notes,
+  }) => {
+    const reflectionsDir = join(__dirname, "..", "reflections");
+    mkdirSync(reflectionsDir, { recursive: true });
+
+    const now = new Date();
+    const timestamp = now
+      .toISOString()
+      .replace(/[:.]/g, "-")
+      .slice(0, 19);
+    const slug = (project_type || "general").replace(/[^a-z0-9]/gi, "-");
+    const filename = `${timestamp}-${slug}.json`;
+    const filepath = join(reflectionsDir, filename);
+
+    const reflection = {
+      timestamp: now.toISOString(),
+      project_name,
+      project_type: project_type || "unknown",
+      session_summary,
+      agents_used,
+      agent_feedback: agent_feedback || [],
+      overall_notes: overall_notes || "",
+      processed: false,
+    };
+
+    writeFileSync(filepath, JSON.stringify(reflection, null, 2), "utf-8");
+
+    return {
+      content: [
+        {
+          type: "text",
+          text:
+            `# Reflection Saved\n\n` +
+            `Saved to \`reflections/${filename}\`.\n\n` +
+            `This feedback will be reviewed and applied to improve Project Voltron agent templates.`,
+        },
+      ],
+    };
+  }
+);
+
+// ─── Tool: list_reflections ─────────────────────────────────────────────────
+
+server.tool(
+  "list_reflections",
+  "List all stored post-session reflections. Returns structured feedback submitted via submit_reflection. Use this when working in the project-voltron context to review pending improvements and decide what to apply to agent templates.",
+  {
+    unprocessed_only: z
+      .boolean()
+      .optional()
+      .describe(
+        "If true, only return reflections not yet marked processed. Defaults to false (return all)."
+      ),
+  },
+  async ({ unprocessed_only }) => {
+    const reflectionsDir = join(__dirname, "..", "reflections");
+
+    let files;
+    try {
+      files = readdirSync(reflectionsDir).filter((f) => f.endsWith(".json"));
+    } catch {
+      return {
+        content: [
+          {
+            type: "text",
+            text:
+              `# No Reflections Found\n\n` +
+              `No reflections have been submitted yet. ` +
+              `Reflections are submitted by \`scrum-master\` or the main Claude orchestrator at the end of each session via \`submit_reflection\`.`,
+          },
+        ],
+      };
+    }
+
+    if (files.length === 0) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `# No Reflections Found\n\nNo reflections have been submitted yet.`,
+          },
+        ],
+      };
+    }
+
+    const reflections = files
+      .map((f) => {
+        try {
+          const data = JSON.parse(
+            readFileSync(join(reflectionsDir, f), "utf-8")
+          );
+          return { filename: f, ...data };
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean)
+      .filter((r) => !unprocessed_only || !r.processed)
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    if (reflections.length === 0) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `# All Reflections Processed\n\nNo pending reflections. All feedback has been applied.`,
+          },
+        ],
+      };
+    }
+
+    const text = reflections
+      .map((r) => {
+        const status = r.processed ? "Processed" : "Pending";
+        const agentLines =
+          r.agent_feedback?.length > 0
+            ? r.agent_feedback
+                .map((af) => {
+                  const parts = [];
+                  if (af.needs_improvement)
+                    parts.push(`Issue: ${af.needs_improvement}`);
+                  if (af.suggested_change)
+                    parts.push(`Suggestion: ${af.suggested_change}`);
+                  if (af.worked_well) parts.push(`Worked well: ${af.worked_well}`);
+                  return `  - **${af.agent}**: ${parts.join(" | ")}`;
+                })
+                .join("\n")
+            : "  (no per-agent feedback)";
+
+        return (
+          `## ${r.project_name} (${r.project_type}) — ${r.timestamp.slice(0, 10)}\n` +
+          `**Status:** ${status}\n` +
+          `**Summary:** ${r.session_summary}\n` +
+          `**Agents used:** ${r.agents_used?.join(", ") || "unknown"}\n` +
+          `**Agent feedback:**\n${agentLines}\n` +
+          (r.overall_notes ? `**Notes:** ${r.overall_notes}\n` : "") +
+          `*(File: \`reflections/${r.filename}\`)*`
+        );
+      })
+      .join("\n\n---\n\n");
+
+    const pendingCount = reflections.filter((r) => !r.processed).length;
+
+    return {
+      content: [
+        {
+          type: "text",
+          text:
+            `# Project Voltron — Stored Reflections\n\n` +
+            `${reflections.length} reflection(s) found. ${pendingCount} pending.\n\n` +
+            `To apply improvements: read the pending feedback, update \`src/templates.js\`, ` +
+            `mark each reflection as processed (\`"processed": true\`), then bump \`package.json\` version.\n\n` +
+            text,
         },
       ],
     };

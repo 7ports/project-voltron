@@ -8,7 +8,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { execSync } from "node:child_process";
+import { execSync, spawnSync } from "node:child_process";
 import os from "node:os";
 import {
   TEMPLATES,
@@ -1175,53 +1175,51 @@ server.tool(
     await regenerateDashboard();
 
     // 9. Run agent in Docker
+    // Use spawnSync with an explicit args array — avoids host-shell quoting issues
+    // on Windows where execSync uses cmd.exe (which doesn't understand single quotes),
+    // causing the -c argument to be mangled before reaching Docker.
     const homeDir = process.env.HOME || process.env.USERPROFILE || os.homedir();
-    const dockerCmd =
-      `docker run --rm ` +
-      `--entrypoint bash ` +
-      `-v "${cwd}:/workspace" ` +
-      `-v "${homeDir}/.claude:/home/voltron/.claude" ` +
-      `-v "${homeDir}/.claude.json:/home/voltron/.claude.json:ro" ` +
-      `-v "${tmpFile}:/tmp/task.md:ro" ` +
-      `voltron-agent ` +
-      `-c 'claude --dangerously-skip-permissions --max-turns ${max_turns} -p "$(cat /tmp/task.md)"'`;
+    const dockerArgs = [
+      "run", "--rm",
+      "--entrypoint", "bash",
+      "-v", `${cwd}:/workspace`,
+      "-v", `${homeDir}/.claude:/home/voltron/.claude`,
+      "-v", `${homeDir}/.claude.json:/home/voltron/.claude.json:ro`,
+      "-v", `${tmpFile}:/tmp/task.md:ro`,
+      "voltron-agent",
+      "-c",
+      `claude --dangerously-skip-permissions --max-turns ${max_turns} -p "$(cat /tmp/task.md)"`,
+    ];
 
-    try {
-      const output = execSync(dockerCmd, {
-        encoding: "utf-8",
-        maxBuffer: 10 * 1024 * 1024,
-        timeout: 600000,
-        cwd,
-      });
+    const result = spawnSync("docker", dockerArgs, {
+      encoding: "utf-8",
+      maxBuffer: 10 * 1024 * 1024,
+      timeout: 600000,
+      cwd,
+    });
 
-      await fs.unlink(tmpFile).catch(() => {});
+    await fs.unlink(tmpFile).catch(() => {});
+    await regenerateDashboard();
 
-      // Regenerate dashboard after completion
-      await regenerateDashboard();
-
+    if (result.error || result.status !== 0) {
       return {
         content: [
           {
             type: "text",
-            text: `## Agent ${agent_name} completed\n\n${output}`,
-          },
-        ],
-      };
-    } catch (err) {
-      await fs.unlink(tmpFile).catch(() => {});
-      await regenerateDashboard();
-
-      const stderr = err.stderr || "";
-      const stdout = err.stdout || "";
-      return {
-        content: [
-          {
-            type: "text",
-            text: `## Agent ${agent_name} failed\n\n**Exit code:** ${err.status}\n\n**Output:**\n${stdout}\n\n**Error:**\n${stderr || err.message}`,
+            text: `## Agent ${agent_name} failed\n\n**Exit code:** ${result.status}\n\n**Output:**\n${result.stdout || ""}\n\n**Error:**\n${result.stderr || result.error?.message || "Unknown error"}`,
           },
         ],
       };
     }
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `## Agent ${agent_name} completed\n\n${result.stdout}`,
+        },
+      ],
+    };
   }
 );
 

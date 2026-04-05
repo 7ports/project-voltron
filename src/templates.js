@@ -694,6 +694,8 @@ The tool automatically:
 4. Runs the agent with full permissions
 5. Returns the agent's output when it completes
 
+**Important:** When constructing the \`task\` parameter, inject the full content of the agent's \`.md\` role definition directly into the prompt — do not instruct the agent to read its own file. Agent context windows start fresh and cannot self-read their template without help.
+
 ### Rules
 
 - **One task per invocation** — each call should correspond to exactly one task from the work plan
@@ -825,6 +827,7 @@ Call \`mcp__project-voltron__get_progress\` at any time to review the current st
 **Web / Fullstack projects:**
 - Include an integration smoke-test task in every QA phase: "verify each frontend \`fetch\`/\`EventSource\` URL against the actual Express route mounting paths in \`server/src/index.ts\`". This 5-minute check catches URL mismatches that survive typecheck, lint, and code review.
 - When a feature consumes an external data source, add a dedicated research task before the implementation task. The research agent should document the API schema, CORS posture, polling interval, and what does NOT exist — this prevents trial-and-error during implementation.
+- When a task involves a third-party API integration, add an explicit acceptance criterion: "Verify field names against a live API response before writing tests. Save one real response as a fixture file in \`__fixtures__/\`." Invented field names produce green tests against broken integrations.
 
 **Unity projects:**
 - When planning tasks that touch multiple scenes or involve scene transitions, flag singleton/component availability across scene boundaries as a risk. Ask the developer how persistent objects are handled (DontDestroyOnLoad, scene-loaded callbacks, etc.) before sequencing implementation tasks.
@@ -1278,6 +1281,40 @@ Awake -> OnEnable -> Start -> Update/FixedUpdate/LateUpdate -> OnDisable -> OnDe
 
 **Alexandria content boundary:** Alexandria is for non-project-specific, reusable documentation only — SDK setup, platform constraints, known C#/Unity quirks. Never record project-specific content (game-specific logic, custom MonoBehaviour designs, project architecture decisions) in Alexandria. That belongs in CLAUDE.md.
 
+## WebGL Considerations
+
+When the project targets WebGL (check CLAUDE.md or \`Build Settings\`), these constraints apply:
+
+**JavaScript interop (jslib bridge):**
+\`\`\`csharp
+// Declare external JS function
+[DllImport("__Internal")]
+private static extern void SendAnalyticsEvent(string eventName);
+
+// Call with compile guard
+public void TrackEvent(string name)
+{
+#if UNITY_WEBGL && !UNITY_EDITOR
+    SendAnalyticsEvent(name);
+#else
+    Debug.Log($"[Analytics] {name}");
+#endif
+}
+\`\`\`
+Place the corresponding JS implementation in a \`.jslib\` file in \`Assets/Plugins/\`.
+
+**Always use \`#if UNITY_WEBGL && !UNITY_EDITOR\`** when wrapping jslib calls — the \`!UNITY_EDITOR\` guard prevents crashes in Play Mode where the native bridge is unavailable.
+
+**C# APIs unavailable in WebGL:**
+- \`System.Threading\` / \`Thread\` — no threading; use coroutines or async/await with \`UnityWebRequest\`
+- \`System.IO.File\` — no file system access; use \`PlayerPrefs\`, \`IndexedDB\` via jslib, or \`UnityWebRequest\`
+- \`System.Net\` — use \`UnityWebRequest\` for all HTTP calls
+- Blocking calls — WebGL runs on the main thread; anything that blocks will freeze the browser tab
+
+**Testing WebGL code paths:**
+- Wrap non-WebGL fallbacks with \`#else\` so logic can be tested in Play Mode
+- For jslib bridges, mock the JS side in \`Assets/Plugins/Editor/\` using a stub \`.jslib\` that logs calls
+
 ## Common Patterns Reference
 
 **Event system (decoupled):**
@@ -1481,6 +1518,18 @@ These indicate broken Inspector connections that must be fixed before commit.
 Tool: git status (via Bash or git MCP)
 \`\`\`
 List all modified/untracked files so the developer knows what will be committed.
+
+### 6. WebGL Build Validation (WebGL projects only)
+
+If the project targets WebGL, extend the validation pass:
+
+1. **Trigger the WebGL build** — File → Build Settings → Build (or \`BuildPipeline.BuildPlayer\` via script)
+2. **Start a local server** — \`python3 -m http.server 8080\` or \`node server.js\` in the build output folder
+3. **Open browser DevTools** (F12 → Console tab) — check for JavaScript errors on page load and during gameplay
+4. **Check the Network tab** — verify Firebase, analytics, or external service calls are reaching their endpoints (not blocked by CORS or ad blockers in dev)
+5. **Report browser console output** separately from Unity console — they are independent and both matter
+
+**Definition of done for WebGL projects:** no Unity console errors AND no browser console errors. A clean Unity console with a broken browser console is not a passing validation.
 
 ## Reporting Format
 
@@ -1777,6 +1826,12 @@ Always produce a \`.dockerignore\` alongside any backend Dockerfile. Exclude \`n
 **SSE routes + supertest:**
 \`supertest\` hangs on SSE endpoints because it waits for the response to close. Use raw \`http.request\` for SSE integration tests instead.
 
+**ErrorBoundary scoping:**
+Scope \`ErrorBoundary\` components to the specific subtree they protect. Never wrap the entire \`<App>\` in a single boundary unless you intend all errors to display the same fallback message. A \`<MapErrorBoundary>\` should wrap only the map subtree — not the weather strip or panel shell.
+
+**External API runtime guards:**
+When consuming data from an external API, add runtime guards for \`undefined\` even when TypeScript types declare a field as \`number | null\`. API responses are uncontrolled at runtime — a field typed as \`number | null\` can arrive as \`undefined\` from a malformed or unexpected response, producing silent \`NaN\` renders or broken UI. Guard at the parse/transform boundary before trusting the shape.
+
 ## What You Don't Do
 
 - Write Terraform, CI/CD pipelines, or Dockerfiles (that's \`devops-engineer\`)
@@ -1912,9 +1967,13 @@ CMD ["node", "dist/index.js"]
 
 **Key rules:**
 - Multi-stage builds to minimize image size
-- \`.dockerignore\` for node_modules, .git, .env
+- \`.dockerignore\` for node_modules, .git, .env — but **never exclude \`src/\`** (the builder stage copies and compiles it; excluding it produces a silent empty \`dist/\`)
+- Always audit \`.dockerignore\` when writing or reviewing a Dockerfile — confirm the source directory is NOT excluded
 - Non-root user in production images
 - Health check endpoint configured
+
+**vite-plugin-pwa with Vite 5+:**
+As of 2026, \`vite-plugin-pwa\` has a peer dependency range conflict with Vite 5+. Install with \`--legacy-peer-deps\` and document this in the project's Alexandria guide.
 
 ## Fly.io Specifics
 
@@ -2123,6 +2182,7 @@ You are a Senior UI/UX Designer and CSS Architect. You create beautiful, respons
 3. Build mobile layout first, then enhance for larger screens
 4. Use browser DevTools responsive mode to verify breakpoints
 5. Test with keyboard navigation after implementing interactive elements
+6. **Apply noted dependencies immediately** — if you note that a feature requires a supporting change (e.g. "requires \`viewport-fit=cover\` in the meta viewport tag"), make that change in the same task rather than leaving it as a comment for a future task
 
 ## What You Don't Do
 
@@ -2207,6 +2267,7 @@ describe('interpolatePosition', () => {
 - Test API routes with supertest or similar
 - Test database queries against a test database (not mocks)
 - Test SSE/WebSocket connections with real server instances
+- **For external API integrations:** record a real response as a fixture file (e.g. \`__fixtures__/weatherResponse.json\`) by curling the live endpoint once. Never invent field names — invented names produce green tests against silently broken integrations (e.g. \`wind_spd\` instead of the real \`avg_wnd_spd_10m_pst2mts\`)
 
 **E2E tests:**
 - Happy path for critical user journeys
@@ -2243,6 +2304,8 @@ npm run build
 \`\`\`
 Report total size and largest chunks. Flag if budget exceeded.
 
+**MapLibre GL JS / Mapbox GL JS exception:** The map library chunk (~250–300 KB gzipped) is expected and unavoidable for map-based PWAs. Do not flag this as a budget violation unless a specific budget is explicitly defined in CLAUDE.md.
+
 ### 5. Lighthouse Audit
 Target scores (per CLAUDE.md or defaults):
 - Performance: 90+
@@ -2263,7 +2326,16 @@ Verify that:
 - Offline fallback page works
 - App installable from browser
 
-### 8. Git Status
+### 8. API URL Integrity (fullstack projects)
+\`\`\`bash
+# Grep client hooks for fetch/EventSource URLs
+grep -r "fetch(\|new EventSource(" src/hooks/
+# Grep server entry for route mounts
+grep "app.use(" server/src/index.ts
+\`\`\`
+Verify each client URL pattern appears as a mounted path in the server. Mismatches (e.g. \`/api/ais/stream\` vs \`/api/ais\`) survive typecheck, lint, and unit tests but break at runtime.
+
+### 9. Git Status
 \`\`\`bash
 git status
 \`\`\`

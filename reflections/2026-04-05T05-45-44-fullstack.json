@@ -29,5 +29,5 @@
     }
   ],
   "overall_notes": "Two platform-specific issues worth capturing for future sessions. First, Colima is macOS-only — on Windows the correct Docker-equivalent path is WSL2 + Rancher Desktop with dockerd/moby engine, requiring BIOS VT-x and the Virtual Machine Platform Windows feature. The fullstack-dev and devops-engineer templates should not suggest Colima as a cross-platform option. Second, the GeoMet (Environment Canada) weather API has a broken icao_stn_id filter for CYTZ; the working workaround is a bbox filter around Billy Bishop Airport coordinates — this should be noted in any weather-integration task description rather than discovered at implementation time. The SSE-over-supertest hang is a known pattern: raw http.request is the correct workaround and should be mentioned in qa-tester or fullstack-dev templates when SSE routes are being tested.",
-  "processed": false
+  "processed": true
 }

@@ -1102,8 +1102,14 @@ server.tool(
     }
 
     // 3. Compose the full prompt
+    // Strip YAML frontmatter from the template — it's for Claude Code's agent
+    // discovery system (name, description, tools), not runtime instructions.
+    // Including it causes claude CLI to interpret the prompt as an agent
+    // definition file rather than a plain prompt, failing with a parse error.
+    const agentInstructions = template.content.replace(/^---\n[\s\S]*?\n---\n*/, "");
+
     const prompt = [
-      template.content,
+      agentInstructions,
       "",
       "## Project Context (from CLAUDE.md)",
       "",

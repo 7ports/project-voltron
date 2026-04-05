@@ -316,12 +316,13 @@ ENTRYPOINT ["claude"]</code></pre>
         <div class="step">
           <div class="step-num">2</div>
           <h3>scripts/voltron-run.sh</h3>
-          <p>Launch script that builds the image, mounts your project, and passes through your API key.</p>
+          <p>Launch script that builds the image, mounts your project, and passes through your Claude Max OAuth credentials.</p>
           <pre><code>#!/bin/bash
 docker build -t voltron-agent -f Dockerfile.voltron . 2>/dev/null
 docker run --rm -it \
   -v "$(pwd):/workspace" \
-  -e ANTHROPIC_API_KEY \
+  -v "$HOME/.claude:/home/voltron/.claude" \
+  -v "$HOME/.claude.json:/home/voltron/.claude.json:ro" \
   voltron-agent \
   --dangerously-skip-permissions \
   "$@"</code></pre>

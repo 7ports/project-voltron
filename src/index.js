@@ -251,7 +251,8 @@ server.tool(
         "docker build -t voltron-agent -f Dockerfile.voltron . 2>/dev/null\n" +
         "docker run --rm -it \\\n" +
         '  -v "$(pwd):/workspace" \\\n' +
-        "  -e ANTHROPIC_API_KEY \\\n" +
+        '  -v "$HOME/.claude:/home/voltron/.claude" \\\n' +
+        '  -v "$HOME/.claude.json:/home/voltron/.claude.json:ro" \\\n' +
         "  voltron-agent \\\n" +
         "  --dangerously-skip-permissions \\\n" +
         '  "$@"',

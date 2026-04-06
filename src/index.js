@@ -1054,6 +1054,8 @@ server.tool(
       .describe("Maximum agent turns (default: 30)"),
   },
   async ({ agent_name, task, max_turns = 30 }) => {
+    const cwd = process.cwd();
+
     // 1. Look up the template
     const template = TEMPLATES[agent_name];
     if (!template || template.category !== "agent") {
@@ -1070,10 +1072,7 @@ server.tool(
     // 2. Read CLAUDE.md for project context
     let claudeMd = "";
     try {
-      claudeMd = await fs.readFile(
-        path.join(process.cwd(), "CLAUDE.md"),
-        "utf-8"
-      );
+      claudeMd = await fs.readFile(path.join(cwd, "CLAUDE.md"), "utf-8");
     } catch {
       // No CLAUDE.md — proceed without project context
     }
@@ -1120,7 +1119,6 @@ server.tool(
     }
 
     // 6. Check Dockerfile.voltron exists
-    const cwd = process.cwd();
     const dockerfilePath = path.join(cwd, "Dockerfile.voltron");
     try {
       await fs.access(dockerfilePath);
@@ -1136,19 +1134,20 @@ server.tool(
       };
     }
 
-    // 7. Build image (silently, reuses cache)
+    // 7. Build image (silently reuses cache; captures stderr for error reporting)
     try {
       execSync(`docker build -t voltron-agent -f "${dockerfilePath}" "${cwd}"`, {
-        stdio: "ignore",
+        stdio: ["ignore", "ignore", "pipe"],
         timeout: 120000,
       });
     } catch (err) {
       await fs.unlink(tmpFile).catch(() => {});
+      const buildStderr = err.stderr ? `\n\nBuild output:\n${err.stderr.toString().trim().slice(-2000)}` : "";
       return {
         content: [
           {
             type: "text",
-            text: `Error: Docker image build failed. ${err.message}`,
+            text: `Error: Docker image build failed.${buildStderr}`,
           },
         ],
       };
@@ -1157,7 +1156,15 @@ server.tool(
     // 8. Regenerate dashboard to show this agent as active
     await regenerateDashboard();
 
-    // 9. Run agent in Docker
+    // 9. Set up log infrastructure — each run gets a named container + a live log file
+    const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const safeAgentName = agent_name.replace(/[^a-z0-9]/g, '-');
+    const containerName = `voltron-${safeAgentName}-${ts}`;
+    const logFilename = `${safeAgentName}-${ts}.log`;
+    const logsDir = path.join(cwd, ".voltron", "logs");
+    await fs.mkdir(logsDir, { recursive: true });
+
+    // 10. Run agent in Docker
     // Use spawnSync with an explicit args array — avoids host-shell quoting issues
     // on Windows where execSync uses cmd.exe (which doesn't understand single quotes),
     // causing the -c argument to be mangled before reaching Docker.
@@ -1172,8 +1179,12 @@ server.tool(
       authEnvArgs.push("-e", `ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY}`);
     }
 
+    // Named container enables `docker logs <name> -f` from a second terminal while running.
+    // tee writes a live log to .voltron/logs/ on the host (mounted via /workspace).
+    // PIPESTATUS[0] propagates claude's exit code through the pipe to Docker's exit code.
     const dockerArgs = [
       "run", "--rm",
+      "--name", containerName,
       "--entrypoint", "bash",
       ...authEnvArgs,
       "-v", `${cwd}:/workspace`,
@@ -1182,7 +1193,7 @@ server.tool(
       "-v", `${tmpFile}:/tmp/task.md:ro`,
       "voltron-agent",
       "-c",
-      `claude --dangerously-skip-permissions --max-turns ${max_turns} -p "$(cat /tmp/task.md)"`,
+      `claude --dangerously-skip-permissions --max-turns ${max_turns} -p "$(cat /tmp/task.md)" 2>&1 | tee /workspace/.voltron/logs/${logFilename}; exit \${PIPESTATUS[0]}`,
     ];
 
     const result = spawnSync("docker", dockerArgs, {
@@ -1195,13 +1206,14 @@ server.tool(
     await fs.unlink(tmpFile).catch(() => {});
     const dashPath = await regenerateDashboard();
     const dashLine = dashboardUrl(dashPath) ? `\n\nDashboard: ${dashboardUrl(dashPath)}` : "";
+    const logLine = `\n\nLog: \`.voltron/logs/${logFilename}\``;
 
     if (result.error || result.status !== 0) {
       return {
         content: [
           {
             type: "text",
-            text: `## Agent ${agent_name} failed\n\n**Exit code:** ${result.status}\n\n**Output:**\n${result.stdout || ""}\n\n**Error:**\n${result.stderr || result.error?.message || "Unknown error"}${dashLine}`,
+            text: `## Agent ${agent_name} failed\n\n**Exit code:** ${result.status}\n\n**Output:**\n${result.stdout || ""}\n\n**Error:**\n${result.stderr || result.error?.message || "Unknown error"}${logLine}${dashLine}`,
           },
         ],
       };
@@ -1211,7 +1223,7 @@ server.tool(
       content: [
         {
           type: "text",
-          text: `## Agent ${agent_name} completed\n\n${result.stdout}${dashLine}`,
+          text: `## Agent ${agent_name} completed\n\n${result.stdout}${logLine}${dashLine}`,
         },
       ],
     };

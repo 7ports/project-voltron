@@ -6,7 +6,7 @@ import { z } from "zod";
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
 import { execSync, spawnSync } from "node:child_process";
 import os from "node:os";
@@ -831,11 +831,12 @@ server.tool(
     progress.updated_at = now;
     await fs.writeFile(progressFile, JSON.stringify(progress, null, 2));
 
-    // Auto-regenerate dashboard (also auto-opens browser on first call)
-    await regenerateDashboard();
+    // Regenerate dashboard HTML
+    const dashPath = await regenerateDashboard();
+    const dashHint = dashboardUrl(dashPath) ? `\nDashboard: ${dashboardUrl(dashPath)}` : "";
 
     return {
-      content: [{ type: "text", text: `Progress updated: task ${task_id} (${agent}) → ${status}` }],
+      content: [{ type: "text", text: `Progress updated: task ${task_id} (${agent}) → ${status}${dashHint}` }],
     };
   }
 );
@@ -983,31 +984,23 @@ phases.forEach(phase => {
 </html>`;
 }
 
+// Regenerate the HTML dashboard. Returns the file path on success, null if no
+// progress data exists. Browser opening is handled by the scrum-master agent
+// via Chrome MCP tools — this function only writes the file.
 async function regenerateDashboard() {
   const progressFile = path.join(process.cwd(), ".voltron", "progress.json");
   const outFile = path.join(process.cwd(), ".voltron", "dashboard.html");
   try {
     const progress = JSON.parse(await fs.readFile(progressFile, "utf-8"));
     await fs.writeFile(outFile, buildDashboardHtml(progress));
-
-    // Auto-open dashboard in browser on the first regeneration
-    if (!globalThis.__voltronDashboardOpened) {
-      globalThis.__voltronDashboardOpened = true;
-      try {
-        const openCmd =
-          process.platform === "win32"
-            ? "start"
-            : process.platform === "darwin"
-              ? "open"
-              : "xdg-open";
-        execSync(`${openCmd} "${outFile}"`, { stdio: "ignore" });
-      } catch {
-        // Browser open failed — user can open manually
-      }
-    }
+    return outFile;
   } catch {
-    // No progress data yet — skip silently
+    return null;
   }
+}
+
+function dashboardUrl(filePath) {
+  return filePath ? pathToFileURL(filePath).href : null;
 }
 
 // ─── Tool: generate_dashboard ──────────────────────────────────────────────
@@ -1032,8 +1025,9 @@ server.tool(
     await fs.mkdir(path.dirname(outFile), { recursive: true });
     await fs.writeFile(outFile, buildDashboardHtml(progress));
 
+    const fileUrl = dashboardUrl(outFile);
     return {
-      content: [{ type: "text", text: `Dashboard generated at ${outFile}\nAuto-refreshes every 5 seconds. Open in a browser to monitor agent progress live.` }],
+      content: [{ type: "text", text: `Dashboard generated at ${outFile}\nDashboard: ${fileUrl}\nAuto-refreshes every 5 seconds. Open in Chrome or any browser to monitor agent progress live.` }],
     };
   }
 );
@@ -1199,14 +1193,15 @@ server.tool(
     });
 
     await fs.unlink(tmpFile).catch(() => {});
-    await regenerateDashboard();
+    const dashPath = await regenerateDashboard();
+    const dashLine = dashboardUrl(dashPath) ? `\n\nDashboard: ${dashboardUrl(dashPath)}` : "";
 
     if (result.error || result.status !== 0) {
       return {
         content: [
           {
             type: "text",
-            text: `## Agent ${agent_name} failed\n\n**Exit code:** ${result.status}\n\n**Output:**\n${result.stdout || ""}\n\n**Error:**\n${result.stderr || result.error?.message || "Unknown error"}`,
+            text: `## Agent ${agent_name} failed\n\n**Exit code:** ${result.status}\n\n**Output:**\n${result.stdout || ""}\n\n**Error:**\n${result.stderr || result.error?.message || "Unknown error"}${dashLine}`,
           },
         ],
       };
@@ -1216,7 +1211,7 @@ server.tool(
       content: [
         {
           type: "text",
-          text: `## Agent ${agent_name} completed\n\n${result.stdout}`,
+          text: `## Agent ${agent_name} completed\n\n${result.stdout}${dashLine}`,
         },
       ],
     };

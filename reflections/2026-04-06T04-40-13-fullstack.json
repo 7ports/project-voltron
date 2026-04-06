@@ -1,0 +1,34 @@
+{
+  "timestamp": "2026-04-06T04:40:13.427Z",
+  "project_name": "toronto-ferry-tracker-v2",
+  "project_type": "fullstack",
+  "session_summary": "Phase 9: UX Enhancement Sprint — delivered 7 features across 3 parallel branches: AboutPanel modal, ferry intelligence (ETA/departed-from/next departure), map bounds + 6 Toronto Island landmark markers, improved 48px vessel icon, offline banner grace period, and 3-theme color palette switcher. Identified and fixed the root cause of Docker agent git commit failures (missing git identity in container). Parallel execution via Agent tool reduced wall-clock time significantly vs sequential Docker agents.",
+  "agents_used": [
+    "scrum-master",
+    "fullstack-dev",
+    "ui-designer",
+    "qa-tester"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "fullstack-dev",
+      "worked_well": "Agent tool instances (non-Docker) were highly reliable — both parallel agents for p9-3+p9-4 and p9-6+p9-7 completed cleanly on separate branches and committed without issues. Landmark markers component was well-structured on first attempt.",
+      "needs_improvement": "run_agent_in_docker agents consistently fail to commit because git identity is not configured in the container. This caused p9-1 and p9-2 to need re-implementation directly by the scrum-master.",
+      "suggested_change": "Add to fullstack-dev template: 'If running inside Docker (check for /.dockerenv), verify git identity before committing: git config user.email. If empty, set it explicitly before any git operations.' Also note that Agent tool is preferred for parallel workstreams."
+    },
+    {
+      "agent": "qa-tester",
+      "worked_well": "Handled the 3-way branch merge cleanly, caught and fixed 3 real lint/hook issues (OfflineBanner setState-in-effect, useVesselPositions ref-during-render, AboutPanel exhaustive-deps). Did not need max_turns increase this session.",
+      "needs_improvement": "The QA agent noted a lint warning about worktree artifact paths — it should have been instructed to ignore .claude/worktrees/ paths entirely.",
+      "suggested_change": "Add to qa-tester template: 'If lint reports errors in .claude/worktrees/ paths, those are worktree artifacts — add to .eslintignore or ignore them. Only fix errors in src/, server/, scripts/ paths.'"
+    },
+    {
+      "agent": "ui-designer",
+      "worked_well": "Theme switcher delivered correctly on first pass — CSS data-theme blocks, useTheme hook with localStorage persistence, ThemeSwitcher component with aria-pressed and focus-visible ring. All three themes visually distinct.",
+      "needs_improvement": "Touch target size on ThemeSwitcher buttons (22px) is below the 44px WCAG minimum. Agent noted this but didn't self-correct.",
+      "suggested_change": "Add to ui-designer template: 'All interactive elements must meet 44x44px minimum touch target (WCAG 2.5.5). For small visual swatches, use padding or a larger transparent hit area around the visual element rather than making the visual itself larger.'"
+    }
+  ],
+  "overall_notes": "Key infrastructure fix this session: Docker agents (run_agent_in_docker) cannot commit because node:20-slim has no git identity for the voltron user. Fixed in two layers: (1) Dockerfile.voltron now bakes in git config for the voltron user, (2) project-voltron/src/index.js now injects GIT_AUTHOR_* and GIT_COMMITTER_* env vars at runtime as belt-and-suspenders. Documented in Alexandria guide project-voltron-docker. The Agent tool (non-Docker) is now the preferred execution path for parallel workstreams — it has reliable git access and runs on the host filesystem. Use run_agent_in_docker only for truly isolated, single-branch serial tasks. Parallel branch strategy (separate branch per workstream, Agent tool per branch) proved effective — p9-3+p9-4 and p9-6+p9-7 ran concurrently with no conflicts.",
+  "processed": false
+}

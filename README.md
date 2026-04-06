@@ -1,6 +1,6 @@
 # Project Voltron
 
-An MCP server that provides teams of specialized agent templates for Claude Code. Scaffold any project with battle-tested subagent definitions for Unity game dev, web/fullstack development, and general software projects — plus a scrum-master coordinator and a self-improvement loop.
+An MCP server that provides teams of specialized agent templates for Claude Code. Scaffold any project with battle-tested subagent definitions for Unity game dev, web/fullstack development, mobile (iOS/Android/React Native), and general software projects — plus a scrum-master coordinator and a self-improvement loop.
 
 ## Agent Teams
 
@@ -30,6 +30,17 @@ An MCP server that provides teams of specialized agent templates for Claude Code
 | **devops-engineer** | Terraform, CI/CD, Docker, Fly.io, AWS |
 | **ui-designer** | CSS, responsive layout, theming, PWA, accessibility |
 | **qa-tester** | Testing (Vitest/Playwright), Lighthouse audits, bundle analysis |
+
+### Mobile (iOS / Android / React Native)
+
+| Agent | Purpose |
+|---|---|
+| **mobile-dev** | React Native + Expo cross-platform developer. TypeScript, React Navigation, Zustand, React Query, native module bridging. |
+| **ios-dev** | Native Swift/SwiftUI specialist. `@Observable`, async/await, `@MainActor`, SwiftData, App Store submission. |
+| **android-dev** | Kotlin + Jetpack Compose specialist. MVVM + UDF, Hilt, StateFlow, Material Design 3, Play Store publishing. |
+| **mobile-ui-designer** | Platform-native UX for iOS (HIG) and Android (Material Design 3). Animations, dark mode, accessibility. |
+| **mobile-qa-tester** | Detox, XCUITest, and Espresso E2E tests. Simulator/emulator runs, performance profiling, crash triage. |
+| **app-store-publisher** | Fastlane + Match for App Store Connect and Google Play. Release builds, signing, changelogs, staged rollouts. |
 
 ### Internal (not scaffolded into projects)
 

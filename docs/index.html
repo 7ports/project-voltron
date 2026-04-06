@@ -284,13 +284,14 @@
   <section class="hero">
     <div class="container">
       <h1>Project Voltron</h1>
-      <p>Specialized agent teams for Claude Code, served via MCP. Scaffold Unity, web, or general projects with battle-tested subagent templates — Alexandria-aware, self-improving, and auto-updating.</p>
+      <p>Specialized agent teams for Claude Code, served via MCP. Scaffold Unity, web, mobile, or general projects with battle-tested subagent templates — Alexandria-aware, self-improving, and auto-updating.</p>
       <div class="badge-row">
-        <span class="badge">v2.4.0</span>
+        <span class="badge">v2.5.0</span>
         <span class="badge">MCP Server</span>
         <span class="badge">Unity</span>
         <span class="badge">Web / Fullstack</span>
-        <span class="badge">13 Agents</span>
+        <span class="badge">Mobile</span>
+        <span class="badge">19 Agents</span>
         <span class="badge">MIT License</span>
       </div>
     </div>
@@ -479,6 +480,36 @@
           </div>
         </div>
       </div>
+
+      <div class="agent-group">
+        <div class="agent-group-label">Mobile (iOS / Android / React Native)</div>
+        <div class="agent-grid">
+          <div class="agent-card">
+            <h3>Mobile Dev <span class="invoke">@agent-mobile-dev</span></h3>
+            <p>React Native + Expo cross-platform developer. TypeScript, React Navigation, Zustand, React Query, and native module bridging.</p>
+          </div>
+          <div class="agent-card">
+            <h3>iOS Dev <span class="invoke">@agent-ios-dev</span></h3>
+            <p>Native Swift/SwiftUI specialist. <code>@Observable</code>, async/await, <code>@MainActor</code>, SwiftData, and App Store submission.</p>
+          </div>
+          <div class="agent-card">
+            <h3>Android Dev <span class="invoke">@agent-android-dev</span></h3>
+            <p>Kotlin + Jetpack Compose specialist. MVVM + UDF, Hilt, StateFlow, Material Design 3, and Play Store publishing.</p>
+          </div>
+          <div class="agent-card">
+            <h3>Mobile UI Designer <span class="invoke">@agent-mobile-ui-designer</span></h3>
+            <p>Platform-native UX for iOS (HIG) and Android (Material Design 3). Animations, dark mode, accessibility, and responsive layouts.</p>
+          </div>
+          <div class="agent-card">
+            <h3>Mobile QA Tester <span class="invoke">@agent-mobile-qa-tester</span></h3>
+            <p>Detox, XCUITest, and Espresso E2E tests. Simulator/emulator runs, performance profiling, and crash triage.</p>
+          </div>
+          <div class="agent-card">
+            <h3>App Store Publisher <span class="invoke">@agent-app-store-publisher</span></h3>
+            <p>Fastlane + Match automation for App Store Connect and Google Play. Release builds, signing, changelogs, and staged rollouts.</p>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -541,7 +572,7 @@ claude mcp add --scope user \
           </tr>
           <tr>
             <td><code>scaffold_project</code></td>
-            <td>Get the right agent set + auto-update hook for unity, web, fullstack, or general projects</td>
+            <td>Get the right agent set + auto-update hook for unity, web, fullstack, mobile, or general projects</td>
           </tr>
           <tr>
             <td><code>get_auto_update_hook</code></td>

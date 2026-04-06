@@ -22,5 +22,5 @@
     }
   ],
   "overall_notes": "Pattern noticed: Docker agent commits don't surface in host git log because containers share the mounted volume but each container starts fresh. File changes land on disk correctly but commits are created in ephemeral container git history. The scrum-master needs to manually commit unstaged changes after each agent invocation. A voltron improvement: agents should be instructed to always verify commits with git log and warn if commits may be stuck in container history vs host.",
-  "processed": false
+  "processed": true
 }

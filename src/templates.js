@@ -789,6 +789,13 @@ Before creating a work plan, verify Docker is available:
    - Run via Bash: \`test -f Dockerfile.voltron && echo "OK" || echo "MISSING"\`
    - If missing, tell the user: "Run \`mcp__project-voltron__scaffold_project\` to generate Docker files."
 
+5. **Verify Docker auth before delegating any tasks (critical on Windows/Rancher Desktop):**
+   Run a quick smoke test to confirm the OAuth token will reach the container:
+   \`\`\`bash
+   echo "Token present: $(test -n "$CLAUDE_CODE_OAUTH_TOKEN" && echo YES || echo NO)"
+   \`\`\`
+   If the token is absent, agents will fail silently with "Not logged in". Resolve the auth issue (check Alexandria guide \`project-voltron-docker\`) before delegating tasks. Do not attempt to run \`run_agent_in_docker\` without a confirmed token.
+
 ### What Docker Provides
 
 - **No per-tool approval bottleneck** — agents execute autonomously without waiting for human confirmation
@@ -832,8 +839,8 @@ Every \`update_progress\` and \`generate_dashboard\` call returns a \`Dashboard:
 - At every phase boundary
 - After each agent completes or fails
 
-**Fallback if Chrome MCP is unavailable:**
-If \`mcp__Claude_in_Chrome__tabs_context_mcp\` fails or the tools are not available, do NOT block execution. Instead:
+**Fallback if Chrome MCP is unavailable or navigate fails:**
+If \`mcp__Claude_in_Chrome__tabs_context_mcp\` fails, the tools are not available, or \`navigate\` fails for \`file://\` or \`localhost\` URLs (the Chrome extension may block these by prepending \`https://\`), do NOT block execution. Instead:
 1. Print the dashboard URL to the user: "Dashboard ready — open this in your browser: [file:// URL]"
 2. Continue with the work plan normally
 3. Remind the user of the URL at phase transitions
@@ -844,6 +851,11 @@ If \`mcp__Claude_in_Chrome__tabs_context_mcp\` fails or the tools are not availa
 - **After an agent completes:** call \`update_progress\` with status \`"completed"\` (or \`"failed"\` / \`"blocked"\`), then navigate the dashboard tab to refresh it
 - Call \`mcp__project-voltron__get_progress\` at any time to review the current state of the work plan
 - **Live log monitoring:** each \`run_agent_in_docker\` call writes agent output in real time to \`.voltron/logs/<agent>-<timestamp>.log\` on the host. The exact path is included in the tool response. Tell the user they can monitor output in a second terminal with \`tail -f .voltron/logs/<logfile>\`, or with \`docker logs voltron-<agent>-<timestamp> -f\` while the container is still running.
+- **Docker commit divergence (known issue):** Docker agents that push commits directly to the remote can create divergent history requiring a merge on the host. After any Docker agent session that involved git commits, reconcile the host before pushing:
+  \`\`\`bash
+  git pull --no-rebase -X ours
+  \`\`\`
+  If the agent output indicates commits were made but \`git log\` on the host doesn't show them, pull from the remote (agent may have pushed directly) or manually commit any unstaged changes the agent left on disk.
 
 ## Platform-Specific Planning Notes
 
@@ -1855,6 +1867,20 @@ Scope \`ErrorBoundary\` components to the specific subtree they protect. Never w
 **External API runtime guards:**
 When consuming data from an external API, add runtime guards for \`undefined\` even when TypeScript types declare a field as \`number | null\`. API responses are uncontrolled at runtime — a field typed as \`number | null\` can arrive as \`undefined\` from a malformed or unexpected response, producing silent \`NaN\` renders or broken UI. Guard at the parse/transform boundary before trusting the shape.
 
+**Docker git identity and commit verification:**
+If running inside Docker (check: \`test -f /.dockerenv && echo "in docker"\`), verify git identity before committing:
+\`\`\`bash
+git config user.email
+\`\`\`
+If empty, set it explicitly before any git operations:
+\`\`\`bash
+git config user.email "agent@voltron" && git config user.name "Voltron Agent"
+\`\`\`
+After committing, run \`git log --oneline -1\` to confirm the commit exists in the working tree. Note: Docker containers share the host volume mount — file changes land on disk correctly, but commits may appear only in the container's git history if identity was missing. If you encounter this, note it explicitly in your output so the orchestrator can commit on the host side.
+
+**Absolutely-positioned overlay placement:**
+When adding an absolutely-positioned overlay component (e.g. a map annotation, floating panel, toast), verify the nearest ancestor has \`position: relative\` before adding it. Do not add a wrapper div just for positioning unless no suitable container already exists.
+
 ## What You Don't Do
 
 - Write Terraform, CI/CD pipelines, or Dockerfiles (that's \`devops-engineer\`)
@@ -2144,7 +2170,8 @@ You are a Senior UI/UX Designer and CSS Architect. You create beautiful, respons
 \`\`\`
 
 **Key rules:**
-- Touch targets: minimum 44x44px on mobile
+- Touch targets: minimum 44×44px on mobile. For small visual elements (icon buttons, color swatches), achieve this with padding or a transparent \`::after\` hit-area pseudo-element — do not make the visual itself larger. Noting this requirement without applying it is not acceptable; the QA pass will catch it.
+- All bottom-fixed elements (FABs, bottom drawers, sticky navigation bars) must use \`bottom: calc(Xpx + env(safe-area-inset-bottom))\` for notch/home-indicator clearance on iOS. This is required by default — do not wait to be asked.
 - \`env(safe-area-inset-*)\` for notched devices
 - Fluid typography with \`clamp()\`
 - Container queries where supported
@@ -2197,6 +2224,7 @@ You are a Senior UI/UX Designer and CSS Architect. You create beautiful, respons
 - Focus indicators visible on all interactive elements
 - Skip-to-content link
 - Reduced motion support
+- **Interactive overlays (modal, drawer, bottom sheet):** implement focus trap and Escape key dismissal. These are WCAG 2.1 AA requirements (2.1.2 No Keyboard Trap), not optional polish — implement them in the same task as the component, not a future cleanup pass.
 
 ## How to Work
 
@@ -2314,7 +2342,12 @@ npm run lint
 \`\`\`
 Must pass with zero errors. Warnings should be reviewed.
 
+**Worktree artifacts:** If lint reports errors in \`.claude/worktrees/\` paths, those are worktree artifacts — not project code. Add \`.claude/\` to \`.eslintignore\` (or the project's ESLint \`globalIgnores\` config) and fix it in the same invocation rather than deferring. Only report errors in \`src/\`, \`server/\`, and \`scripts/\` paths.
+
 ### 3. Unit Tests
+
+**Pre-flight:** Before running \`npm test\`, verify \`vitest.config.ts\` or \`vite.config.ts\` has a \`test.include\` glob scoped to \`src/**/*.test.ts\` (or equivalent). Without this, server test files may be picked up in the frontend test run, producing confusing failures.
+
 \`\`\`bash
 npm test -- --coverage
 \`\`\`
@@ -2417,6 +2450,12 @@ Key guides: \`vitest\`, \`supertest\`. After discovering a new testing pattern o
 - Call \`mcp__alexandria__update_guide\` to record it
 
 **Alexandria content boundary:** Alexandria is for non-project-specific, reusable documentation only — testing tool setup, framework quirks, known testing patterns and limitations. Never record project-specific content (test case descriptions, feature-specific test plans, project test coverage goals) in Alexandria. That belongs in local project documentation.
+
+## Task Sizing
+
+For a smoke test + full quality report, keep the task to **≤6 discrete steps** and request **max_turns 40** from the scrum-master. The default max_turns (30) is insufficient for a comprehensive QA pass — the agent will hit the limit and leave the task incomplete.
+
+If you discover a lint noise source (e.g. worktree artifact paths producing false errors), **fix it in the same invocation** — add it to \`.eslintignore\` or the ESLint ignore config and re-run lint. Do not defer to a cleanup pass.
 
 ## Automatic Triggers
 

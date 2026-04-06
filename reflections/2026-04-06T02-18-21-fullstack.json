@@ -1,0 +1,33 @@
+{
+  "timestamp": "2026-04-06T02:18:21.104Z",
+  "project_name": "toronto-ferry-tracker-v2",
+  "project_type": "fullstack",
+  "session_summary": "Phase 5: Completed all pre-production onboarding tasks. Fixed Voltron Docker auth bug (CLAUDE_CODE_OAUTH_TOKEN not passed to container). Deployed project-hammer-api to Fly.io (health check 200 OK). Set 7 GitHub Actions secrets. Installed @vitest/coverage-v8. Added Vite chunkSizeWarningLimit. Fixed CI workflows (branch trigger main→master, --legacy-peer-deps, vitest scope). PR #1 merged to master with all 3 CI checks green.",
+  "agents_used": [
+    "scrum-master",
+    "devops-engineer",
+    "fullstack-dev"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "devops-engineer",
+      "worked_well": "Task description for Fly.io deploy was clear and complete with credential sourcing instructions",
+      "needs_improvement": "Could not run in Docker due to OAuth auth issue — tasks were executed on host instead",
+      "suggested_change": "Add a note to devops-engineer template: if run_agent_in_docker fails with auth errors, verify CLAUDE_CODE_OAUTH_TOKEN is in the environment and the Voltron Docker auth fix is applied"
+    },
+    {
+      "agent": "fullstack-dev",
+      "worked_well": "Task decomposition for npm install + vite config was minimal and correct",
+      "needs_improvement": "Could not run in Docker — same OAuth issue",
+      "suggested_change": "No template change needed; Docker auth fix resolves the root cause"
+    },
+    {
+      "agent": "scrum-master",
+      "worked_well": "Correctly diagnosed root cause (OAuth token not in Docker env), applied targeted fix to Voltron source, pivoted to host execution without losing task context",
+      "needs_improvement": "Should proactively test Docker auth before attempting to delegate tasks — a 30-second docker run test would have caught this much earlier",
+      "suggested_change": "Add a 'Docker auth smoke test' step to the Pre-Flight Check section: run docker with CLAUDE_CODE_OAUTH_TOKEN and verify claude responds before delegating any tasks"
+    }
+  ],
+  "overall_notes": "Critical finding: Voltron Docker agents on Windows fail silently with 'Not logged in' because CLAUDE_CODE_OAUTH_TOKEN lives only in the desktop app process environment and is not persisted to any file. Fix documented in Alexandria guide 'project-voltron-docker'. The fix (authEnvArgs passthrough in run_agent_in_docker) is in project-voltron/src/index.js and requires an MCP server restart to take effect. Additional CI fixes discovered: (1) workflow branch triggers were 'main' but repo uses 'master', (2) npm ci needs --legacy-peer-deps for vite-plugin-pwa@1.2.0 + vite@8 peer dep conflict, (3) root vitest was picking up server/ test files — fixed with explicit include: ['src/**/*.test.ts'].",
+  "processed": false
+}

@@ -1,0 +1,27 @@
+{
+  "timestamp": "2026-04-06T07:00:56.750Z",
+  "project_name": "toronto-ferry-tracker-v2",
+  "project_type": "fullstack",
+  "session_summary": "Phase 9c: Delivered vessel panel polish (In Transit/Parked labels, labelled dock fields), always-on NextDeparture overlay with off-hours messaging, landmark removal, and dock popup clarity improvements. 73/73 tests green. Water taxi AIS research concluded: not feasible via AIS — Toronto Harbour water taxis are legally exempt from AIS carriage under Transport Canada's sheltered waters classification.",
+  "agents_used": [
+    "scrum-master",
+    "fullstack-dev",
+    "qa-tester"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "fullstack-dev",
+      "worked_well": "T1 (VesselCard) and T2 (NextDeparture) completed cleanly in one pass each — precise file-scoped task descriptions prevented scope creep.",
+      "needs_improvement": "T3 (landmark removal + dock popup) hit max_turns=25 without committing. The task combined file deletion, JSX changes across two components, and CSS additions — slightly too large for 25 turns.",
+      "suggested_change": "For tasks combining a deletion + multi-file edits, either raise max_turns to 35 or split into two tasks: (a) delete file + FerryMap import removal, (b) dock popup label + DockSummary component."
+    },
+    {
+      "agent": "qa-tester",
+      "worked_well": "All 4 gates green on first run with no fixes needed. Added API URL integrity check proactively — good initiative.",
+      "needs_improvement": "Nothing significant this session.",
+      "suggested_change": "No change needed."
+    }
+  ],
+  "overall_notes": "Recurring issue: Docker agent commits push to remote before host can push, requiring a merge step each time. Should document this as standard workflow in scrum-master: after Docker agent session, always do git pull --no-rebase -X ours before git push. Water taxi research via general-purpose Agent tool worked well for a non-code research task despite scrum-master normally using run_agent_in_docker — the Agent tool is appropriate for pure research that requires WebSearch/WebFetch.",
+  "processed": false
+}

@@ -67,6 +67,19 @@ Or add manually to `~/.claude/settings.json`:
 }
 ```
 
+## Docs Chat Widget
+
+The GitHub Pages site includes an AI chat widget (bottom-right "Ask AI" button) powered by Claude Haiku. To enable it for your own fork:
+
+1. Install Wrangler: `npm install -g wrangler`
+2. Log in: `npx wrangler login`
+3. Set your API key: `cd docs && npx wrangler secret put ANTHROPIC_API_KEY`
+4. Deploy: `npx wrangler deploy`
+5. Copy the worker URL (e.g. `https://voltron-chat.YOUR_NAME.workers.dev`)
+6. Set `WORKER_URL` at the top of the `<script>` block in `docs/index.html`
+
+The worker script is `docs/chat-worker.js`. It proxies streaming Anthropic API requests so the API key is never exposed to the browser.
+
 ## Alexandria Integration
 
 Voltron agents are designed to work with **Project Alexandria** — a companion MCP server that maintains a shared library of tooling setup guides. When both are installed, agents consult Alexandria **before** any tool installation — this is mandatory, not optional.

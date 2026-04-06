@@ -275,6 +275,228 @@
       .hero h1 { font-size: 2rem; }
       .hero p { font-size: 1rem; }
     }
+
+    /* ── Chat widget ─────────────────────────────────────────────────────── */
+    #chat-btn {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      z-index: 900;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      background: linear-gradient(135deg, var(--accent), var(--purple));
+      color: #fff;
+      border: none;
+      border-radius: 28px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(88, 166, 255, 0.35);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    #chat-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 28px rgba(88, 166, 255, 0.45); }
+    #chat-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+    #chat-panel {
+      position: fixed;
+      bottom: 88px;
+      right: 28px;
+      z-index: 901;
+      width: 380px;
+      max-width: calc(100vw - 40px);
+      height: 540px;
+      max-height: calc(100vh - 120px);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+      transform: translateY(16px) scale(0.97);
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+    #chat-panel.open {
+      transform: translateY(0) scale(1);
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .chat-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .chat-header-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .chat-header-title .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+    #chat-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1.3rem;
+      line-height: 1;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    #chat-close:hover { color: var(--text); background: var(--border); }
+
+    #chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      scroll-behavior: smooth;
+    }
+    #chat-messages::-webkit-scrollbar { width: 4px; }
+    #chat-messages::-webkit-scrollbar-track { background: transparent; }
+    #chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .msg { display: flex; flex-direction: column; gap: 4px; max-width: 92%; }
+    .msg-user { align-self: flex-end; align-items: flex-end; }
+    .msg-assistant { align-self: flex-start; }
+
+    .msg-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .msg-content {
+      padding: 10px 13px;
+      border-radius: 12px;
+      font-size: 0.875rem;
+      line-height: 1.55;
+    }
+    .msg-user .msg-content {
+      background: var(--accent);
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+    .msg-assistant .msg-content {
+      background: #1c2128;
+      color: var(--text);
+      border-bottom-left-radius: 4px;
+    }
+    .msg-content pre {
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px;
+      overflow-x: auto;
+      margin: 8px 0;
+      font-size: 0.78rem;
+    }
+    .msg-content code {
+      font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+      background: rgba(0,0,0,0.3);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 0.82em;
+    }
+    .msg-content pre code { background: none; padding: 0; }
+    .msg-content a { color: var(--accent); }
+    .msg-content strong { color: #fff; }
+
+    .chat-typing {
+      display: inline-flex;
+      gap: 4px;
+      padding: 4px 2px;
+    }
+    .chat-typing span {
+      width: 6px; height: 6px;
+      background: var(--text-muted);
+      border-radius: 50%;
+      animation: bounce 1.2s infinite;
+    }
+    .chat-typing span:nth-child(2) { animation-delay: 0.2s; }
+    .chat-typing span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+      40% { transform: translateY(-5px); opacity: 1; }
+    }
+
+    .chat-suggestions {
+      padding: 0 12px 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .chat-suggestion {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 16px;
+      padding: 4px 11px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+    .chat-suggestion:hover { border-color: var(--accent); color: var(--accent); }
+
+    .chat-input-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      padding: 12px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    #chat-input {
+      flex: 1;
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 0.875rem;
+      padding: 9px 12px;
+      resize: none;
+      height: 40px;
+      max-height: 100px;
+      line-height: 1.4;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    #chat-input:focus { border-color: var(--accent); }
+    #chat-input::placeholder { color: var(--text-muted); }
+    #chat-send {
+      width: 38px; height: 38px;
+      flex-shrink: 0;
+      background: var(--accent);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+    #chat-send:hover { background: #79b8ff; }
+    #chat-send:disabled { background: var(--border); cursor: not-allowed; }
   </style>
 </head>
 <body>
@@ -707,6 +929,211 @@ claude mcp add --scope user \
       </div>
     </div>
   </section>
+
+  <!-- Chat widget -->
+  <button id="chat-btn" aria-label="Ask about Voltron">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    </svg>
+    Ask AI
+  </button>
+
+  <div id="chat-panel" role="dialog" aria-label="Voltron AI assistant">
+    <div class="chat-header">
+      <div class="chat-header-title">
+        <div class="dot"></div>
+        Ask about Voltron
+      </div>
+      <button id="chat-close" aria-label="Close chat">✕</button>
+    </div>
+    <div id="chat-messages">
+      <div class="msg msg-assistant">
+        <div class="msg-label">Voltron</div>
+        <div class="msg-content">Hi! Ask me anything about Project Voltron — installation, agents, Docker execution, Alexandria integration, or how to get started.</div>
+      </div>
+    </div>
+    <div class="chat-suggestions" id="chat-suggestions">
+      <button class="chat-suggestion">How do I install Voltron?</button>
+      <button class="chat-suggestion">What agents are available?</button>
+      <button class="chat-suggestion">How does Docker execution work?</button>
+      <button class="chat-suggestion">What is Alexandria?</button>
+    </div>
+    <div class="chat-input-row">
+      <textarea id="chat-input" placeholder="Ask a question…" rows="1"></textarea>
+      <button id="chat-send" aria-label="Send">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // ── Config ────────────────────────────────────────────────────────────────
+    // After deploying docs/chat-worker.js to Cloudflare Workers, replace this
+    // with your worker URL (e.g. https://voltron-chat.YOUR_NAME.workers.dev).
+    const WORKER_URL = '';
+
+    // ── DOM refs ──────────────────────────────────────────────────────────────
+    const chatBtn         = document.getElementById('chat-btn');
+    const chatPanel       = document.getElementById('chat-panel');
+    const chatClose       = document.getElementById('chat-close');
+    const chatMessages    = document.getElementById('chat-messages');
+    const chatInput       = document.getElementById('chat-input');
+    const chatSend        = document.getElementById('chat-send');
+    const chatSuggestions = document.getElementById('chat-suggestions');
+
+    // ── Toggle panel ──────────────────────────────────────────────────────────
+    chatBtn.addEventListener('click', () => {
+      const opening = !chatPanel.classList.contains('open');
+      chatPanel.classList.toggle('open');
+      if (opening) chatInput.focus();
+    });
+    chatClose.addEventListener('click', () => chatPanel.classList.remove('open'));
+
+    // ── Suggestion chips ──────────────────────────────────────────────────────
+    chatSuggestions.addEventListener('click', e => {
+      const btn = e.target.closest('.chat-suggestion');
+      if (!btn) return;
+      chatInput.value = btn.textContent;
+      chatSuggestions.style.display = 'none';
+      sendMessage();
+    });
+
+    // ── Input auto-resize + Enter to send ────────────────────────────────────
+    chatInput.addEventListener('input', () => {
+      chatInput.style.height = 'auto';
+      chatInput.style.height = Math.min(chatInput.scrollHeight, 100) + 'px';
+    });
+    chatInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    });
+    chatSend.addEventListener('click', sendMessage);
+
+    // ── Send message ──────────────────────────────────────────────────────────
+    async function sendMessage() {
+      const question = chatInput.value.trim();
+      if (!question) return;
+
+      if (!WORKER_URL) {
+        appendMessage('assistant',
+          'The chat worker is not configured yet. Deploy `docs/chat-worker.js` to ' +
+          'Cloudflare Workers and set `WORKER_URL` in `docs/index.html`. ' +
+          'See the repo README for instructions.'
+        );
+        return;
+      }
+
+      chatInput.value = '';
+      chatInput.style.height = 'auto';
+      setInputDisabled(true);
+      chatSuggestions.style.display = 'none';
+
+      appendMessage('user', question);
+
+      // Typing indicator
+      const assistantEl = appendRawMessage('assistant', `
+        <div class="chat-typing"><span></span><span></span><span></span></div>
+      `);
+      const contentEl = assistantEl.querySelector('.msg-content');
+
+      try {
+        const res = await fetch(WORKER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question }),
+        });
+
+        if (!res.ok) {
+          contentEl.textContent = `Error ${res.status}: could not reach the chat service.`;
+          return;
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = '';
+        let fullText = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+
+          const lines = buf.split('\n');
+          buf = lines.pop();
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const raw = line.slice(6).trim();
+            if (raw === '[DONE]') continue;
+            try {
+              const evt = JSON.parse(raw);
+              if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta') {
+                fullText += evt.delta.text;
+                contentEl.innerHTML = renderMarkdown(fullText);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+              }
+            } catch { /* partial JSON chunk — ignore */ }
+          }
+        }
+
+        if (!fullText) contentEl.textContent = 'No response received.';
+
+      } catch (err) {
+        contentEl.textContent = `Connection error: ${err.message}`;
+      } finally {
+        setInputDisabled(false);
+        chatInput.focus();
+      }
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    function setInputDisabled(disabled) {
+      chatInput.disabled = disabled;
+      chatSend.disabled = disabled;
+    }
+
+    function appendMessage(role, text) {
+      return appendRawMessage(role, renderMarkdown(text));
+    }
+
+    function appendRawMessage(role, innerHtml) {
+      const wrap = document.createElement('div');
+      wrap.className = `msg msg-${role}`;
+      wrap.innerHTML = `
+        <div class="msg-label">${role === 'user' ? 'You' : 'Voltron'}</div>
+        <div class="msg-content">${innerHtml}</div>
+      `;
+      chatMessages.appendChild(wrap);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      return wrap;
+    }
+
+    function renderMarkdown(text) {
+      // Process code blocks first (extract, escape content, re-insert)
+      const blocks = [];
+      const withoutBlocks = text.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+        blocks.push(`<pre><code>${esc(code.trimEnd())}</code></pre>`);
+        return `\x00BLOCK${blocks.length - 1}\x00`;
+      });
+
+      // Escape remaining HTML, apply inline formatting
+      let html = esc(withoutBlocks)
+        .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+        .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/\[([^\]\n]+)\]\((https?:\/\/[^)\n]+)\)/g,
+          '<a href="$2" target="_blank" rel="noopener">$1</a>')
+        .replace(/\n/g, '<br>');
+
+      // Re-insert code blocks
+      html = html.replace(/\x00BLOCK(\d+)\x00/g, (_, i) => blocks[+i]);
+      return html;
+    }
+
+    function esc(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+  </script>
 
   <!-- Footer -->
   <footer>

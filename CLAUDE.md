@@ -107,8 +107,9 @@ This project uses Voltron agents (defined in `.claude/agents/`) to develop itsel
 | `scrum-master` | `scrum-master.md` | Work breakdown, task assignment, sprint coordination |
 | `project-planner` | `project-planner.md` | Architecture design, research, project planning |
 | `researcher` | `researcher.md` | Deep research, web scraping, information gathering |
+| `reflection-processor` | `reflection-processor.md` | **All Voltron modifications** — agent templates, Dockerfile, MCP server, docs, scripts. Delegate ALL Voltron edit tasks here. |
 
-**Invoke with:** `@agent-scrum-master`, `@agent-project-planner`, `@agent-researcher`
+**Invoke with:** `@agent-scrum-master`, `@agent-project-planner`, `@agent-researcher`, `@agent-reflection-processor`
 
 Docker execution is available via `Dockerfile.voltron` + `scripts/voltron-run.sh`.
 Prerequisites: Docker installed and running.

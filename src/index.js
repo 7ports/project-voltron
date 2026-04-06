@@ -8,7 +8,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
-import { execSync, spawnSync } from "node:child_process";
+import { execSync, spawn } from "node:child_process";
 import os from "node:os";
 import {
   TEMPLATES,
@@ -1134,15 +1134,30 @@ server.tool(
       };
     }
 
-    // 7. Build image (silently reuses cache; captures stderr for error reporting)
+    // 7. Build image — async spawn so parallel agent invocations don't block each other
     try {
-      execSync(`docker build -t voltron-agent -f "${dockerfilePath}" "${cwd}"`, {
-        stdio: ["ignore", "ignore", "pipe"],
-        timeout: 120000,
+      await new Promise((resolve, reject) => {
+        let buildStderr = "";
+        const buildProc = spawn(
+          "docker",
+          ["build", "-t", "voltron-agent", "-f", dockerfilePath, cwd],
+          { stdio: ["ignore", "ignore", "pipe"], cwd }
+        );
+        buildProc.stderr?.on("data", (chunk) => { buildStderr += chunk.toString(); });
+        const timer = setTimeout(() => {
+          buildProc.kill();
+          reject(Object.assign(new Error("Docker build timed out"), { stderr: buildStderr }));
+        }, 120000);
+        buildProc.on("close", (code) => {
+          clearTimeout(timer);
+          if (code !== 0) reject(Object.assign(new Error("Build failed"), { stderr: buildStderr }));
+          else resolve();
+        });
+        buildProc.on("error", (err) => { clearTimeout(timer); reject(err); });
       });
     } catch (err) {
       await fs.unlink(tmpFile).catch(() => {});
-      const buildStderr = err.stderr ? `\n\nBuild output:\n${err.stderr.toString().trim().slice(-2000)}` : "";
+      const buildStderr = err.stderr ? `\n\nBuild output:\n${err.stderr.trim().slice(-2000)}` : "";
       return {
         content: [
           {
@@ -1196,11 +1211,34 @@ server.tool(
       `claude --dangerously-skip-permissions --max-turns ${max_turns} -p "$(cat /tmp/task.md)" 2>&1 | tee /workspace/.voltron/logs/${logFilename}; exit \${PIPESTATUS[0]}`,
     ];
 
-    const result = spawnSync("docker", dockerArgs, {
-      encoding: "utf-8",
-      maxBuffer: 10 * 1024 * 1024,
-      timeout: 600000,
-      cwd,
+    // Async spawn — allows multiple agents to run in parallel Docker containers
+    const result = await new Promise((resolve) => {
+      let stdout = "";
+      let stderr = "";
+      const proc = spawn("docker", dockerArgs, { cwd });
+
+      proc.stdout?.on("data", (chunk) => {
+        stdout += chunk.toString();
+        if (stdout.length > 10 * 1024 * 1024) {
+          proc.kill();
+          resolve({ status: 1, stdout: stdout.slice(-10 * 1024 * 1024), stderr, error: new Error("Output exceeded 10MB limit") });
+        }
+      });
+      proc.stderr?.on("data", (chunk) => { stderr += chunk.toString(); });
+
+      const timer = setTimeout(() => {
+        proc.kill();
+        resolve({ status: 1, stdout, stderr, error: new Error("Timeout after 10 minutes") });
+      }, 600000);
+
+      proc.on("close", (code) => {
+        clearTimeout(timer);
+        resolve({ status: code, stdout, stderr, error: null });
+      });
+      proc.on("error", (err) => {
+        clearTimeout(timer);
+        resolve({ status: 1, stdout, stderr, error: err });
+      });
     });
 
     await fs.unlink(tmpFile).catch(() => {});

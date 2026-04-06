@@ -1,0 +1,34 @@
+{
+  "timestamp": "2026-04-06T03:47:03.686Z",
+  "project_name": "toronto-ferry-tracker-v2",
+  "project_type": "fullstack",
+  "session_summary": "Completed Phases 7 and 8 of the Toronto Island Ferry Tracker. Phase 7 delivered mobile bottom-sheet drawer with full a11y (focus trap, Escape dismiss, aria-modal), ECCC weather code fix for codes 100–399, and VesselCard SOG/COG/heading display. Phase 8 added Haversine nearest-dock detection, dock context in VesselCard (\"AT Ward's Island\" / \"→ Centre Island\"), and a NextDeparture glassmorphism overlay on the map. Both PRs (#3 and #4) merged to master. All quality gates green: 73/73 tests, 0 TS errors, 0 lint errors, production build passing.",
+  "agents_used": [
+    "scrum-master",
+    "fullstack-dev",
+    "ui-designer",
+    "qa-tester"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "fullstack-dev",
+      "worked_well": "Handled multi-file tasks cleanly — MobileDrawer focus trap, Haversine docks.ts, and NextDeparture component all delivered correctly on first invocation with no rework needed. TypeScript strict mode compliance was maintained throughout.",
+      "needs_improvement": "When AppShell already had a map container with position:relative, the agent correctly placed NextDeparture inside it — but this required explicit instruction. Without that hint it might have added a wrapper div.",
+      "suggested_change": "Add a note to the fullstack-dev template: when adding absolutely-positioned overlay components to a map, always verify the nearest ancestor has position:relative before adding a wrapper."
+    },
+    {
+      "agent": "qa-tester",
+      "worked_well": "Phase 8 QA completed cleanly in one shot after Phase 6 hit the 30-turn limit. Scoping the task to 6 steps and raising max_turns to 40 prevented the repeat failure.",
+      "needs_improvement": "The agent doesn't always check that vitest include globs are scoped correctly before running tests — this caused server tests to be picked up in an earlier phase.",
+      "suggested_change": "Add a pre-flight check to qa-tester: verify vite.config.ts has test.include scoped to src/**/*.test.ts before running npm test, and warn if it's missing."
+    },
+    {
+      "agent": "ui-designer",
+      "worked_well": "MobileDrawer CSS delivered correctly — glass morphism, prefers-reduced-motion, safe-area-inset-bottom for FAB, hidden at min-width 1024px. Drag handle contrast was self-corrected from 0.3 to 0.5 opacity.",
+      "needs_improvement": "The agent needed explicit reminder about env(safe-area-inset-bottom) for iPhone notch clearance. This should be default behaviour for any bottom-fixed element.",
+      "suggested_change": "Add to ui-designer template: all bottom-fixed elements (FABs, drawers, sticky bars) must use bottom: calc(Xpx + env(safe-area-inset-bottom)) by default for notch/home-indicator clearance."
+    }
+  ],
+  "overall_notes": "Chrome MCP dashboard navigation remains blocked for both file:// and localhost URLs — the extension prepends https:// to file URLs and blocks localhost/127.0.0.1. The workaround is to print the file:// path and ask the user to open it manually. This should be documented in the scrum-master template as a known limitation and fallback. The Voltron v2.3.8 auto-update hook fired correctly at session start and updated 8 files including Dockerfile.voltron and voltron-run.sh — the hook is working reliably. All Docker agent invocations succeeded without auth errors after the CLAUDE_CODE_OAUTH_TOKEN passthrough fix landed in v2.3.7.",
+  "processed": false
+}

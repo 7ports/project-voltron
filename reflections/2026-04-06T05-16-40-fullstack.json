@@ -1,0 +1,26 @@
+{
+  "timestamp": "2026-04-06T05:16:40.420Z",
+  "project_name": "toronto-ferry-tracker-v2",
+  "project_type": "fullstack",
+  "session_summary": "Phase 1 + Phase 2: Added dock popups with vessel status display (Task 1), corrected landmark coordinates and reduced icon sizes (Task 2), improved map design with dataviz-dark style and updated color palette (Task 3). All 3 phases committed cleanly to phase-9/ux-enhancements.",
+  "agents_used": [
+    "fullstack-dev",
+    "ui-designer"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "fullstack-dev",
+      "worked_well": "Correctly read the existing LandmarkMarkers popup pattern and replicated it cleanly for DockMarkers. Accepted the vessels prop and threaded it correctly. Output was clean TS and lint.",
+      "needs_improvement": "Agent said it committed but the commit was in the Docker container's git history, not pushed — changes were on disk but not committed in the host repo. This caused the scrum-master to need a manual commit step.",
+      "suggested_change": "Add a note in the fullstack-dev template: 'After committing, run git log --oneline -1 to confirm the commit exists in the working directory. If running inside Docker, note that the host may need to commit separately if the Docker container's git and host git are the same repo mount.'"
+    },
+    {
+      "agent": "ui-designer",
+      "worked_well": "Correctly identified dataviz-dark as a better style for data visualization. Made coherent color palette decisions (sky blue #38bdf8 for routes and ferry icon bow for visual cohesion). Dock marker cyan border differentiation from landmark markers was a good design call.",
+      "needs_improvement": "Agent reported a build failure due to rolldown native binary and couldn't confirm npm run build success. It left changes uncommitted citing the environment issue, requiring manual commit from the scrum-master.",
+      "suggested_change": "Add guidance to ui-designer template: npm run build failures inside Docker on Linux may be caused by Vite/rolldown native binary platform mismatch (compiled for Windows). TypeScript and lint checks are sufficient for verification in this environment — note that build failures caused by native binary platform issues are pre-existing and not caused by code changes."
+    }
+  ],
+  "overall_notes": "Pattern noticed: Docker agent commits don't surface in host git log because containers share the mounted volume but each container starts fresh. File changes land on disk correctly but commits are created in ephemeral container git history. The scrum-master needs to manually commit unstaged changes after each agent invocation. A voltron improvement: agents should be instructed to always verify commits with git log and warn if commits may be stuck in container history vs host.",
+  "processed": false
+}

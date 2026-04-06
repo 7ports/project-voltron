@@ -98,6 +98,23 @@ Do not commit code changes without also updating `docs/index.html` and `README.m
 
 ---
 
+## Agent Team Roles
+
+This project uses Voltron agents (defined in `.claude/agents/`) to develop itself.
+
+| Agent | File | Purpose |
+|---|---|---|
+| `scrum-master` | `scrum-master.md` | Work breakdown, task assignment, sprint coordination |
+| `project-planner` | `project-planner.md` | Architecture design, research, project planning |
+| `researcher` | `researcher.md` | Deep research, web scraping, information gathering |
+
+**Invoke with:** `@agent-scrum-master`, `@agent-project-planner`, `@agent-researcher`
+
+Docker execution is available via `Dockerfile.voltron` + `scripts/voltron-run.sh`.
+Prerequisites: Docker installed and running.
+
+---
+
 ## Things Claude Should Never Do
 
 - Modify `node_modules/` or `package-lock.json` manually

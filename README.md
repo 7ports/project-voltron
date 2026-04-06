@@ -10,6 +10,7 @@ An MCP server that provides teams of specialized agent templates for Claude Code
 |---|---|
 | **scrum-master** | Reads backlogs, breaks work into agent-sized tasks, assigns to specialists. Never implements. |
 | **project-planner** | Researches tech stacks, designs architecture, defines data models and API contracts, produces comprehensive project plans for scrum-master to decompose. |
+| **researcher** | Deep research specialist. Finds any information — technical docs, APIs, pricing, competitors, legal text, community consensus — using web search, live page navigation, and structured extraction. |
 
 ### Unity
 

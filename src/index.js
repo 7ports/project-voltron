@@ -18,6 +18,8 @@ import {
   getTemplatesForType,
   VALID_PROJECT_TYPES,
   CLAUDE_MD_FOR_TYPE,
+  DOCKERFILE_CONTENT,
+  VOLTRON_RUN_SCRIPT,
 } from "./templates.js";
 
 // ─── Version ────────────────────────────────────────────────────────────────
@@ -232,31 +234,12 @@ server.tool(
     // Add Docker execution files
     files.push({
       path: "Dockerfile.voltron",
-      content:
-        "FROM node:20-slim\n" +
-        "RUN npm install -g @anthropic-ai/claude-code\n" +
-        "RUN useradd -m -s /bin/bash voltron\n" +
-        "USER voltron\n" +
-        "WORKDIR /workspace\n" +
-        'ENTRYPOINT ["claude"]',
+      content: DOCKERFILE_CONTENT,
     });
 
     files.push({
       path: "scripts/voltron-run.sh",
-      content:
-        "#!/bin/bash\n" +
-        "# Voltron Docker launcher — starts Claude Code with full agent autonomy\n" +
-        "# Usage: ./scripts/voltron-run.sh\n" +
-        '#        ./scripts/voltron-run.sh -p "invoke @agent-scrum-master to plan the backlog"\n' +
-        "\n" +
-        "docker build -t voltron-agent -f Dockerfile.voltron . 2>/dev/null\n" +
-        "docker run --rm -it \\\n" +
-        '  -v "$(pwd):/workspace" \\\n' +
-        '  -v "$HOME/.claude:/home/voltron/.claude" \\\n' +
-        '  -v "$HOME/.claude.json:/home/voltron/.claude.json:ro" \\\n' +
-        "  voltron-agent \\\n" +
-        "  --dangerously-skip-permissions \\\n" +
-        '  "$@"',
+      content: VOLTRON_RUN_SCRIPT,
     });
 
     // Build the auto-update hook settings file

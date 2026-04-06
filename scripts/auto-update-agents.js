@@ -1,13 +1,19 @@
 #!/usr/bin/env node
 // auto-update-agents.js
-// Run as a Claude Code UserPromptSubmit hook to keep Voltron agents current.
+// Run as a Claude Code UserPromptSubmit hook to keep Voltron agents and
+// infrastructure files current.
 // Usage: node /path/to/project-voltron/scripts/auto-update-agents.js
 // The hook runs from the project directory (cwd = project root).
 
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { TEMPLATES, AGENT_NAMES } from "../src/templates.js";
+import {
+  TEMPLATES,
+  AGENT_NAMES,
+  DOCKERFILE_CONTENT,
+  VOLTRON_RUN_SCRIPT,
+} from "../src/templates.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -37,31 +43,54 @@ if (installedVersion === currentVersion) {
   process.exit(0);
 }
 
-// Update all installed agent files
+// ── Update agent files ────────────────────────────────────────────────────────
 let updated = 0;
-const updatedAgents = [];
+const updatedItems = [];
 
 for (const agentKey of AGENT_NAMES) {
   const template = TEMPLATES[agentKey];
   if (!template) continue;
 
-  // Destination filename is the last segment of template.destination
   const agentFilename = template.destination.split("/").pop();
   const agentPath = resolve(agentsDir, agentFilename);
 
   if (existsSync(agentPath)) {
     writeFileSync(agentPath, template.content, "utf-8");
     updated++;
-    updatedAgents.push(agentKey);
+    updatedItems.push(agentKey);
   }
 }
 
+// ── Update infrastructure files ───────────────────────────────────────────────
+
+// Dockerfile.voltron — only update if it already exists (project uses Docker)
+const dockerfilePath = resolve(projectRoot, "Dockerfile.voltron");
+if (existsSync(dockerfilePath)) {
+  const existing = readFileSync(dockerfilePath, "utf-8");
+  if (existing !== DOCKERFILE_CONTENT) {
+    writeFileSync(dockerfilePath, DOCKERFILE_CONTENT, "utf-8");
+    updated++;
+    updatedItems.push("Dockerfile.voltron");
+  }
+}
+
+// scripts/voltron-run.sh — only update if it already exists
+const runScriptPath = resolve(projectRoot, "scripts", "voltron-run.sh");
+if (existsSync(runScriptPath)) {
+  const existing = readFileSync(runScriptPath, "utf-8");
+  if (existing !== VOLTRON_RUN_SCRIPT) {
+    writeFileSync(runScriptPath, VOLTRON_RUN_SCRIPT, "utf-8");
+    updated++;
+    updatedItems.push("voltron-run.sh");
+  }
+}
+
+// ── Report ────────────────────────────────────────────────────────────────────
 if (updated > 0) {
   const from = installedVersion ? `v${installedVersion}` : "unknown version";
   console.log(
-    `[VOLTRON] Auto-updated ${updated} agent(s) from ${from} → v${currentVersion}: ${updatedAgents.join(", ")}`
+    `[VOLTRON] Auto-updated ${updated} file(s) from ${from} → v${currentVersion}: ${updatedItems.join(", ")}`
   );
 } else {
-  // Agents dir exists but no agent files matched — nothing to do
   process.exit(0);
 }

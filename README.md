@@ -135,9 +135,18 @@ Once installed, ask Claude Code:
 
 ## Agent Auto-Update
 
-`scaffold_project` now outputs a `.claude/settings.json` containing a `UserPromptSubmit` hook. This hook runs `scripts/auto-update-agents.js` at the start of every Claude Code session in the project. If the installed agent version differs from your local Voltron installation, all installed agent files are silently updated in place. A `[VOLTRON] Auto-updated N agent(s)` message appears in context when an update occurs.
+`scaffold_project` outputs a `.claude/settings.json` containing a `UserPromptSubmit` hook. This hook runs `scripts/auto-update-agents.js` at the start of every Claude Code session. If the installed version differs from your local Voltron installation, all outdated files are silently updated in place.
 
-For projects scaffolded before this feature was added, run `get_auto_update_hook` to get the settings entry to add manually.
+**What gets auto-updated:**
+- All agent `.md` files in `.claude/agents/`
+- `Dockerfile.voltron` (if it exists — only projects using Docker)
+- `scripts/voltron-run.sh` (if it exists)
+
+**What is NOT auto-updated** (user-customized files):
+- `CLAUDE.md` — contains project-specific context you've filled in
+- `.claude/settings.json` — hook config that you may have customized
+
+A `[VOLTRON] Auto-updated N file(s)` message appears in context when an update occurs. For projects scaffolded before this feature was added, run `get_auto_update_hook` to get the settings entry to add manually.
 
 ## Self-Improvement
 

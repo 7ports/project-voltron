@@ -2535,6 +2535,38 @@ export const ALL_NAMES = Object.keys(TEMPLATES);
 // Valid project types for tool enums
 export const VALID_PROJECT_TYPES = Object.keys(PROJECT_TYPE_TAGS);
 
+// ─── Infrastructure files (single source of truth for scaffold + auto-update) ──
+
+export const DOCKERFILE_CONTENT =
+  "FROM node:20-slim\n" +
+  "RUN npm install -g @anthropic-ai/claude-code\n" +
+  "RUN useradd -m -s /bin/bash voltron\n" +
+  "USER voltron\n" +
+  "WORKDIR /workspace\n" +
+  'ENTRYPOINT ["claude"]';
+
+export const VOLTRON_RUN_SCRIPT =
+  "#!/bin/bash\n" +
+  "# Voltron Docker launcher — starts Claude Code with full agent autonomy\n" +
+  "# Usage: ./scripts/voltron-run.sh\n" +
+  '#        ./scripts/voltron-run.sh -p "invoke @agent-scrum-master to plan the backlog"\n' +
+  "\n" +
+  "docker build -t voltron-agent -f Dockerfile.voltron . 2>/dev/null\n" +
+  "\n" +
+  "# Build env passthrough for auth (OAuth token or API key)\n" +
+  "AUTH_ARGS=()\n" +
+  '[ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] && AUTH_ARGS+=(-e "CLAUDE_CODE_OAUTH_TOKEN=$CLAUDE_CODE_OAUTH_TOKEN")\n' +
+  '[ -n "$ANTHROPIC_API_KEY" ] && AUTH_ARGS+=(-e "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY")\n' +
+  "\n" +
+  "docker run --rm -it \\\n" +
+  '  "${AUTH_ARGS[@]}" \\\n' +
+  '  -v "$(pwd):/workspace" \\\n' +
+  '  -v "$HOME/.claude:/home/voltron/.claude" \\\n' +
+  '  -v "$HOME/.claude.json:/home/voltron/.claude.json:ro" \\\n' +
+  "  voltron-agent \\\n" +
+  "  --dangerously-skip-permissions \\\n" +
+  '  "$@"';
+
 // Returns the template keys appropriate for a given project type.
 // If no type provided, returns all agents + the general CLAUDE.md.
 export function getTemplatesForType(projectType) {

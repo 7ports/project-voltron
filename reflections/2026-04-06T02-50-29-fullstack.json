@@ -23,5 +23,5 @@
     }
   ],
   "overall_notes": "Key finding: QA agent hits turn limits when given >6 steps. Solution: tighter task scope + higher max_turns (40). Weather condition code mapping is incomplete — ECCC codes 300-399 (drizzle) return 'Unknown'. Non-blocking but should be addressed in Phase 7.",
-  "processed": false
+  "processed": true
 }

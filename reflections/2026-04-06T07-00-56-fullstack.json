@@ -23,5 +23,5 @@
     }
   ],
   "overall_notes": "Recurring issue: Docker agent commits push to remote before host can push, requiring a merge step each time. Should document this as standard workflow in scrum-master: after Docker agent session, always do git pull --no-rebase -X ours before git push. Water taxi research via general-purpose Agent tool worked well for a non-code research task despite scrum-master normally using run_agent_in_docker — the Agent tool is appropriate for pure research that requires WebSearch/WebFetch.",
-  "processed": false
+  "processed": true
 }

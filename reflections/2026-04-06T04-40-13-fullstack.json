@@ -30,5 +30,5 @@
     }
   ],
   "overall_notes": "Key infrastructure fix this session: Docker agents (run_agent_in_docker) cannot commit because node:20-slim has no git identity for the voltron user. Fixed in two layers: (1) Dockerfile.voltron now bakes in git config for the voltron user, (2) project-voltron/src/index.js now injects GIT_AUTHOR_* and GIT_COMMITTER_* env vars at runtime as belt-and-suspenders. Documented in Alexandria guide project-voltron-docker. The Agent tool (non-Docker) is now the preferred execution path for parallel workstreams — it has reliable git access and runs on the host filesystem. Use run_agent_in_docker only for truly isolated, single-branch serial tasks. Parallel branch strategy (separate branch per workstream, Agent tool per branch) proved effective — p9-3+p9-4 and p9-6+p9-7 ran concurrently with no conflicts.",
-  "processed": false
+  "processed": true
 }

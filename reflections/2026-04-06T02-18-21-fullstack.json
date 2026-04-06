@@ -29,5 +29,5 @@
     }
   ],
   "overall_notes": "Critical finding: Voltron Docker agents on Windows fail silently with 'Not logged in' because CLAUDE_CODE_OAUTH_TOKEN lives only in the desktop app process environment and is not persisted to any file. Fix documented in Alexandria guide 'project-voltron-docker'. The fix (authEnvArgs passthrough in run_agent_in_docker) is in project-voltron/src/index.js and requires an MCP server restart to take effect. Additional CI fixes discovered: (1) workflow branch triggers were 'main' but repo uses 'master', (2) npm ci needs --legacy-peer-deps for vite-plugin-pwa@1.2.0 + vite@8 peer dep conflict, (3) root vitest was picking up server/ test files — fixed with explicit include: ['src/**/*.test.ts'].",
-  "processed": false
+  "processed": true
 }

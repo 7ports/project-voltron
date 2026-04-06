@@ -1185,9 +1185,20 @@ server.tool(
     // on Windows where execSync uses cmd.exe (which doesn't understand single quotes),
     // causing the -c argument to be mangled before reaching Docker.
     const homeDir = process.env.HOME || process.env.USERPROFILE || os.homedir();
+
+    // Pass through Claude auth env vars so the agent inside Docker can authenticate
+    const authEnvArgs = [];
+    if (process.env.CLAUDE_CODE_OAUTH_TOKEN) {
+      authEnvArgs.push("-e", `CLAUDE_CODE_OAUTH_TOKEN=${process.env.CLAUDE_CODE_OAUTH_TOKEN}`);
+    }
+    if (process.env.ANTHROPIC_API_KEY) {
+      authEnvArgs.push("-e", `ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY}`);
+    }
+
     const dockerArgs = [
       "run", "--rm",
       "--entrypoint", "bash",
+      ...authEnvArgs,
       "-v", `${cwd}:/workspace`,
       "-v", `${homeDir}/.claude:/home/voltron/.claude`,
       "-v", `${homeDir}/.claude.json:/home/voltron/.claude.json:ro`,

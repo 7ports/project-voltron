@@ -36,5 +36,5 @@
     }
   ],
   "overall_notes": "The worktree environment worked well for branch isolation. The biggest systemic risk this session was the gap between TypeScript types and runtime reality when consuming external APIs — both the GeoMet field name mismatch and the undefined-vs-null guard issue stem from the same root cause: trusting compile-time contracts for data that arrives at runtime from an external party. A project-wide convention of 'validate external API shapes at the boundary with a Zod schema or equivalent' would have prevented both issues. Worth adding as a project-level note in CLAUDE.md for future sessions.",
-  "processed": false
+  "processed": true
 }

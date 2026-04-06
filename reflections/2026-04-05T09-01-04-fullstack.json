@@ -43,5 +43,5 @@
     }
   ],
   "overall_notes": "The live demo workflow (start backend, start frontend preview, take screenshots across viewports) is very effective for validating real integration behaviour — it caught the AIS URL bug that three rounds of static analysis missed. Recommend running a live demo check as a standard step at the end of every phase, not just at explicit user request. The City of Toronto ferry.json live endpoint discovery was a genuine surprise — real-time government data with no auth, updating every ~30 seconds, currently showing a live disruption. This validated the entire service status feature in a way that no unit test could have.",
-  "processed": false
+  "processed": true
 }

@@ -25,5 +25,5 @@
     }
   ],
   "overall_notes": "The voltron agents were designed for a 'standard' Unity project (3D, URP, PC). Project Pepper is a WebGL game, which introduces a whole platform-specific layer that none of the agents address. The most impactful improvement would be adding WebGL awareness to csharp-dev and build-validator. A future 'platform-specific' tagging system might let users opt into WebGL, mobile, or console guidance.",
-  "processed": false
+  "processed": true
 }

@@ -97,7 +97,7 @@ See [Project Alexandria](https://github.com/7ports/project-alexandria) for setup
 |---|---|
 | `list_templates` | List all templates, optionally filtered by project type |
 | `get_template` | Get the full content of a specific template |
-| `scaffold_project` | Writes agent templates and Dockerfile directly to disk for unity, web, fullstack, mobile, or general projects. Smart merge: skips existing agent files, appends to existing CLAUDE.md, preserves custom Dockerfiles. Warns when no project_root is specified; restart Claude Code required after scaffolding. |
+| `scaffold_project` | Writes agent templates and Dockerfile directly to disk for unity, web, fullstack, mobile, or general projects. Smart merge: skips existing agent files, appends to existing CLAUDE.md, preserves custom Dockerfiles. Auto-detects project root via filesystem walk when project_root not specified (looks for .git, CLAUDE.md, .mcp.json, etc.); restart Claude Code required after scaffolding. |
 | `setup_voltron` | Verify and repair Voltron installation from within Claude Code — updates the global allowlist and reports MCP/Docker status |
 | `get_auto_update_hook` | Get the `.claude/settings.json` hook for existing projects |
 | `get_agent_usage_guide` | Usage guide for invoking and coordinating agents |

@@ -286,7 +286,7 @@
       <h1>Project Voltron</h1>
       <p>Specialized agent teams for Claude Code, served via MCP. Scaffold Unity, web, mobile, or general projects with battle-tested subagent templates — Alexandria-aware, self-improving, and auto-updating.</p>
       <div class="badge-row">
-        <span class="badge">v2.6.3</span>
+        <span class="badge">v2.6.4</span>
         <span class="badge">MCP Server</span>
         <span class="badge">Unity</span>
         <span class="badge">Web / Fullstack</span>
@@ -573,7 +573,7 @@ node scripts/setup.js</code></pre>
           </tr>
           <tr>
             <td><code>scaffold_project</code></td>
-            <td>Writes agent templates and Dockerfile directly to disk for unity, web, fullstack, mobile, or general projects. Uses smart merge: skips existing agent files (auto-update maintains them), appends Voltron sections to existing CLAUDE.md, preserves custom Dockerfiles. Warns when no project_root is specified; restart Claude Code required after scaffolding.</td>
+            <td>Writes agent templates and Dockerfile directly to disk for unity, web, fullstack, mobile, or general projects. Uses smart merge: skips existing agent files (auto-update maintains them), appends Voltron sections to existing CLAUDE.md, preserves custom Dockerfiles. Auto-detects project root via filesystem walk when project_root not specified (looks for .git, CLAUDE.md, .mcp.json, etc.); restart Claude Code required after scaffolding.</td>
           </tr>
           <tr>
             <td><code>setup_voltron</code></td>
@@ -754,7 +754,7 @@ node scripts/setup.js</code></pre>
     <div class="container">
       <p>
         <a href="https://github.com/7ports/project-voltron">GitHub</a> &middot;
-        v2.6.3 &middot;
+        v2.6.4 &middot;
         MIT License &middot;
         Built by <a href="https://github.com/7ports">7ports</a>
       </p>

@@ -3,7 +3,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { readFileSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -60,6 +60,64 @@ function getClaudeVersion() {
       return { raw: null, parsed: null };
     }
   }
+}
+
+/**
+ * Detect the user's project root directory.
+ * Fallback chain:
+ *   1. Explicit rawRoot parameter (most reliable)
+ *   2. Walk up from process.cwd() for project root markers
+ *   3. Walk up from process.env.PWD if different from cwd
+ *   4. process.cwd() as bare last resort
+ *
+ * @param {string|undefined} rawRoot - explicit path passed by the tool caller
+ * @returns {{ root: string, source: string }}
+ */
+function detectProjectRoot(rawRoot) {
+  // 1. Explicit parameter always wins
+  if (rawRoot) {
+    return { root: path.resolve(rawRoot), source: 'explicit' };
+  }
+
+  // NOTE: process.env.CLAUDE_PROJECT_DIR is hooks-only — NOT available to MCP servers.
+  // Confirmed by claude-code Issues #17565, #1520, official hooks docs. Do not use it.
+
+  const PROJECT_MARKERS = [
+    '.git',           // git repo root (strongest signal)
+    'CLAUDE.md',      // explicit Claude Code project root
+    '.mcp.json',      // Claude Code project MCP config
+    'package.json',   // Node.js project
+    'Cargo.toml',     // Rust
+    'go.mod',         // Go
+    'pyproject.toml', // Python
+    'pom.xml',        // Java/Maven
+  ];
+
+  const cwd = process.cwd();
+  const pwd = process.env.PWD;
+  const startDirs = [cwd];
+  if (pwd && path.resolve(pwd) !== path.resolve(cwd)) {
+    startDirs.push(pwd);
+  }
+
+  for (const startDir of startDirs) {
+    let dir = path.resolve(startDir);
+    const visited = new Set();
+    while (!visited.has(dir)) {
+      visited.add(dir);
+      for (const marker of PROJECT_MARKERS) {
+        if (existsSync(path.join(dir, marker))) {
+          return { root: dir, source: `walk-up:${marker}` };
+        }
+      }
+      const parent = path.dirname(dir);
+      if (parent === dir) break; // filesystem root reached
+      dir = parent;
+    }
+  }
+
+  // Last resort — bare CWD, almost certainly wrong for global MCP servers
+  return { root: cwd, source: 'cwd-fallback' };
 }
 
 const server = new McpServer({
@@ -260,8 +318,8 @@ server.tool(
   async ({ project_type, project_root: rawRoot }) => {
     const templateKeys = getTemplatesForType(project_type);
 
-    const rootWasExplicit = !!rawRoot;
-    const cwd = path.resolve(rawRoot || process.cwd());
+    const { root: cwd, source: rootSource } = detectProjectRoot(rawRoot);
+    const rootWasExplicit = rootSource === 'explicit';
     const files = templateKeys.map((key) => {
       const t = TEMPLATES[key];
       return { path: t.destination, content: t.content };
@@ -402,7 +460,7 @@ server.tool(
     if (!rootWasExplicit) {
       sections.push(
         ``,
-        `> ⚠️ **No \`project_root\` was specified.** Files were written to: \`${cwd}\``,
+        `> ⚠️ **No \`project_root\` was specified.** Project root detected via \`${rootSource}\`: \`${cwd}\``,
         `> If this is NOT your project directory, re-run with an explicit path:`,
         `> \`\`\``,
         `> scaffold_project({ project_type: "${project_type || "general"}", project_root: "/absolute/path/to/your/project" })`,
@@ -933,7 +991,7 @@ server.tool(
     notes: z.string().optional().describe("Additional notes or error details"),
   },
   async ({ task_id, agent, status, description, phase, notes }) => {
-    const progressDir = path.join(process.cwd(), ".voltron");
+    const progressDir = path.join(detectProjectRoot(undefined).root, ".voltron");
     const progressFile = path.join(progressDir, "progress.json");
 
     await fs.mkdir(progressDir, { recursive: true });
@@ -994,7 +1052,7 @@ server.tool(
     format: z.enum(["summary", "detailed"]).optional().describe("Output format (default: summary)"),
   },
   async ({ format }) => {
-    const progressFile = path.join(process.cwd(), ".voltron", "progress.json");
+    const progressFile = path.join(detectProjectRoot(undefined).root, ".voltron", "progress.json");
 
     let progress;
     try {
@@ -1132,8 +1190,9 @@ phases.forEach(phase => {
 // progress data exists. Browser opening is handled by the scrum-master agent
 // via Chrome MCP tools — this function only writes the file.
 async function regenerateDashboard() {
-  const progressFile = path.join(process.cwd(), ".voltron", "progress.json");
-  const outFile = path.join(process.cwd(), ".voltron", "dashboard.html");
+  const projectRoot = detectProjectRoot(undefined).root;
+  const progressFile = path.join(projectRoot, ".voltron", "progress.json");
+  const outFile = path.join(projectRoot, ".voltron", "dashboard.html");
   try {
     const progress = JSON.parse(await fs.readFile(progressFile, "utf-8"));
     await fs.writeFile(outFile, buildDashboardHtml(progress));
@@ -1156,8 +1215,9 @@ server.tool(
     output_path: z.string().optional().describe("Output file path (default: .voltron/dashboard.html)"),
   },
   async ({ output_path }) => {
-    const progressFile = path.join(process.cwd(), ".voltron", "progress.json");
-    const outFile = output_path || path.join(process.cwd(), ".voltron", "dashboard.html");
+    const projectRoot = detectProjectRoot(undefined).root;
+    const progressFile = path.join(projectRoot, ".voltron", "progress.json");
+    const outFile = output_path || path.join(projectRoot, ".voltron", "dashboard.html");
 
     let progress;
     try {
@@ -1312,7 +1372,7 @@ server.tool(
       .describe("Maximum agent turns (default: 30)"),
   },
   async ({ agent_name, task, max_turns = 30 }) => {
-    const cwd = process.cwd();
+    const { root: cwd } = detectProjectRoot(undefined);
 
     // 1. Look up the template
     const template = TEMPLATES[agent_name];

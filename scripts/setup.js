@@ -39,29 +39,37 @@ function readSettings() {
   }
 }
 
-let settings = readSettings();
-if (settings.mcpServers?.['project-voltron']) {
-  console.log('  ✓ MCP server already registered');
-} else {
-  const args = ['mcp', 'add', '--scope', 'user', 'project-voltron', '--', 'node', mainScriptAbsolutePath];
-  let r = spawnSync('claude', args, { encoding: 'utf-8', stdio: 'pipe' });
-
-  if (r.error?.code === 'ENOENT' && process.platform === 'win32') {
-    r = spawnSync('claude.cmd', args, { encoding: 'utf-8', stdio: 'pipe' });
+// Check registration via `claude mcp list` — canonical source of truth regardless of
+// which settings file Claude Code uses internally (settings.json vs .claude.json)
+// On Windows, scripts like `claude` may need shell:true to execute .cmd wrappers.
+// Also capture both stdout and stderr — claude mcp list mixes output between them.
+function claudeCmd(args) {
+  const opts = { encoding: 'utf-8', stdio: 'pipe', shell: process.platform === 'win32' };
+  let r = spawnSync('claude', args, opts);
+  if (r.error?.code === 'ENOENT' && !opts.shell) {
+    r = spawnSync('claude.cmd', args, opts);
   }
+  return r;
+}
 
-  if (r.error?.code === 'ENOENT') {
-    console.log('  ⚠ Could not auto-register. Run this manually:');
-    console.log(`    claude mcp add --scope user project-voltron -- node "${mainScriptAbsolutePath}"`);
-  } else if (r.status === 0) {
+const listResult = claudeCmd(['mcp', 'list']);
+const listOutput = (listResult.stdout || '') + (listResult.stderr || '');
+const isRegistered = listOutput.includes('project-voltron');
+
+if (isRegistered) {
+  console.log('  ✓ MCP server already registered');
+} else if (listResult.error?.code === 'ENOENT') {
+  console.log('  ⚠ Could not auto-register (claude CLI not found). Run this manually:');
+  console.log(`    claude mcp add --scope user project-voltron -- node "${mainScriptAbsolutePath}"`);
+} else {
+  const addResult = claudeCmd(['mcp', 'add', '--scope', 'user', 'project-voltron', '--', 'node', mainScriptAbsolutePath]);
+  const errMsg = (addResult.stderr || '').trim();
+  if (addResult.status === 0 || errMsg.toLowerCase().includes('already')) {
     console.log('  ✓ MCP server registered');
   } else {
-    const errMsg = (r.stderr || '').trim();
-    if (errMsg.toLowerCase().includes('already exists')) {
-      console.log('  ✓ MCP server already registered');
-    } else {
-      console.log('  ⚠ MCP registration failed: ' + (errMsg || 'exit ' + r.status));
-    }
+    console.log('  ⚠ MCP registration failed. Run this manually:');
+    console.log(`    claude mcp add --scope user project-voltron -- node "${mainScriptAbsolutePath}"`);
+    if (errMsg) console.log('    Error: ' + errMsg);
   }
 }
 
@@ -90,7 +98,7 @@ const VOLTRON_DENY = [
   'Bash(rm -rf *)', 'Bash(rm -r *)', 'Bash(rmdir *)',
 ];
 
-settings = readSettings();
+let settings = readSettings();
 if (!settings.permissions) settings.permissions = {};
 if (!Array.isArray(settings.permissions.allow)) settings.permissions.allow = [];
 if (!Array.isArray(settings.permissions.deny)) settings.permissions.deny = [];

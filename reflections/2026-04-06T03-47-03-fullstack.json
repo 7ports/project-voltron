@@ -30,5 +30,5 @@
     }
   ],
   "overall_notes": "Chrome MCP dashboard navigation remains blocked for both file:// and localhost URLs — the extension prepends https:// to file URLs and blocks localhost/127.0.0.1. The workaround is to print the file:// path and ask the user to open it manually. This should be documented in the scrum-master template as a known limitation and fallback. The Voltron v2.3.8 auto-update hook fired correctly at session start and updated 8 files including Dockerfile.voltron and voltron-run.sh — the hook is working reliably. All Docker agent invocations succeeded without auth errors after the CLAUDE_CODE_OAUTH_TOKEN passthrough fix landed in v2.3.7.",
-  "processed": false
+  "processed": true
 }

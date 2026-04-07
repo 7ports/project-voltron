@@ -279,15 +279,80 @@ server.tool(
       },
     };
 
-    // Write all agent/config files directly to disk
+    // Write files with per-file merge strategies
     const written = [];
+    const merged = [];
+    const skipped = [];
+    const noted = [];
     const failed = [];
+
     for (const f of files) {
       try {
         const fullPath = path.join(cwd, f.path);
         await fs.mkdir(path.dirname(fullPath), { recursive: true });
-        await fs.writeFile(fullPath, f.content, "utf-8");
-        written.push(f.path);
+
+        // Strategy 1: CLAUDE.md — append Voltron sections if missing
+        if (f.path.endsWith("CLAUDE.md") && !f.path.startsWith(".claude/")) {
+          let existing = null;
+          try { existing = await fs.readFile(fullPath, "utf-8"); } catch { /* not found */ }
+          if (existing === null) {
+            await fs.writeFile(fullPath, f.content, "utf-8");
+            written.push(f.path);
+          } else if (existing.includes("## Agent Team Roles")) {
+            skipped.push({ path: f.path, reason: "already contains Voltron sections (auto-update maintains them)" });
+          } else {
+            // Append from "## Agent Team Roles" onwards
+            const appendIdx = f.content.indexOf("## Agent Team Roles");
+            if (appendIdx !== -1) {
+              const toAppend = f.content.slice(appendIdx);
+              await fs.writeFile(fullPath, existing + "\n\n---\n<!-- Project Voltron: agent team configuration -->\n" + toAppend, "utf-8");
+              merged.push(f.path);
+            } else {
+              await fs.writeFile(fullPath, f.content, "utf-8");
+              written.push(f.path);
+            }
+          }
+
+        // Strategy 2: Agent .md files — skip if exists
+        } else if (f.path.startsWith(".claude/agents/")) {
+          let exists = false;
+          try { await fs.access(fullPath); exists = true; } catch { /* not found */ }
+          if (exists) {
+            skipped.push({ path: f.path, reason: "auto-update hook maintains agent files" });
+          } else {
+            await fs.writeFile(fullPath, f.content, "utf-8");
+            written.push(f.path);
+          }
+
+        // Strategy 3: Dockerfile.voltron — preserve custom, write .new if different
+        } else if (f.path === "Dockerfile.voltron") {
+          let existing = null;
+          try { existing = await fs.readFile(fullPath, "utf-8"); } catch { /* not found */ }
+          if (existing === null) {
+            await fs.writeFile(fullPath, f.content, "utf-8");
+            written.push(f.path);
+          } else if (existing === f.content) {
+            skipped.push({ path: f.path, reason: "already up to date" });
+          } else {
+            const newPath = path.join(cwd, "Dockerfile.voltron.new");
+            await fs.writeFile(newPath, f.content, "utf-8");
+            noted.push({ path: f.path, note: "existing Dockerfile.voltron preserved; new template written as Dockerfile.voltron.new" });
+          }
+
+        // Strategy 4: voltron-run.sh — always overwrite
+        } else if (f.path === "scripts/voltron-run.sh") {
+          await fs.writeFile(fullPath, f.content, "utf-8");
+          written.push(f.path);
+
+        // Strategy 5: .claude/settings.json — handled separately below
+        } else if (f.path === ".claude/settings.json") {
+          // handled after this loop
+
+        // Strategy 6: all other files — write unconditionally
+        } else {
+          await fs.writeFile(fullPath, f.content, "utf-8");
+          written.push(f.path);
+        }
       } catch (err) {
         failed.push({ path: f.path, error: err.message });
       }
@@ -308,53 +373,65 @@ server.tool(
       existingSettings = JSON.parse(await fs.readFile(settingsPath, "utf-8"));
     } catch { /* no existing settings */ }
 
-    // Deep merge: preserve existing hooks, add UserPromptSubmit if not present
-    if (!existingSettings.hooks) existingSettings.hooks = {};
-    if (!existingSettings.hooks.UserPromptSubmit) {
+    // Skip if auto-update-agents hook already present
+    if (JSON.stringify(existingSettings).includes("auto-update-agents")) {
+      skipped.push({ path: ".claude/settings.json", reason: "auto-update-agents hook already present" });
+    } else {
+      if (!existingSettings.hooks) existingSettings.hooks = {};
+      if (!Array.isArray(existingSettings.hooks.UserPromptSubmit)) {
+        existingSettings.hooks.UserPromptSubmit = [];
+      }
       existingSettings.hooks.UserPromptSubmit = hooksContent.hooks.UserPromptSubmit;
+      await fs.mkdir(path.dirname(settingsPath), { recursive: true });
+      await fs.writeFile(settingsPath, JSON.stringify(existingSettings, null, 2));
+      written.push(".claude/settings.json");
     }
-    await fs.mkdir(path.dirname(settingsPath), { recursive: true });
-    await fs.writeFile(settingsPath, JSON.stringify(existingSettings, null, 2));
-    written.push(".claude/settings.json (auto-update hook merged)");
 
     const typeLabel = project_type ? `${project_type} project` : "all agents";
-    const fileList = written.map(f => `  - ${f}`).join("\n");
 
-    const failureSection = failed.length > 0
-      ? [
-          ``,
-          `## ⚠ Write Errors (${failed.length} file(s) failed)`,
-          failed.map(f => `  - ${f.path}: ${f.error}`).join("\n"),
-          ``,
-          `If files are consistently landing in the wrong location, re-run with an explicit project path:`,
-          `\`scaffold_project({ project_type: "${project_type || "general"}", project_root: "/absolute/path/to/your/project" })\``,
-        ].join("\n")
-      : "";
+    const formatList = (items) => items.map(i => typeof i === "string" ? `  - ${i}` : `  - ${i.path}${i.reason ? `: ${i.reason}` : ""}${i.note ? `: ${i.note}` : ""}${i.error ? `: ${i.error}` : ""}`).join("\n");
+
+    const sections = [
+      `# Scaffold Complete — ${typeLabel}`,
+      ``,
+      `**Location:** \`${cwd}\``,
+      `**Project Voltron v${VERSION}**`,
+      ``,
+      `**Written** (${written.length}):`,
+      written.length ? formatList(written) : "  (none)",
+      ``,
+      `**Merged** (${merged.length}):`,
+      merged.length ? formatList(merged) : "  (none)",
+      ``,
+      `**Skipped** (${skipped.length}):`,
+      skipped.length ? formatList(skipped) : "  (none)",
+      ``,
+      `**Noted** (${noted.length}):`,
+      noted.length ? formatList(noted) : "  (none)",
+    ];
+
+    if (failed.length > 0) {
+      sections.push(``, `**Failed** (${failed.length}):`, formatList(failed));
+      sections.push(``, `If files are consistently landing in the wrong location, re-run with an explicit project path:`);
+      sections.push(`\`scaffold_project({ project_type: "${project_type || "general"}", project_root: "/absolute/path/to/your/project" })\``);
+    }
+
+    sections.push(
+      ``,
+      `## Next Steps`,
+      ``,
+      `1. **Fill in \`CLAUDE.md\`** with your project name, stack, and current work`,
+      `2. **Ensure Docker is running** — agents execute inside Docker containers`,
+      `3. **Invoke the scrum-master:** \`@agent-scrum-master\` to plan your sprint`,
+      `4. **For mobile projects:** Note that iOS builds require macOS + Xcode (not Docker)`,
+      ``,
+      `> **Tip:** If agents are not discovered by Claude Code, verify that \`.claude/agents/\` was created in your project root (shown above). You may need to restart Claude Code after scaffolding.`,
+    );
 
     return {
       content: [{
         type: "text",
-        text: [
-          `# Scaffold Complete — ${typeLabel}`,
-          ``,
-          `**Location:** \`${cwd}\``,
-          ``,
-          `**Project Voltron v${VERSION}** — wrote ${written.length} files:`,
-          ``,
-          fileList,
-          failureSection,
-          ``,
-          `## Next Steps`,
-          ``,
-          `1. **Fill in \`CLAUDE.md\`** with your project name, stack, and current work`,
-          `2. **Ensure Docker is running** — agents execute inside Docker containers`,
-          `3. **Invoke the scrum-master:** \`@agent-scrum-master\` to plan your sprint`,
-          `4. **For mobile projects:** Note that iOS builds require macOS + Xcode (not Docker)`,
-          ``,
-          `The auto-update hook has been added to \`.claude/settings.json\` — agent files will stay current automatically.`,
-          ``,
-          `> **Tip:** If agents are not discovered by Claude Code, verify that \`.claude/agents/\` was created in your project root (shown above). You may need to restart Claude Code after scaffolding.`,
-        ].join("\n"),
+        text: sections.join("\n"),
       }],
     };
   }

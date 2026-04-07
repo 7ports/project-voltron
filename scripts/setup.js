@@ -140,6 +140,32 @@ if (dockerResult.status === 0) {
   console.log('    Docker is required for autonomous agent execution.');
 }
 
+// ─── Step 5: Check Claude Code version ───────────────────────────────────────
+{
+  const CLAUDE_MIN = [1, 8, 0]; // [major, minor, patch]
+  let verResult = spawnSync('claude', ['--version'], { encoding: 'utf-8', stdio: 'pipe', shell: process.platform === 'win32' });
+  if (!verResult.stdout && process.platform === 'win32') {
+    verResult = spawnSync('claude.cmd', ['--version'], { encoding: 'utf-8', stdio: 'pipe' });
+  }
+  const verStr = (verResult.stdout || '').trim();
+  const m = verStr.match(/(\d+)\.(\d+)\.(\d+)/);
+  if (!verStr) {
+    console.log('  ⚠ Could not detect Claude Code version. Ensure claude is in your PATH.');
+  } else if (!m) {
+    console.log('  ✓ Claude Code detected: ' + verStr);
+  } else {
+    const [, maj, min, pat] = m.map(Number);
+    const [minMaj, minMin, minPat] = CLAUDE_MIN;
+    const ok = maj > minMaj || (maj === minMaj && (min > minMin || (min === minMin && pat >= minPat)));
+    if (ok) {
+      console.log('  ✓ Claude Code: ' + verStr);
+    } else {
+      console.log('  ⚠ Claude Code ' + verStr + ' is below the recommended minimum (' + CLAUDE_MIN.join('.') + ').');
+      console.log('    Update Claude Code: https://docs.anthropic.com/en/docs/claude-code/setup');
+    }
+  }
+}
+
 // ─── Final summary ────────────────────────────────────────────────────────────
 const HR = '━'.repeat(45);
 console.log('');

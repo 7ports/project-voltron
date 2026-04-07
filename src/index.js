@@ -31,6 +31,37 @@ const pkg = JSON.parse(
 );
 const VERSION = pkg.version;
 
+// ─── Claude Code version utilities ──────────────────────────────────────────
+
+const CLAUDE_MIN_VERSION = { major: 1, minor: 8, patch: 0 }; // minimum for .claude/agents/ support
+
+function parseClaudeVersion(versionStr) {
+  const m = versionStr?.match(/(\d+)\.(\d+)\.(\d+)/);
+  if (!m) return null;
+  return { major: parseInt(m[1]), minor: parseInt(m[2]), patch: parseInt(m[3]) };
+}
+
+function meetsMinVersion(v, min) {
+  if (!v) return false;
+  if (v.major !== min.major) return v.major > min.major;
+  if (v.minor !== min.minor) return v.minor > min.minor;
+  return v.patch >= min.patch;
+}
+
+function getClaudeVersion() {
+  try {
+    const out = execSync("claude --version", { encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+    return { raw: out, parsed: parseClaudeVersion(out) };
+  } catch {
+    try {
+      const out = execSync("claude.cmd --version", { encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+      return { raw: out, parsed: parseClaudeVersion(out) };
+    } catch {
+      return { raw: null, parsed: null };
+    }
+  }
+}
+
 const server = new McpServer({
   name: "project-voltron",
   version: VERSION,
@@ -211,7 +242,7 @@ server.tool(
 
 server.tool(
   "scaffold_project",
-  'Writes Project Voltron agent templates directly to disk for the given project type. Automatically selects the right agents and creates all necessary files. Use project_type to pick a preset ("unity", "web", "fullstack", "mobile", "general") or omit to include ALL agents.',
+  'Writes Project Voltron agent templates directly to disk for the given project type. Automatically selects the right agents and creates all necessary files. Use project_root to specify an explicit project path if files land in the wrong location. Use project_type to pick a preset ("unity", "web", "fullstack", "mobile", "general") or omit to include ALL agents.',
   {
     project_type: z
       .enum(VALID_PROJECT_TYPES)
@@ -219,11 +250,17 @@ server.tool(
       .describe(
         'Project type to scaffold for. "unity" = Unity game dev agents, "web"/"fullstack" = web dev agents, "mobile" = React Native + iOS + Android + QA + publishing agents, "general" = scrum-master + generic CLAUDE.md. Omit to include ALL agents.'
       ),
+    project_root: z
+      .string()
+      .optional()
+      .describe(
+        "Absolute path of the project to scaffold into. Defaults to the current working directory. Pass this explicitly if files are being written to the wrong location."
+      ),
   },
-  async ({ project_type }) => {
+  async ({ project_type, project_root: rawRoot }) => {
     const templateKeys = getTemplatesForType(project_type);
 
-    const cwd = process.cwd();
+    const cwd = path.resolve(rawRoot || process.cwd());
     const files = templateKeys.map((key) => {
       const t = TEMPLATES[key];
       return { path: t.destination, content: t.content };
@@ -244,11 +281,24 @@ server.tool(
 
     // Write all agent/config files directly to disk
     const written = [];
+    const failed = [];
     for (const f of files) {
-      const fullPath = path.join(cwd, f.path);
-      await fs.mkdir(path.dirname(fullPath), { recursive: true });
-      await fs.writeFile(fullPath, f.content, "utf-8");
-      written.push(f.path);
+      try {
+        const fullPath = path.join(cwd, f.path);
+        await fs.mkdir(path.dirname(fullPath), { recursive: true });
+        await fs.writeFile(fullPath, f.content, "utf-8");
+        written.push(f.path);
+      } catch (err) {
+        failed.push({ path: f.path, error: err.message });
+      }
+    }
+
+    // Make the launch script executable on Unix/macOS
+    if (process.platform !== "win32") {
+      try {
+        const runScriptPath = path.join(cwd, "scripts", "voltron-run.sh");
+        await fs.chmod(runScriptPath, 0o755);
+      } catch { /* non-fatal — user can chmod manually */ }
     }
 
     // Merge auto-update hook into .claude/settings.json (don't overwrite existing hooks)
@@ -270,15 +320,29 @@ server.tool(
     const typeLabel = project_type ? `${project_type} project` : "all agents";
     const fileList = written.map(f => `  - ${f}`).join("\n");
 
+    const failureSection = failed.length > 0
+      ? [
+          ``,
+          `## ⚠ Write Errors (${failed.length} file(s) failed)`,
+          failed.map(f => `  - ${f.path}: ${f.error}`).join("\n"),
+          ``,
+          `If files are consistently landing in the wrong location, re-run with an explicit project path:`,
+          `\`scaffold_project({ project_type: "${project_type || "general"}", project_root: "/absolute/path/to/your/project" })\``,
+        ].join("\n")
+      : "";
+
     return {
       content: [{
         type: "text",
         text: [
           `# Scaffold Complete — ${typeLabel}`,
           ``,
-          `**Project Voltron v${VERSION}** — wrote ${written.length} files to \`${cwd}\`:`,
+          `**Location:** \`${cwd}\``,
+          ``,
+          `**Project Voltron v${VERSION}** — wrote ${written.length} files:`,
           ``,
           fileList,
+          failureSection,
           ``,
           `## Next Steps`,
           ``,
@@ -288,6 +352,8 @@ server.tool(
           `4. **For mobile projects:** Note that iOS builds require macOS + Xcode (not Docker)`,
           ``,
           `The auto-update hook has been added to \`.claude/settings.json\` — agent files will stay current automatically.`,
+          ``,
+          `> **Tip:** If agents are not discovered by Claude Code, verify that \`.claude/agents/\` was created in your project root (shown above). You may need to restart Claude Code after scaffolding.`,
         ].join("\n"),
       }],
     };
@@ -1080,6 +1146,15 @@ server.tool(
       dockerStatus = "not found";
     }
 
+    // Claude Code version check
+    const claudeVer = getClaudeVersion();
+    const versionOk = claudeVer.parsed ? meetsMinVersion(claudeVer.parsed, CLAUDE_MIN_VERSION) : false;
+    const versionStatus = claudeVer.raw
+      ? versionOk
+        ? `✓ ${claudeVer.raw}`
+        : `⚠ ${claudeVer.raw} — update recommended (minimum: ${CLAUDE_MIN_VERSION.major}.${CLAUDE_MIN_VERSION.minor}.${CLAUDE_MIN_VERSION.patch} for agent support)`
+      : "⚠ Could not determine version (is claude in PATH?)";
+
     // Apply changes (unless dry_run)
     if (!dry_run && (missingAllow.length > 0 || missingDeny.length > 0)) {
       if (!settings.permissions) settings.permissions = {};
@@ -1111,6 +1186,7 @@ server.tool(
       `- **Allowlist:** ${allowStatus}`,
       `- **Deny rules:** ${denyStatus}`,
       `- **Docker:** ${dockerStatus === "available" ? "✓ available" : "⚠ Docker not found — install Docker Desktop for agent execution"}`,
+      `- **Claude Code:** ${versionStatus}`,
       "",
       dry_run
         ? "_Dry run — no changes were made. Call again without dry_run to apply fixes._"

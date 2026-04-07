@@ -1,0 +1,19 @@
+{
+  "timestamp": "2026-04-07T19:47:11.388Z",
+  "project_name": "project-sauron",
+  "project_type": "general",
+  "session_summary": "Dashboard data fix: diagnosed why hammer/alexandria Grafana dashboards showed no data. Root cause was Grafana datasource UID drift — initial provisioning without uid field caused auto-generated UIDs; later adding uid: prometheus may have created duplicate datasources. Fixed by adding deleteDatasources to both provisioning files, guaranteeing clean re-creation on every Grafana restart. Also removed placeholder blackbox_http targets.",
+  "agents_used": [
+    "devops-engineer"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "devops-engineer",
+      "worked_well": "Correctly identified the Grafana datasource UID drift pattern without SSH access — used Grafana API proxy to query Prometheus directly, which was a smart workaround for the internal-only Prometheus port. Produced a clean fix with good commit message explaining the full timeline.",
+      "needs_improvement": "Agent did not verify the fix post-deploy (it committed and trusted CI/CD). Should query the Grafana API after deploy completes to confirm probe_success data is flowing.",
+      "suggested_change": "Add a post-deploy verification step to devops-engineer template: after pushing a fix, wait 90s then query the target API endpoint to confirm the fix actually resolved the issue before marking complete."
+    }
+  ],
+  "overall_notes": "Key lesson: when Grafana datasource provisioning files are first deployed without an explicit uid field, Grafana auto-generates UIDs. Adding uid later does not reliably update the existing datasource. The deleteDatasources block is the safe pattern for any provisioned datasource that needs a specific uid. Documented in Alexandria loki-grafana-stack guide.",
+  "processed": false
+}

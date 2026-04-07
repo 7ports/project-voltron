@@ -8,7 +8,9 @@
     "project-voltron": "src/index.js"
   },
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "setup": "node scripts/setup.js",
+    "postinstall": "node scripts/setup.js"
   },
   "keywords": [
     "mcp",

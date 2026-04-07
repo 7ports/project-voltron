@@ -1,0 +1,19 @@
+{
+  "timestamp": "2026-04-07T20:36:23.961Z",
+  "project_name": "project-sauron",
+  "project_type": "general",
+  "session_summary": "Improved Helldiver MCP intelligence and Alexandria observability: (1) updated 3 Helldiver agent templates to detect MCP servers via @modelcontextprotocol/sdk, handle stdio transport correctly, plan Pushgateway-based metrics, and generate MCP-specific dashboard panels; (2) instrumented project-alexandria with prom-client — 7 metrics across all 8 tools, timer-based Pushgateway push; (3) exposed Pushgateway externally via nginx at /metrics/gateway/, updated Alexandria Grafana dashboard with 5 MCP panels. All deployed.",
+  "agents_used": [
+    "devops-engineer"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "devops-engineer",
+      "worked_well": "Successfully updated 3 complex markdown template files in one invocation despite the 10-min MCP timeout — the container completed and pushed before termination. GitHub MCP tools approach for cross-repo file pushes (mcp__github__push_files) worked perfectly when git push was unavailable.",
+      "needs_improvement": "Agent attempted git push via HTTPS in Docker without credentials before being told to use mcp__github__push_files — wastes turns diagnosing the auth failure. Should default to mcp__github__* tools for any repo that isn't the mounted /repo.",
+      "suggested_change": "Add to devops-engineer template: 'For repos OTHER than /repo (the mounted project directory), always use mcp__github__push_files and mcp__github__create_or_update_file to write files — never attempt git clone + git push, as HTTPS auth is not available in the Docker environment.'"
+    }
+  ],
+  "overall_notes": "Key architectural pattern established: stdio MCP servers cannot be probed by Prometheus (no HTTP port). The correct pattern is prom-client + timer-based Pushgateway push. This is now documented in both the Helldiver templates and Alexandria guide. Also discovered that Voltron Docker containers can use mcp__github__* tools for cross-repo operations — this is the reliable path for multi-repo work.",
+  "processed": false
+}

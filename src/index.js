@@ -211,98 +211,85 @@ server.tool(
 
 server.tool(
   "scaffold_project",
-  'Returns the full set of files needed to scaffold a project with Project Voltron agent templates. Automatically selects the right agents based on project type. Always includes the scrum-master agent. Use project_type to pick a preset ("unity", "web", "fullstack", "general") or omit to include ALL agents.',
+  'Writes Project Voltron agent templates directly to disk for the given project type. Automatically selects the right agents and creates all necessary files. Use project_type to pick a preset ("unity", "web", "fullstack", "mobile", "general") or omit to include ALL agents.',
   {
     project_type: z
       .enum(VALID_PROJECT_TYPES)
       .optional()
       .describe(
-        'Project type to scaffold for. "unity" = Unity game dev agents, "web"/"fullstack" = web dev agents (React/TS + Node + DevOps), "general" = scrum-master + generic CLAUDE.md. Omit to include ALL agents.'
+        'Project type to scaffold for. "unity" = Unity game dev agents, "web"/"fullstack" = web dev agents, "mobile" = React Native + iOS + Android + QA + publishing agents, "general" = scrum-master + generic CLAUDE.md. Omit to include ALL agents.'
       ),
   },
   async ({ project_type }) => {
     const templateKeys = getTemplatesForType(project_type);
 
+    const cwd = process.cwd();
     const files = templateKeys.map((key) => {
       const t = TEMPLATES[key];
-      return {
-        path: t.destination,
-        content: t.content,
-      };
+      return { path: t.destination, content: t.content };
     });
 
     // Add Docker execution files
-    files.push({
-      path: "Dockerfile.voltron",
-      content: DOCKERFILE_CONTENT,
-    });
+    files.push({ path: "Dockerfile.voltron", content: DOCKERFILE_CONTENT });
+    files.push({ path: "scripts/voltron-run.sh", content: VOLTRON_RUN_SCRIPT });
 
-    files.push({
-      path: "scripts/voltron-run.sh",
-      content: VOLTRON_RUN_SCRIPT,
-    });
-
-    // Build the auto-update hook settings file
-    // Use the voltron root (parent of __dirname which is src/)
+    // Build the auto-update hook settings content
     const voltronRoot = join(__dirname, "..").replace(/\\/g, "/");
     const autoUpdateScript = `${voltronRoot}/scripts/auto-update-agents.js`;
-
-    const settingsContent = JSON.stringify(
-      {
-        hooks: {
-          UserPromptSubmit: [
-            {
-              hooks: [
-                {
-                  type: "command",
-                  command: `node "${autoUpdateScript}"`,
-                },
-              ],
-            },
-          ],
-        },
+    const hooksContent = {
+      hooks: {
+        UserPromptSubmit: [{ hooks: [{ type: "command", command: `node "${autoUpdateScript}"` }] }],
       },
-      null,
-      2
-    );
-
-    const settingsFile = {
-      path: ".claude/settings.json",
-      content: settingsContent,
-      note: "Auto-update hook — merge with existing .claude/settings.json if one already exists",
     };
 
-    const typeLabel = project_type
-      ? `${project_type} project`
-      : "all available agents";
+    // Write all agent/config files directly to disk
+    const written = [];
+    for (const f of files) {
+      const fullPath = path.join(cwd, f.path);
+      await fs.mkdir(path.dirname(fullPath), { recursive: true });
+      await fs.writeFile(fullPath, f.content, "utf-8");
+      written.push(f.path);
+    }
 
-    const agentFileInstructions = files
-      .map(
-        (f, i) =>
-          `## File ${i + 1}: \`${f.path}\`\n\n\`\`\`markdown\n${f.content}\n\`\`\``
-      )
-      .join("\n\n---\n\n");
+    // Merge auto-update hook into .claude/settings.json (don't overwrite existing hooks)
+    const settingsPath = path.join(cwd, ".claude", "settings.json");
+    let existingSettings = {};
+    try {
+      existingSettings = JSON.parse(await fs.readFile(settingsPath, "utf-8"));
+    } catch { /* no existing settings */ }
 
-    const instructions =
-      `# Scaffold Instructions — ${typeLabel}\n\n` +
-      `**Project Voltron v${VERSION}**\n\n` +
-      `Write the following ${files.length} files to the project root:\n\n` +
-      agentFileInstructions +
-      `\n\n---\n\n` +
-      `## Auto-Update Hook: \`.claude/settings.json\`\n\n` +
-      `> **Important:** If \`.claude/settings.json\` already exists in this project, merge the \`hooks.UserPromptSubmit\` entry below into it rather than overwriting.\n\n` +
-      `\`\`\`json\n${settingsContent}\n\`\`\`\n\n` +
-      `This hook runs \`auto-update-agents.js\` at the start of each Claude Code session. If your installed agent templates are outdated, they are silently updated in place. You will see a \`[VOLTRON]\` message in context when an update occurs.` +
-      `\n\n---\n\n## Docker Execution\n\n` +
-      `The scaffold includes \`Dockerfile.voltron\` and \`scripts/voltron-run.sh\` above.\n\n` +
-      `The scrum-master uses these files automatically via the \`run_agent_in_docker\` MCP tool — each specialist agent is launched inside a Docker container with \`--dangerously-skip-permissions\` for fully autonomous execution. You do not need to start your Claude Code session in Docker.\n\n` +
-      `**Prerequisites:** Docker must be installed and running. After writing all files, make the launch script executable:\n\n` +
-      "```bash\nchmod +x scripts/voltron-run.sh\n```\n\n" +
-      `The launch script can also be used manually for standalone agent sessions:\n\n` +
-      "```bash\n./scripts/voltron-run.sh -p \"invoke @agent-scrum-master to plan the backlog\"\n```";
+    // Deep merge: preserve existing hooks, add UserPromptSubmit if not present
+    if (!existingSettings.hooks) existingSettings.hooks = {};
+    if (!existingSettings.hooks.UserPromptSubmit) {
+      existingSettings.hooks.UserPromptSubmit = hooksContent.hooks.UserPromptSubmit;
+    }
+    await fs.mkdir(path.dirname(settingsPath), { recursive: true });
+    await fs.writeFile(settingsPath, JSON.stringify(existingSettings, null, 2));
+    written.push(".claude/settings.json (auto-update hook merged)");
+
+    const typeLabel = project_type ? `${project_type} project` : "all agents";
+    const fileList = written.map(f => `  - ${f}`).join("\n");
 
     return {
-      content: [{ type: "text", text: instructions }],
+      content: [{
+        type: "text",
+        text: [
+          `# Scaffold Complete — ${typeLabel}`,
+          ``,
+          `**Project Voltron v${VERSION}** — wrote ${written.length} files to \`${cwd}\`:`,
+          ``,
+          fileList,
+          ``,
+          `## Next Steps`,
+          ``,
+          `1. **Fill in \`CLAUDE.md\`** with your project name, stack, and current work`,
+          `2. **Ensure Docker is running** — agents execute inside Docker containers`,
+          `3. **Invoke the scrum-master:** \`@agent-scrum-master\` to plan your sprint`,
+          `4. **For mobile projects:** Note that iOS builds require macOS + Xcode (not Docker)`,
+          ``,
+          `The auto-update hook has been added to \`.claude/settings.json\` — agent files will stay current automatically.`,
+        ].join("\n"),
+      }],
     };
   }
 );
@@ -1032,6 +1019,110 @@ server.tool(
   }
 );
 
+// ─── Tool: setup_voltron ───────────────────────────────────────────────────
+
+server.tool(
+  "setup_voltron",
+  "Verify and repair Project Voltron installation. Updates the global Claude Code allowlist with recommended permissions, confirms MCP registration, and reports Docker availability. Safe to call multiple times.",
+  {
+    dry_run: z.boolean().optional().describe("If true, report what would change without writing anything (default: false)"),
+  },
+  async ({ dry_run = false }) => {
+    const homeDir = process.env.HOME || process.env.USERPROFILE || os.homedir();
+    const settingsPath = path.join(homeDir, ".claude", "settings.json");
+
+    // Recommended allowlist
+    const VOLTRON_ALLOW = [
+      "Read", "Write", "Edit", "Glob", "Grep", "WebFetch", "WebSearch", "TodoWrite",
+      "Bash(git *)", "Bash(gh *)", "Bash(mkdir *)", "Bash(ls *)", "Bash(ls)",
+      "Bash(cat *)", "Bash(echo *)", "Bash(head *)", "Bash(tail *)", "Bash(wc *)",
+      "Bash(sort *)", "Bash(uniq *)", "Bash(cut *)", "Bash(tr *)", "Bash(sed *)",
+      "Bash(awk *)", "Bash(grep *)", "Bash(rg *)", "Bash(find *)", "Bash(which *)",
+      "Bash(where *)", "Bash(type *)", "Bash(pwd)", "Bash(cd *)", "Bash(cp *)",
+      "Bash(mv *)", "Bash(touch *)", "Bash(chmod *)", "Bash(unzip *)", "Bash(tar *)",
+      "Bash(curl *)", "Bash(wget *)", "Bash(diff *)", "Bash(patch *)", "Bash(tee *)",
+      "Bash(xargs *)", "Bash(jq *)", "Bash(node *)", "Bash(npm *)", "Bash(npx *)",
+      "Bash(python *)", "Bash(pip *)", "Bash(env *)", "Bash(export *)",
+      "Bash(set *)", "Bash(test *)", "Bash([ *)", "Bash(true)", "Bash(false)",
+      "Bash(date *)", "Bash(date)", "Bash(realpath *)", "Bash(basename *)",
+      "Bash(dirname *)", "Bash(stat *)", "Bash(file *)", "Bash(du *)", "Bash(df *)",
+      "Bash(docker *)", "Bash(docker-compose *)", "Bash(openssl *)", "Bash(eval *)",
+      "Bash(sleep *)",
+      "mcp__project-voltron__*", "mcp__alexandria__*"
+    ];
+
+    const VOLTRON_DENY = [
+      "Bash(git push --force *)", "Bash(git push -f *)", "Bash(git reset --hard *)",
+      "Bash(rm -rf *)", "Bash(rm -r *)", "Bash(rmdir *)"
+    ];
+
+    // Read current settings
+    let settings = {};
+    try {
+      settings = JSON.parse(await fs.readFile(settingsPath, "utf-8"));
+    } catch { /* file doesn't exist yet */ }
+
+    const currentAllow = settings?.permissions?.allow ?? [];
+    const currentDeny = settings?.permissions?.deny ?? [];
+
+    const missingAllow = VOLTRON_ALLOW.filter(e => !currentAllow.includes(e));
+    const missingDeny = VOLTRON_DENY.filter(e => !currentDeny.includes(e));
+
+    // Check MCP registration
+    const mcpRegistered = !!settings?.mcpServers?.["project-voltron"];
+
+    // Check Docker
+    let dockerStatus = "unknown";
+    try {
+      execSync("docker --version", { stdio: "ignore" });
+      dockerStatus = "available";
+    } catch {
+      dockerStatus = "not found";
+    }
+
+    // Apply changes (unless dry_run)
+    if (!dry_run && (missingAllow.length > 0 || missingDeny.length > 0)) {
+      if (!settings.permissions) settings.permissions = {};
+      if (!settings.permissions.allow) settings.permissions.allow = [];
+      if (!settings.permissions.deny) settings.permissions.deny = [];
+      settings.permissions.allow.push(...missingAllow);
+      settings.permissions.deny.push(...missingDeny);
+      await fs.mkdir(path.dirname(settingsPath), { recursive: true });
+      await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2));
+    }
+
+    // Build report
+    const allowStatus = missingAllow.length === 0
+      ? `✓ All ${VOLTRON_ALLOW.length} entries present`
+      : dry_run
+        ? `⚠ ${missingAllow.length} entries missing (run without dry_run to add them)`
+        : `✓ Added ${missingAllow.length} missing entries`;
+
+    const denyStatus = missingDeny.length === 0
+      ? `✓ All ${VOLTRON_DENY.length} safety rules present`
+      : dry_run
+        ? `⚠ ${missingDeny.length} rules missing`
+        : `✓ Added ${missingDeny.length} missing rules`;
+
+    const report = [
+      "## Project Voltron Health Check",
+      "",
+      `- **MCP Server:** ${mcpRegistered ? "✓ registered" : "⚠ not found in settings.json — run \`node scripts/setup.js\` to register"}`,
+      `- **Allowlist:** ${allowStatus}`,
+      `- **Deny rules:** ${denyStatus}`,
+      `- **Docker:** ${dockerStatus === "available" ? "✓ available" : "⚠ Docker not found — install Docker Desktop for agent execution"}`,
+      "",
+      dry_run
+        ? "_Dry run — no changes were made. Call again without dry_run to apply fixes._"
+        : missingAllow.length === 0 && missingDeny.length === 0
+          ? "_Nothing to update — installation is fully configured._"
+          : "**Allowlist updated.** Restart Claude Code to apply the new permissions.",
+    ].join("\n");
+
+    return { content: [{ type: "text", text: report }] };
+  }
+);
+
 // ─── Tool: run_agent_in_docker ─────────────────────────────────────────────
 
 server.tool(
@@ -1185,6 +1276,16 @@ server.tool(
     // causing the -c argument to be mangled before reaching Docker.
     const homeDir = process.env.HOME || process.env.USERPROFILE || os.homedir();
 
+    // Conditionally mount ~/.gitconfig so git commits work inside Docker
+    const gitConfigPath = path.join(homeDir, ".gitconfig");
+    let gitConfigMount = [];
+    try {
+      await fs.access(gitConfigPath);
+      gitConfigMount = ["-v", `${gitConfigPath}:/home/voltron/.gitconfig:ro`];
+    } catch {
+      // No ~/.gitconfig — agents must set git identity manually if they need to commit
+    }
+
     // Pass through Claude auth env vars so the agent inside Docker can authenticate
     const authEnvArgs = [];
     if (process.env.CLAUDE_CODE_OAUTH_TOKEN) {
@@ -1205,6 +1306,7 @@ server.tool(
       "-v", `${cwd}:/workspace`,
       "-v", `${homeDir}/.claude:/home/voltron/.claude`,
       "-v", `${homeDir}/.claude.json:/home/voltron/.claude.json:ro`,
+      ...gitConfigMount,        // mount ~/.gitconfig if present so git commits work
       "-v", `${tmpFile}:/tmp/task.md:ro`,
       "voltron-agent",
       "-c",

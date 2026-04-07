@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from 'child_process';
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import os from 'os';
@@ -8,26 +8,25 @@ import os from 'os';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const voltronRoot = join(__dirname, '..');
 const mainScriptAbsolutePath = join(voltronRoot, 'src', 'index.js').replace(/\\/g, '/');
-const settingsPath = join(os.homedir(), '.claude', 'settings.json');
-
-const results = {
-  deps: { ok: false, msg: '' },
-  mcp: { ok: false, msg: '' },
-  allowlist: { ok: false, msg: '' },
-  docker: { ok: false, msg: '' },
-};
+const claudeDir = join(os.homedir(), '.claude');
+const settingsPath = join(claudeDir, 'settings.json');
 
 // ─── Step 1: Install npm dependencies ────────────────────────────────────────
+// Skip if we're already inside an npm lifecycle to prevent recursion
+const lifecycle = process.env.npm_lifecycle_event;
 const mcpDir = join(voltronRoot, 'node_modules', '@modelcontextprotocol');
-if (existsSync(mcpDir)) {
-  results.deps = { ok: true, msg: 'npm dependencies already installed' };
+
+if (lifecycle === 'install' || lifecycle === 'postinstall') {
+  console.log('  ✓ Skipping npm install (already in npm lifecycle)');
+} else if (existsSync(mcpDir)) {
+  console.log('  ✓ npm dependencies already installed');
 } else {
-  console.log('Installing npm dependencies...');
+  console.log('  Installing npm dependencies...');
   const r = spawnSync('npm', ['install'], { cwd: voltronRoot, stdio: 'inherit' });
   if (r.status === 0) {
-    results.deps = { ok: true, msg: 'npm dependencies installed' };
+    console.log('  ✓ npm dependencies installed');
   } else {
-    results.deps = { ok: false, msg: 'npm install failed (exit ' + r.status + ')' };
+    console.log('  ⚠ npm install failed (exit ' + r.status + ')');
   }
 }
 
@@ -42,7 +41,7 @@ function readSettings() {
 
 let settings = readSettings();
 if (settings.mcpServers?.['project-voltron']) {
-  results.mcp = { ok: true, msg: 'MCP server already registered' };
+  console.log('  ✓ MCP server already registered');
 } else {
   const args = ['mcp', 'add', '--scope', 'user', 'project-voltron', '--', 'node', mainScriptAbsolutePath];
   let r = spawnSync('claude', args, { encoding: 'utf-8', stdio: 'pipe' });
@@ -52,26 +51,22 @@ if (settings.mcpServers?.['project-voltron']) {
   }
 
   if (r.error?.code === 'ENOENT') {
-    const cmd = `claude mcp add --scope user project-voltron -- node ${mainScriptAbsolutePath}`;
-    console.log('⚠ Claude CLI not found. Run this manually:');
-    console.log('  ' + cmd);
-    results.mcp = { ok: false, msg: 'Claude CLI not found — run manually (see above)' };
+    console.log('  ⚠ Could not auto-register. Run this manually:');
+    console.log(`    claude mcp add --scope user project-voltron -- node "${mainScriptAbsolutePath}"`);
   } else if (r.status === 0) {
-    results.mcp = { ok: true, msg: 'MCP server registered' };
+    console.log('  ✓ MCP server registered');
   } else {
     const errMsg = (r.stderr || '').trim();
-    // Treat "already exists" as success
     if (errMsg.toLowerCase().includes('already exists')) {
-      results.mcp = { ok: true, msg: 'MCP server already registered' };
+      console.log('  ✓ MCP server already registered');
     } else {
-      console.log('⚠ MCP registration failed: ' + (errMsg || 'exit ' + r.status));
-      results.mcp = { ok: false, msg: 'MCP registration failed — check Claude CLI' };
+      console.log('  ⚠ MCP registration failed: ' + (errMsg || 'exit ' + r.status));
     }
   }
 }
 
 // ─── Step 3: Update global allowlist ─────────────────────────────────────────
-const ALLOW_ENTRIES = [
+const VOLTRON_ALLOW = [
   'Read', 'Write', 'Edit', 'Glob', 'Grep', 'WebFetch', 'WebSearch', 'TodoWrite',
   'Bash(git *)', 'Bash(gh *)', 'Bash(mkdir *)', 'Bash(ls *)', 'Bash(ls)',
   'Bash(cat *)', 'Bash(echo *)', 'Bash(head *)', 'Bash(tail *)', 'Bash(wc *)',
@@ -85,12 +80,12 @@ const ALLOW_ENTRIES = [
   'Bash(set *)', 'Bash(test *)', 'Bash([ *)', 'Bash(true)', 'Bash(false)',
   'Bash(date *)', 'Bash(date)', 'Bash(realpath *)', 'Bash(basename *)',
   'Bash(dirname *)', 'Bash(stat *)', 'Bash(file *)', 'Bash(du *)', 'Bash(df *)',
-  'Bash(docker *)', 'Bash(docker-compose *)', 'Bash(openssl *)',
-  'Bash(eval *)', 'Bash(sleep *)',
+  'Bash(docker *)', 'Bash(docker-compose *)', 'Bash(openssl *)', 'Bash(eval *)',
+  'Bash(sleep *)',
   'mcp__project-voltron__*', 'mcp__alexandria__*',
 ];
 
-const DENY_ENTRIES = [
+const VOLTRON_DENY = [
   'Bash(git push --force *)', 'Bash(git push -f *)', 'Bash(git reset --hard *)',
   'Bash(rm -rf *)', 'Bash(rm -r *)', 'Bash(rmdir *)',
 ];
@@ -103,93 +98,53 @@ if (!Array.isArray(settings.permissions.deny)) settings.permissions.deny = [];
 const existingAllow = new Set(settings.permissions.allow);
 const existingDeny = new Set(settings.permissions.deny);
 
-let addedCount = 0;
-for (const entry of ALLOW_ENTRIES) {
+let addedAllow = 0;
+let addedDeny = 0;
+
+for (const entry of VOLTRON_ALLOW) {
   if (!existingAllow.has(entry)) {
     settings.permissions.allow.push(entry);
-    addedCount++;
+    addedAllow++;
   }
 }
-for (const entry of DENY_ENTRIES) {
+for (const entry of VOLTRON_DENY) {
   if (!existingDeny.has(entry)) {
     settings.permissions.deny.push(entry);
-    addedCount++;
+    addedDeny++;
   }
 }
 
 try {
+  mkdirSync(claudeDir, { recursive: true });
   writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf-8');
-  if (addedCount > 0) {
-    results.allowlist = { ok: true, msg: `Allowlist updated (+${addedCount} entries)` };
-  } else {
-    results.allowlist = { ok: true, msg: 'Allowlist already up to date' };
-  }
+  console.log(`  ✓ Added ${addedAllow} new allowlist entries, ${addedDeny} deny rules`);
 } catch (err) {
-  results.allowlist = { ok: false, msg: 'Could not write settings.json: ' + err.message };
+  console.log('  ⚠ Could not write settings.json: ' + err.message);
 }
 
-// ─── Step 4: Check Docker ─────────────────────────────────────────────────────
+// ─── Step 4: Verify Docker ────────────────────────────────────────────────────
 const dockerResult = spawnSync('docker', ['--version'], { encoding: 'utf-8', stdio: 'pipe' });
 if (dockerResult.status === 0) {
   const version = (dockerResult.stdout || '').trim().replace(/^Docker version\s+/i, '').split(',')[0];
-  results.docker = { ok: true, msg: `Docker ${version}` };
+  console.log(`  ✓ Docker available: ${version}`);
 } else {
-  console.log('⚠ Docker not found — install Docker Desktop to enable autonomous agent execution.');
-  console.log('  https://www.docker.com/products/docker-desktop/');
-  results.docker = { ok: false, msg: 'Docker not found — install Docker Desktop' };
+  console.log('  ⚠ Docker not found. Install Docker Desktop: https://www.docker.com/products/docker-desktop');
+  console.log('    Docker is required for autonomous agent execution.');
 }
 
-// ─── Summary box ─────────────────────────────────────────────────────────────
-const INNER = 46; // inner width (between ║ characters)
-const pad = (str, w) => str + ' '.repeat(Math.max(0, w - str.length));
-
-// Wrap a message to fit within available inner width
-function wrapRow(icon, msg, innerWidth) {
-  const prefix = `  ${icon}  `;
-  const indent = ' '.repeat(prefix.length);
-  const maxLen = innerWidth - prefix.length;
-  const lines = [];
-
-  // Split message into tokens, reassemble into lines
-  const words = msg.split(' ');
-  let current = '';
-  for (const word of words) {
-    if (current.length === 0) {
-      current = word;
-    } else if (current.length + 1 + word.length <= maxLen) {
-      current += ' ' + word;
-    } else {
-      lines.push(current.length === 0 ? '' : current);
-      current = word;
-    }
-  }
-  if (current.length > 0) lines.push(current);
-
-  return lines.map((l, i) => (i === 0 ? prefix : indent) + l);
-}
-
-const rows = [
-  { ok: results.deps.ok, msg: results.deps.msg },
-  { ok: results.mcp.ok, msg: results.mcp.msg },
-  { ok: results.allowlist.ok, msg: results.allowlist.msg },
-  { ok: results.docker.ok, msg: results.docker.msg },
-];
-
+// ─── Final summary ────────────────────────────────────────────────────────────
+const HR = '━'.repeat(45);
 console.log('');
-console.log('╔' + '═'.repeat(INNER) + '╗');
-console.log('║  ' + pad('Project Voltron Setup Complete', INNER - 2) + '║');
-console.log('╠' + '═'.repeat(INNER) + '╣');
-for (const row of rows) {
-  const icon = row.ok ? '✓' : '⚠';
-  const lines = wrapRow(icon, row.msg, INNER);
-  for (const line of lines) {
-    console.log('║' + pad(line, INNER) + '║');
-  }
-}
-console.log('╚' + '═'.repeat(INNER) + '╝');
+console.log(HR);
+console.log('  ✅ Project Voltron setup complete!');
+console.log(HR);
 console.log('');
-console.log('Next steps:');
-console.log('  1. Restart Claude Code to apply MCP and allowlist changes');
+console.log('  Next steps:');
+console.log('  1. Restart Claude Code to load the MCP server and allowlist');
 console.log('  2. In any project: "Scaffold this project with Voltron agents"');
-console.log('  3. Verify install: call mcp__project-voltron__setup_voltron from Claude Code');
+console.log('  3. Invoke the scrum-master: @agent-scrum-master');
+console.log('');
+console.log('  To re-run setup later:  node scripts/setup.js');
+console.log('  To verify from Claude:  mcp__project-voltron__setup_voltron');
+console.log(HR);
 console.log('');

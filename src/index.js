@@ -260,6 +260,7 @@ server.tool(
   async ({ project_type, project_root: rawRoot }) => {
     const templateKeys = getTemplatesForType(project_type);
 
+    const rootWasExplicit = !!rawRoot;
     const cwd = path.resolve(rawRoot || process.cwd());
     const files = templateKeys.map((key) => {
       const t = TEMPLATES[key];
@@ -396,6 +397,20 @@ server.tool(
       ``,
       `**Location:** \`${cwd}\``,
       `**Project Voltron v${VERSION}**`,
+    ];
+
+    if (!rootWasExplicit) {
+      sections.push(
+        ``,
+        `> ⚠️ **No \`project_root\` was specified.** Files were written to: \`${cwd}\``,
+        `> If this is NOT your project directory, re-run with an explicit path:`,
+        `> \`\`\``,
+        `> scaffold_project({ project_type: "${project_type || "general"}", project_root: "/absolute/path/to/your/project" })`,
+        `> \`\`\``
+      );
+    }
+
+    sections.push(
       ``,
       `**Written** (${written.length}):`,
       written.length ? formatList(written) : "  (none)",
@@ -408,7 +423,7 @@ server.tool(
       ``,
       `**Noted** (${noted.length}):`,
       noted.length ? formatList(noted) : "  (none)",
-    ];
+    );
 
     if (failed.length > 0) {
       sections.push(``, `**Failed** (${failed.length}):`, formatList(failed));
@@ -420,12 +435,11 @@ server.tool(
       ``,
       `## Next Steps`,
       ``,
-      `1. **Fill in \`CLAUDE.md\`** with your project name, stack, and current work`,
-      `2. **Ensure Docker is running** — agents execute inside Docker containers`,
-      `3. **Invoke the scrum-master:** \`@agent-scrum-master\` to plan your sprint`,
-      `4. **For mobile projects:** Note that iOS builds require macOS + Xcode (not Docker)`,
-      ``,
-      `> **Tip:** If agents are not discovered by Claude Code, verify that \`.claude/agents/\` was created in your project root (shown above). You may need to restart Claude Code after scaffolding.`,
+      `1. **Restart Claude Code** — agent files are not hot-reloaded. You must restart for agents to appear in \`@agent\` autocomplete.`,
+      `2. **Fill in \`CLAUDE.md\`** with your project name, stack, and current work`,
+      `3. **Ensure Docker is running** — agents execute inside Docker containers`,
+      `4. **Invoke the scrum-master:** \`@agent-scrum-master\` to plan your sprint`,
+      `5. **For mobile projects:** Note that iOS builds require macOS + Xcode (not Docker)`,
     );
 
     return {

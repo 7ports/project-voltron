@@ -50,34 +50,30 @@ An MCP server that provides teams of specialized agent templates for Claude Code
 
 ## Installation
 
-### From source
+### One-command setup
 
 ```bash
 git clone https://github.com/7ports/project-voltron.git
 cd project-voltron
-npm install
+node scripts/setup.js
 ```
 
-### Register as a global MCP server
+The setup script:
+- Installs npm dependencies
+- Registers the `project-voltron` MCP server in Claude Code (global scope)
+- Adds the recommended allowlist to `~/.claude/settings.json` so agents don't require manual approval for common commands
+- Verifies Docker is available
 
-```bash
-claude mcp add --scope user \
-  project-voltron -- \
-  node /path/to/project-voltron/src/index.js
+**Restart Claude Code** after running setup to load the new MCP server and allowlist.
+
+### Re-verify installation
+
+From within any Claude Code session:
+```
+Call mcp__project-voltron__setup_voltron
 ```
 
-Or add manually to `~/.claude/settings.json`:
-
-```json
-{
-  "mcpServers": {
-    "project-voltron": {
-      "command": "node",
-      "args": ["/path/to/project-voltron/src/index.js"]
-    }
-  }
-}
-```
+This checks and repairs the allowlist without requiring a terminal.
 
 ## Alexandria Integration
 
@@ -101,7 +97,8 @@ See [Project Alexandria](https://github.com/7ports/project-alexandria) for setup
 |---|---|
 | `list_templates` | List all templates, optionally filtered by project type |
 | `get_template` | Get the full content of a specific template |
-| `scaffold_project` | Scaffold agents + auto-update hook for a given project type |
+| `scaffold_project` | Writes agent templates and Dockerfile directly to disk for unity, web, fullstack, mobile, or general projects |
+| `setup_voltron` | Verify and repair Voltron installation from within Claude Code — updates the global allowlist and reports MCP/Docker status |
 | `get_auto_update_hook` | Get the `.claude/settings.json` hook for existing projects |
 | `get_agent_usage_guide` | Usage guide for invoking and coordinating agents |
 | `check_for_updates` | Check if installed agent files are outdated vs. current templates |

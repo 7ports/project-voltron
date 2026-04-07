@@ -286,7 +286,7 @@
       <h1>Project Voltron</h1>
       <p>Specialized agent teams for Claude Code, served via MCP. Scaffold Unity, web, mobile, or general projects with battle-tested subagent templates — Alexandria-aware, self-improving, and auto-updating.</p>
       <div class="badge-row">
-        <span class="badge">v2.5.1</span>
+        <span class="badge">v2.6.0</span>
         <span class="badge">MCP Server</span>
         <span class="badge">Unity</span>
         <span class="badge">Web / Fullstack</span>
@@ -521,32 +521,33 @@
       <div class="steps">
         <div class="step">
           <div class="step-num">1</div>
-          <h3>Install</h3>
-          <p>Clone and register as a global MCP server:</p>
+          <h3>Setup</h3>
+          <p>Clone and run the one-command setup:</p>
           <pre><code>git clone https://github.com/7ports/project-voltron.git
-cd project-voltron && npm install
-
-claude mcp add --scope user \
-  project-voltron -- \
-  node /path/to/project-voltron/src/index.js</code></pre>
+cd project-voltron
+node scripts/setup.js</code></pre>
+          <p style="margin-top:10px; font-size:0.85rem; color:var(--text-muted)">Installs dependencies, registers the MCP server, and configures the global allowlist automatically. Restart Claude Code when prompted.</p>
         </div>
         <div class="step">
           <div class="step-num">2</div>
           <h3>Scaffold</h3>
           <p>In any project, ask Claude Code:</p>
-          <pre><code>"Scaffold this Unity project with Voltron agents"
+          <pre><code>"Scaffold this as a mobile project with Voltron agents"
 
-# or for web projects:
+# or for other project types:
+"Scaffold this Unity project with Voltron agents"
 "Scaffold this web project with Voltron agents"</code></pre>
+          <p style="margin-top:10px; font-size:0.85rem; color:var(--text-muted)">Agent files are written directly to disk — no manual copy-paste required.</p>
         </div>
         <div class="step">
           <div class="step-num">3</div>
           <h3>Develop</h3>
           <p>Fill in CLAUDE.md, then invoke agents:</p>
-          <pre><code>@agent-scrum-master  ← plan your sprint
-@agent-csharp-dev    ← write Unity scripts
-@agent-fullstack-dev ← build React + API
-@agent-build-validator ← validate before commit</code></pre>
+          <pre><code>@agent-scrum-master      ← plan your sprint
+@agent-mobile-dev        ← React Native + Expo
+@agent-ios-dev           ← native Swift/SwiftUI
+@agent-android-dev       ← Kotlin + Jetpack Compose
+@agent-app-store-publisher ← Fastlane + store release</code></pre>
         </div>
       </div>
     </div>
@@ -572,7 +573,11 @@ claude mcp add --scope user \
           </tr>
           <tr>
             <td><code>scaffold_project</code></td>
-            <td>Get the right agent set + auto-update hook for unity, web, fullstack, mobile, or general projects</td>
+            <td>Writes agent templates and Dockerfile directly to disk for unity, web, fullstack, mobile, or general projects</td>
+          </tr>
+          <tr>
+            <td><code>setup_voltron</code></td>
+            <td>Verify and repair Voltron installation from within Claude Code — updates the global allowlist and reports MCP/Docker status</td>
           </tr>
           <tr>
             <td><code>get_auto_update_hook</code></td>
@@ -749,7 +754,7 @@ claude mcp add --scope user \
     <div class="container">
       <p>
         <a href="https://github.com/7ports/project-voltron">GitHub</a> &middot;
-        v2.4.0 &middot;
+        v2.6.0 &middot;
         MIT License &middot;
         Built by <a href="https://github.com/7ports">7ports</a>
       </p>

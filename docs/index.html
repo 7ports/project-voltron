@@ -286,7 +286,7 @@
       <h1>Project Voltron</h1>
       <p>Specialized agent teams for Claude Code, served via MCP. Scaffold Unity, web, mobile, or general projects with battle-tested subagent templates — Alexandria-aware, self-improving, and auto-updating.</p>
       <div class="badge-row">
-        <span class="badge">v2.7.2</span>
+        <span class="badge">v2.8.0</span>
         <span class="badge">MCP Server</span>
         <span class="badge">Unity</span>
         <span class="badge">Web / Fullstack</span>
@@ -438,23 +438,23 @@
         <div class="agent-grid">
           <div class="agent-card">
             <h3>Scene Architect <span class="invoke">@agent-scene-architect</span></h3>
-            <p>GameObject hierarchy, prefabs, scene composition, transforms, and components. Builds the world.</p>
+            <p>GameObject hierarchy, prefabs, scene composition, transforms, and components. Requires live Unity Editor — invoke directly from the chat window, not via Docker.</p>
           </div>
           <div class="agent-card">
             <h3>C# Dev <span class="invoke">@agent-csharp-dev</span></h3>
-            <p>MonoBehaviours, ScriptableObjects, gameplay systems, and editor tools. Writes clean, performant Unity C#.</p>
+            <p>MonoBehaviours, ScriptableObjects, gameplay systems, and editor tools. Writes clean, performant Unity C#. Docker-compatible for file editing; defers compilation verification to build-validator.</p>
           </div>
           <div class="agent-card">
             <h3>Shader Artist <span class="invoke">@agent-shader-artist</span></h3>
-            <p>Shaders, materials, VFX Graph, post-processing, and render features. Knows URP, HDRP, and Built-in.</p>
+            <p>Shaders, materials, VFX Graph, post-processing, and render features. Knows URP, HDRP, and Built-in. File editing in Docker; visual preview requires direct invocation.</p>
           </div>
           <div class="agent-card">
             <h3>Build Validator <span class="invoke">@agent-build-validator</span></h3>
-            <p>Console monitoring, compile checks, Play Mode smoke tests, pre-commit validation. Read-only watchdog.</p>
+            <p>Console monitoring, compile checks, Play Mode smoke tests, pre-commit validation. Requires live Unity Editor — invoke directly from the chat window, not via Docker.</p>
           </div>
           <div class="agent-card">
             <h3>Asset Manager <span class="invoke">@agent-asset-manager</span></h3>
-            <p>Folder structure, import settings, naming conventions, and project audits. Keeps things organized.</p>
+            <p>Folder structure, import settings, naming conventions, and project audits. Folder/manifest work in Docker; import settings require direct invocation.</p>
           </div>
         </div>
       </div>
@@ -762,7 +762,7 @@ node scripts/setup.js</code></pre>
     <div class="container">
       <p>
         <a href="https://github.com/7ports/project-voltron">GitHub</a> &middot;
-        v2.7.2 &middot;
+        v2.8.0 &middot;
         MIT License &middot;
         Built by <a href="https://github.com/7ports">7ports</a>
       </p>

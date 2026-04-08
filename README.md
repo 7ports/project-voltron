@@ -14,13 +14,15 @@ An MCP server that provides teams of specialized agent templates for Claude Code
 
 ### Unity
 
-| Agent | Purpose |
-|---|---|
-| **scene-architect** | GameObject hierarchy, prefabs, scene composition, transforms, and components |
-| **csharp-dev** | MonoBehaviours, ScriptableObjects, gameplay systems, editor tools |
-| **shader-artist** | Shaders, materials, VFX Graph, render pipeline features (URP/HDRP/Built-in) |
-| **build-validator** | Console monitoring, compile checks, Play Mode smoke tests |
-| **asset-manager** | Folder structure, import settings, naming conventions |
+Unity agents fall into two invocation modes. The scrum-master handles Docker agents automatically; **Direct** agents must be invoked from the chat window (they need a live Unity Editor with Unity MCP connected).
+
+| Agent | Purpose | Mode |
+|---|---|---|
+| **scene-architect** | GameObject hierarchy, prefabs, scene composition, transforms, and components | Direct only |
+| **csharp-dev** | MonoBehaviours, ScriptableObjects, gameplay systems, editor tools | Docker (file edit) |
+| **shader-artist** | Shaders, materials, VFX Graph, render pipeline features (URP/HDRP/Built-in) | Docker (file) / Direct (preview) |
+| **build-validator** | Console monitoring, compile checks, Play Mode smoke tests | Direct only |
+| **asset-manager** | Folder structure, import settings, naming conventions | Docker (folders) / Direct (import settings) |
 
 ### Web / Fullstack
 

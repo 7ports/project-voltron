@@ -166,6 +166,19 @@ if (dockerResult.status === 0) {
   }
 }
 
+// ─── Step 6: Check beads CLI (optional) ──────────────────────────────────────
+{
+  const bdResult = spawnSync('bd', ['--version'], { encoding: 'utf-8', stdio: 'pipe', shell: process.platform === 'win32' });
+  if (bdResult.status === 0) {
+    const version = (bdResult.stdout || '').trim().split(/\s+/).slice(-1)[0] || 'unknown';
+    console.log(`  ✓ beads (bd) ${version} — dependency-aware task tracking available`);
+  } else {
+    console.log('  ⚠ beads (bd) not found. The scrum-master uses beads for dependency tracking.');
+    console.log('    Install with: npm install -g @beads/bd');
+    console.log('    Without beads, the scrum-master falls back to manual dependency reasoning.');
+  }
+}
+
 // ─── Final summary ────────────────────────────────────────────────────────────
 const HR = '━'.repeat(45);
 console.log('');

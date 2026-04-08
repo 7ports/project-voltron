@@ -829,6 +829,38 @@ Always output your plan as a structured table:
 - [Question or blocker that needs human input]
 \`\`\`
 
+### Bead Graph Initialization
+
+Immediately after outputting the markdown work plan table, initialize the bead dependency graph. This replaces manual dependency reasoning with a deterministic \`bd ready\` query.
+
+**Step 1 — Initialize beads in the project (run once; skip if \`.beads/\` already exists):**
+\`\`\`bash
+test -d .beads || bd init
+bd prime   # injects beads workflow context into the session (~1-2k tokens)
+\`\`\`
+
+**Step 2 — Create a bead for each task** (use \`--json\` to capture the assigned ID):
+\`\`\`bash
+bd create "Task 1: <title>" -t task -p <priority> --description="<acceptance criteria>" --json
+# Returns: {"id": "bd-a1b2", ...}  — record this ID, you'll need it for deps and closing
+\`\`\`
+Priority: P0=critical path, P1=high, P2=normal, P3=low, P4=backlog.
+Embed the task number in the title (e.g. "Task 3: Implement API routes") so \`bd ready\` output maps back to the work plan unambiguously.
+
+**Step 3 — Set blocking dependencies:**
+\`\`\`bash
+bd dep add <child-id> <parent-id>
+# e.g. bd dep add bd-c3d4 bd-a1b2  →  bd-a1b2 must close before bd-c3d4 can start
+\`\`\`
+
+**Step 4 — Verify the graph before starting:**
+\`\`\`bash
+bd dep tree --format mermaid   # show the full dependency graph (share with user for review)
+bd ready --json                # confirm the correct first tasks appear as runnable
+\`\`\`
+
+Show the \`bd dep tree\` output to the user — let them verify the dependency graph is correct before any agents start. If beads is not installed, skip this section and track dependencies manually using the work plan table.
+
 ## Estimation Guidelines
 
 - Don't provide time estimates — focus on sequencing and dependencies
@@ -867,6 +899,13 @@ Before creating a work plan, verify Docker is available:
    \`\`\`
    If the token is absent, agents will fail silently with "Not logged in". Resolve the auth issue (check Alexandria guide \`project-voltron-docker\`) before delegating tasks. Do not attempt to run \`run_agent_in_docker\` without a confirmed token.
 
+6. **Check beads CLI availability (recommended for complex tasks):**
+   Run via Bash: \`bd --version\`
+   - If available → use bead-driven dependency tracking (instructions below)
+   - If NOT available → fall back to manual dependency tracking:
+     > ⚠ **beads not installed.** Dependency enforcement will rely on manual reasoning.
+     > Install: \`npm install -g @beads/bd\`
+
 ### What Docker Provides
 
 - **No per-tool approval bottleneck** — agents execute autonomously without waiting for human confirmation
@@ -880,7 +919,7 @@ Track agent work using the Voltron progress tools so the user can monitor progre
 
 ### Work Plan Initialization (Critical)
 
-Immediately after producing the work plan table, register every task with the progress system:
+Immediately after producing the work plan table and the bead graph (above), register every task with the Voltron progress tracker for the user-facing dashboard:
 
 1. For each task in the work plan, call \`mcp__project-voltron__update_progress\` with:
    - \`task_id\`: the task number from the plan (e.g., "1", "2a")
@@ -890,6 +929,8 @@ Immediately after producing the work plan table, register every task with the pr
    - \`phase\`: the phase name (e.g., "Phase 1: Scaffolding")
 2. After registering all tasks, call \`mcp__project-voltron__generate_dashboard\` to ensure the full dashboard is rendered
 3. **Open the dashboard in Chrome** using the instructions below
+
+Both systems run in parallel: **beads** enforces dependency ordering (authoritative for "what runs next"), **Voltron progress** drives the visual dashboard the user watches.
 
 ### Opening the Dashboard in Chrome
 
@@ -916,17 +957,41 @@ If \`mcp__Claude_in_Chrome__tabs_context_mcp\` fails, the tools are not availabl
 2. Continue with the work plan normally
 3. Remind the user of the URL at phase transitions
 
-### During Execution
+### Execution Loop (bd ready → run → close → repeat)
 
-- **Before invoking an agent:** call \`update_progress\` with status \`"in_progress"\`
-- **After an agent completes:** call \`update_progress\` with status \`"completed"\` (or \`"failed"\` / \`"blocked"\`), then navigate the dashboard tab to refresh it
-- Call \`mcp__project-voltron__get_progress\` at any time to review the current state of the work plan
-- **Live log monitoring:** each \`run_agent_in_docker\` call writes agent output in real time to \`.voltron/logs/<agent>-<timestamp>.log\` on the host. The exact path is included in the tool response. Tell the user they can monitor output in a second terminal with \`tail -f .voltron/logs/<logfile>\`, or with \`docker logs voltron-<agent>-<timestamp> -f\` while the container is still running.
-- **Docker commit divergence (known issue):** Docker agents that push commits directly to the remote can create divergent history requiring a merge on the host. After any Docker agent session that involved git commits, reconcile the host before pushing:
-  \`\`\`bash
-  git pull --no-rebase -X ours
-  \`\`\`
-  If the agent output indicates commits were made but \`git log\` on the host doesn't show them, pull from the remote (agent may have pushed directly) or manually commit any unstaged changes the agent left on disk.
+Use \`bd ready --json\` as the authoritative signal for what to run next. **Never manually reason about which tasks are unblocked** — let beads compute it from the dependency graph.
+
+**Each iteration:**
+
+1. \`\`\`bash
+   bd ready --json   # returns array of bead IDs + titles with no open blockers
+   \`\`\`
+2. Map each ready bead back to its work plan task (via the task number embedded in the title)
+3. For each ready task — call both in the same message (parallel):
+   - \`update_progress(task_id, status="in_progress")\` — dashboard update
+   - \`start_agent_in_docker(agent_name, task)\` — non-blocking launch
+4. Poll all running agents with \`get_agent_output\` until each completes (show log snippets to the user on each poll)
+5. For each completed agent:
+   - **Success:** \`bd close bd-XXXX --reason "<1-sentence summary>"\` then \`update_progress(completed)\`
+   - **Failure:** \`bd update bd-XXXX --status blocked --notes "<error>"\` then \`update_progress(failed)\`
+   - Navigate the dashboard tab to refresh
+6. Return to step 1 — \`bd ready --json\` now includes tasks that were previously blocked by the just-closed beads
+
+**Stop** when \`bd ready --json\` returns an empty list. Run \`bd stats\` to confirm all tasks are closed or surface any blocked ones needing human input.
+
+**If a task fails (agent errors out):**
+- Leave the bead as \`blocked\` (do NOT close it)
+- Run \`bd dep tree <id>\` to show the user which downstream tasks are now cascade-blocked
+- Ask the user: retry, reassign to a different agent, or skip?
+
+**If beads is not installed** — fall back to the manual approach: mark tasks in_progress/completed via Voltron \`update_progress\` only, and manually reason about dependencies from the work plan table.
+
+**Live log monitoring:** each \`start_agent_in_docker\` call returns a log path. Tell the user they can follow output in a terminal: \`tail -f .voltron/logs/<logfile>\`
+
+**Docker commit divergence (known issue):** Docker agents that push commits directly to the remote can create divergent history. After any Docker agent session involving git commits, reconcile before pushing:
+\`\`\`bash
+git pull --no-rebase -X ours
+\`\`\`
 
 ## Platform-Specific Planning Notes
 
@@ -952,9 +1017,10 @@ Always end your response with:
 2. A summary of total tasks and phases
 3. The critical path highlighted
 4. Any blockers or questions that need human input before work can start
-5. **Register all tasks** in the progress system (call \`update_progress\` for each task with status \`"queued"\`) and **open the dashboard in Chrome** using the instructions above
+5. **Initialize the bead graph** (see Bead Graph Initialization above) and **register all tasks** in the Voltron progress system (\`update_progress\` status \`"queued"\` for each), then **open the dashboard in Chrome**
+6. At session end, run \`bd stats\` and include the output in the \`session_summary\` field of \`submit_reflection\`
 
-Step 5 is not optional — registering tasks and opening the dashboard gives the user live visibility into agent progress.
+Steps 5 and 6 are not optional — the bead graph enforces dependencies, the dashboard gives the user live visibility, and the stats surface any tasks that didn't complete.
 
 ## Reflection Protocol
 

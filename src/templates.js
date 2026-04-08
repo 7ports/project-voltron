@@ -1001,7 +1001,34 @@ git pull --no-rebase -X ours
 - When a task involves a third-party API integration, add an explicit acceptance criterion: "Verify field names against a live API response before writing tests. Save one real response as a fixture file in \`__fixtures__/\`." Invented field names produce green tests against broken integrations.
 
 **Unity projects:**
-- When planning tasks that touch multiple scenes or involve scene transitions, flag singleton/component availability across scene boundaries as a risk. Ask the developer how persistent objects are handled (DontDestroyOnLoad, scene-loaded callbacks, etc.) before sequencing implementation tasks.
+
+⚠ **Critical Docker constraint:** Many Unity operations require a running Unity Editor and Unity MCP tools (scene manipulation, Play Mode testing, console monitoring, import settings, component inspection). These tasks **cannot run in Docker** — they need direct Editor access. When planning Unity work, distinguish between:
+- **Editor-required tasks** (\`run_agent_in_docker\` is NOT appropriate): scene hierarchy, Play Mode, console monitoring, Physics/Nav bake, prefab overrides, import settings
+- **File-only tasks** (Docker-compatible): C# script writing/refactoring that doesn't need compilation feedback, shader code editing, folder structure changes, manifest edits
+
+**Agent routing guide — assign the right agent for each Unity task:**
+
+| Task type | Agent | Docker? |
+|---|---|---|
+| C# script creation, logic, refactoring | \`csharp-dev\` | ✓ (file edit only) |
+| Scene hierarchy, GameObjects, prefabs, transforms | \`scene-architect\` | ✗ (needs Unity MCP) |
+| Materials, shaders, Shader Graph, VFX Graph, URP/HDRP | \`shader-artist\` | ✓ (file edit) / ✗ (Editor preview) |
+| Compile errors, Play Mode testing, console monitoring | \`build-validator\` | ✗ (needs Unity Editor) |
+| Folder structure, asset import settings, package manifest | \`asset-manager\` | ✓ (file edit) / ✗ (import settings) |
+| Tech stack research, architecture planning | \`project-planner\` | ✓ |
+
+**Standard Unity task sequencing:**
+1. \`csharp-dev\` — write/edit scripts (file-only, Docker OK)
+2. \`build-validator\` — check compile errors, run Play Mode smoke test (needs Editor)
+3. \`scene-architect\` — wire components into scenes (needs Editor)
+4. \`build-validator\` — final validation pass
+
+**Planning rules for Unity:**
+- Always include a \`build-validator\` task after ANY \`csharp-dev\` task that adds or changes public APIs — Unity's domain reload can introduce serialization regressions that only surface in the Editor
+- When a task touches both scene structure AND C# logic, split it: assign scene work to \`scene-architect\` and script work to \`csharp-dev\`, with \`build-validator\` between them
+- When planning tasks that touch multiple scenes or involve scene transitions, flag singleton/component availability across scene boundaries as a risk. Ask the developer how persistent objects are handled (\`DontDestroyOnLoad\`, scene-loaded callbacks, additive loading) before sequencing
+- For shader tasks: shader code editing is Docker-compatible; visual preview and material assignment require the Unity Editor — split accordingly
+- Flag tasks that require **Unity MCP to be connected** as a blocker if Unity MCP is not confirmed available. Ask the user: "Is Unity MCP installed and the Editor open?" before assigning editor-dependent tasks
 
 **Mobile projects (React Native / iOS / Android):**
 - **iOS builds require macOS + Xcode** — Docker containers cannot run iOS simulators or produce App Store builds. Flag this immediately if the project requires native iOS compilation. Android builds can run in Docker (Java/Gradle), but the full Android SDK is not in the base Voltron image.

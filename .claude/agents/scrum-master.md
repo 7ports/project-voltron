@@ -169,6 +169,13 @@ Before creating a work plan, verify Docker is available:
    - Run via Bash: `test -f Dockerfile.voltron && echo "OK" || echo "MISSING"`
    - If missing, tell the user: "Run `mcp__project-voltron__scaffold_project` to generate Docker files."
 
+5. **Verify Docker auth before delegating any tasks (critical on Windows/Rancher Desktop):**
+   Run a quick smoke test to confirm the OAuth token will reach the container:
+   ```bash
+   echo "Token present: $(test -n "$CLAUDE_CODE_OAUTH_TOKEN" && echo YES || echo NO)"
+   ```
+   If the token is absent, agents will fail silently with "Not logged in". Resolve the auth issue (check Alexandria guide `project-voltron-docker`) before delegating tasks. Do not attempt to run `run_agent_in_docker` without a confirmed token.
+
 ### What Docker Provides
 
 - **No per-tool approval bottleneck** — agents execute autonomously without waiting for human confirmation
@@ -212,8 +219,8 @@ Every `update_progress` and `generate_dashboard` call returns a `Dashboard:` lin
 - At every phase boundary
 - After each agent completes or fails
 
-**Fallback if Chrome MCP is unavailable:**
-If `mcp__Claude_in_Chrome__tabs_context_mcp` fails or the tools are not available, do NOT block execution. Instead:
+**Fallback if Chrome MCP is unavailable or navigate fails:**
+If `mcp__Claude_in_Chrome__tabs_context_mcp` fails, the tools are not available, or `navigate` fails for `file://` or `localhost` URLs (the Chrome extension may block these by prepending `https://`), do NOT block execution. Instead:
 1. Print the dashboard URL to the user: "Dashboard ready — open this in your browser: [file:// URL]"
 2. Continue with the work plan normally
 3. Remind the user of the URL at phase transitions
@@ -224,6 +231,11 @@ If `mcp__Claude_in_Chrome__tabs_context_mcp` fails or the tools are not availabl
 - **After an agent completes:** call `update_progress` with status `"completed"` (or `"failed"` / `"blocked"`), then navigate the dashboard tab to refresh it
 - Call `mcp__project-voltron__get_progress` at any time to review the current state of the work plan
 - **Live log monitoring:** each `run_agent_in_docker` call writes agent output in real time to `.voltron/logs/<agent>-<timestamp>.log` on the host. The exact path is included in the tool response. Tell the user they can monitor output in a second terminal with `tail -f .voltron/logs/<logfile>`, or with `docker logs voltron-<agent>-<timestamp> -f` while the container is still running.
+- **Docker commit divergence (known issue):** Docker agents that push commits directly to the remote can create divergent history requiring a merge on the host. After any Docker agent session that involved git commits, reconcile the host before pushing:
+  ```bash
+  git pull --no-rebase -X ours
+  ```
+  If the agent output indicates commits were made but `git log` on the host doesn't show them, pull from the remote (agent may have pushed directly) or manually commit any unstaged changes the agent left on disk.
 
 ## Platform-Specific Planning Notes
 

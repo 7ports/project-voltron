@@ -1387,6 +1387,16 @@ server.tool(
       };
     }
 
+    // Scrum-master must run in the main Claude Code session, not in Docker
+    if (agent_name === "scrum-master") {
+      return {
+        content: [{
+          type: "text",
+          text: "❌ The scrum-master is a dedicated orchestrator that runs in the main Claude Code session, not in Docker. Invoke it via @agent-scrum-master from the Claude Code chat window instead.",
+        }],
+      };
+    }
+
     // 2. Read CLAUDE.md for project context
     let claudeMd = "";
     try {
@@ -1593,6 +1603,200 @@ server.tool(
           text: `## Agent ${agent_name} completed\n\n${result.stdout}${logLine}${dashLine}`,
         },
       ],
+    };
+  }
+);
+
+
+server.tool(
+  "start_agent_in_docker",
+  "Launch a specialist agent in Docker and return immediately without waiting for it to finish. Returns container_name and log_path for use with get_agent_output to poll progress. Use this instead of run_agent_in_docker when you want real-time visibility or are running multiple agents in parallel.",
+  {
+    agent_name: z.string().describe("The agent template name (e.g., 'fullstack-dev', 'qa-tester')"),
+    task: z.string().describe("Complete task description including context, file paths, acceptance criteria"),
+    max_turns: z.number().optional().describe("Maximum agent turns (default: 30)"),
+  },
+  async ({ agent_name, task, max_turns = 30 }) => {
+    const { root: cwd } = detectProjectRoot(undefined);
+
+    // Guard: scrum-master must run in main session
+    const template = TEMPLATES[agent_name];
+    if (!template || template.category !== "agent") {
+      return { content: [{ type: "text", text: `Error: Unknown agent '${agent_name}'. Run list_templates to see available agents.` }] };
+    }
+    if (agent_name === "scrum-master") {
+      return { content: [{ type: "text", text: "\u274C The scrum-master is a dedicated orchestrator that runs in the main Claude Code session, not in Docker. Invoke it via @agent-scrum-master from the Claude Code chat window instead." }] };
+    }
+
+    // Read CLAUDE.md for project context
+    let claudeMd = "";
+    try { claudeMd = await fs.readFile(path.join(cwd, "CLAUDE.md"), "utf-8"); } catch { /* proceed without */ }
+
+    // Compose prompt (strip YAML frontmatter — it's for agent discovery, not runtime)
+    const agentInstructions = template.content.replace(/^---\n[\s\S]*?\n---\n*/, "");
+    const prompt = [agentInstructions, "", "## Project Context (from CLAUDE.md)", "", claudeMd || "(No CLAUDE.md found)", "", "## Your Task", "", task].join("\n");
+
+    // Write prompt to temp file
+    const tmpFile = path.join(os.tmpdir(), `voltron-${agent_name}-${Date.now()}.md`);
+    await fs.writeFile(tmpFile, prompt);
+
+    // Check Docker is available
+    try { execSync("docker --version", { stdio: "ignore" }); } catch {
+      await fs.unlink(tmpFile).catch(() => {});
+      return { content: [{ type: "text", text: "Error: Docker is not installed or not running." }] };
+    }
+
+    // Check Dockerfile.voltron exists
+    const dockerfilePath = path.join(cwd, "Dockerfile.voltron");
+    try { await fs.access(dockerfilePath); } catch {
+      await fs.unlink(tmpFile).catch(() => {});
+      return { content: [{ type: "text", text: "Error: Dockerfile.voltron not found. Run scaffold_project first." }] };
+    }
+
+    // Build image
+    try {
+      await new Promise((resolve, reject) => {
+        let buildStderr = "";
+        const buildProc = spawn("docker", ["build", "-t", "voltron-agent", "-f", dockerfilePath, cwd], { stdio: ["ignore", "ignore", "pipe"], cwd });
+        buildProc.stderr?.on("data", (chunk) => { buildStderr += chunk.toString(); });
+        const timer = setTimeout(() => { buildProc.kill(); reject(Object.assign(new Error("Docker build timed out"), { stderr: buildStderr })); }, 120000);
+        buildProc.on("close", (code) => { clearTimeout(timer); if (code !== 0) reject(Object.assign(new Error("Build failed"), { stderr: buildStderr })); else resolve(); });
+        buildProc.on("error", (err) => { clearTimeout(timer); reject(err); });
+      });
+    } catch (err) {
+      await fs.unlink(tmpFile).catch(() => {});
+      const buildStderr = err.stderr ? `\n\nBuild output:\n${err.stderr.trim().slice(-2000)}` : "";
+      return { content: [{ type: "text", text: `Error: Docker image build failed.${buildStderr}` }] };
+    }
+
+    // Set up log infrastructure
+    const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const safeAgentName = agent_name.replace(/[^a-z0-9]/g, '-');
+    const containerName = `voltron-${safeAgentName}-${ts}`;
+    const logFilename = `${safeAgentName}-${ts}.log`;
+    const logsDir = path.join(cwd, ".voltron", "logs");
+    await fs.mkdir(logsDir, { recursive: true });
+    const logPath = path.join(logsDir, logFilename);
+    // Create empty log file so get_agent_output can read it immediately
+    await fs.writeFile(logPath, "");
+
+    // Mount auth and gitconfig
+    const homeDir = process.env.HOME || process.env.USERPROFILE || os.homedir();
+    const gitConfigPath = path.join(homeDir, ".gitconfig");
+    let gitConfigMount = [];
+    try { await fs.access(gitConfigPath); gitConfigMount = ["-v", `${gitConfigPath}:/home/voltron/.gitconfig:ro`]; } catch { /* no gitconfig */ }
+    const authEnvArgs = [];
+    if (process.env.CLAUDE_CODE_OAUTH_TOKEN) authEnvArgs.push("-e", `CLAUDE_CODE_OAUTH_TOKEN=${process.env.CLAUDE_CODE_OAUTH_TOKEN}`);
+    if (process.env.ANTHROPIC_API_KEY) authEnvArgs.push("-e", `ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY}`);
+
+    const dockerArgs = [
+      "run", "--rm",
+      "--name", containerName,
+      "--entrypoint", "bash",
+      ...authEnvArgs,
+      "-v", `${cwd}:/workspace`,
+      "-v", `${homeDir}/.claude:/home/voltron/.claude`,
+      "-v", `${homeDir}/.claude.json:/home/voltron/.claude.json:ro`,
+      ...gitConfigMount,
+      "-v", `${tmpFile}:/tmp/task.md:ro`,
+      "voltron-agent",
+      "-c",
+      // Write exit code to .exit file so get_agent_output can detect completion
+      `claude --dangerously-skip-permissions --max-turns ${max_turns} -p "$(cat /tmp/task.md)" 2>&1 | tee /workspace/.voltron/logs/${logFilename}; echo "\${PIPESTATUS[0]}" > /workspace/.voltron/logs/${logFilename}.exit; exit \${PIPESTATUS[0]}`,
+    ];
+
+    // Detached spawn — returns immediately, container runs in background
+    const proc = spawn("docker", dockerArgs, { cwd, detached: true, stdio: "ignore" });
+    proc.unref(); // Don't wait for it — Node.js can exit independently
+
+    // Clean up temp file after a short delay (container has mounted it by now)
+    setTimeout(() => fs.unlink(tmpFile).catch(() => {}), 5000);
+
+    await regenerateDashboard();
+
+    return {
+      content: [{
+        type: "text",
+        text: [
+          `## Agent ${agent_name} started`,
+          ``,
+          `**Container:** \`${containerName}\``,
+          `**Log:** \`${logPath}\``,
+          ``,
+          `The agent is now running in the background. Use \`get_agent_output\` to poll for progress:`,
+          `\`\`\``,
+          `get_agent_output({ container_name: "${containerName}", log_path: "${logPath}" })`,
+          `\`\`\``,
+          ``,
+          `You can also tail the log in a terminal: \`tail -f "${logPath}"\``,
+        ].join("\n"),
+      }],
+    };
+  }
+);
+
+server.tool(
+  "get_agent_output",
+  "Poll a running agent container for its latest output. Returns the last N lines of the agent's log and whether it is still running. Call this repeatedly to show real-time progress in the chat window.",
+  {
+    container_name: z.string().describe("Container name returned by start_agent_in_docker"),
+    log_path: z.string().describe("Absolute log file path returned by start_agent_in_docker"),
+    tail_lines: z.number().optional().describe("Number of log lines to return (default: 40)"),
+  },
+  async ({ container_name, log_path, tail_lines = 40 }) => {
+    // Check if container is still running
+    let isRunning = false;
+    try {
+      const psOutput = execSync(
+        `docker ps --filter "name=^/${container_name}$" --format "{{.Names}}"`,
+        { encoding: "utf-8", stdio: "pipe" }
+      ).trim();
+      isRunning = psOutput.split("\n").some(name => name.trim() === container_name);
+    } catch { isRunning = false; }
+
+    // Read exit code file (written by container on completion)
+    const exitCodePath = log_path + ".exit";
+    let exitCode = null;
+    try {
+      const exitStr = await fs.readFile(exitCodePath, "utf-8");
+      exitCode = parseInt(exitStr.trim(), 10);
+    } catch { /* not written yet */ }
+
+    // Read log file
+    let logContent = "";
+    try { logContent = await fs.readFile(log_path, "utf-8"); } catch { logContent = "(log file not yet available)"; }
+    const allLines = logContent.split("\n").filter(line => line.length > 0);
+    const totalLines = allLines.length;
+    const tailLines = allLines.slice(-tail_lines).join("\n");
+
+    // Determine status
+    let status;
+    if (isRunning) {
+      status = "running";
+    } else if (exitCode === 0) {
+      status = "completed";
+    } else if (exitCode !== null) {
+      status = "failed";
+    } else {
+      // Container stopped but .exit not written yet — transient state
+      status = "unknown (container stopped, exit code pending — retry in a moment)";
+    }
+
+    return {
+      content: [{
+        type: "text",
+        text: [
+          `## Agent output — \`${container_name}\``,
+          ``,
+          `**Status:** ${status}${exitCode !== null ? `  |  **Exit code:** ${exitCode}` : ""}`,
+          `**Lines so far:** ${totalLines}  |  **Showing last ${Math.min(tail_lines, totalLines)}**`,
+          ``,
+          `\`\`\``,
+          tailLines || "(no output yet)",
+          `\`\`\``,
+          status === "running" ? `\nCall \`get_agent_output\` again to see newer output.` : `\nAgent has finished. Review the output above.`,
+        ].join("\n"),
+      }],
     };
   }
 );

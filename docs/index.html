@@ -286,7 +286,7 @@
       <h1>Project Voltron</h1>
       <p>Specialized agent teams for Claude Code, served via MCP. Scaffold Unity, web, mobile, or general projects with battle-tested subagent templates — Alexandria-aware, self-improving, and auto-updating.</p>
       <div class="badge-row">
-        <span class="badge">v2.6.4</span>
+        <span class="badge">v2.7.0</span>
         <span class="badge">MCP Server</span>
         <span class="badge">Unity</span>
         <span class="badge">Web / Fullstack</span>
@@ -608,6 +608,14 @@ node scripts/setup.js</code></pre>
             <td>Launch a specialist agent inside a Docker container with full permissions — called by scrum-master</td>
           </tr>
           <tr>
+            <td><code>start_agent_in_docker</code></td>
+            <td>Non-blocking agent launch; returns container_name and log_path immediately for polling</td>
+          </tr>
+          <tr>
+            <td><code>get_agent_output</code></td>
+            <td>Poll a running agent container for live log output; shows last N lines in chat</td>
+          </tr>
+          <tr>
             <td><code>update_progress</code></td>
             <td>Update agent task progress — called by scrum-master before/after each agent invocation</td>
           </tr>
@@ -754,7 +762,7 @@ node scripts/setup.js</code></pre>
     <div class="container">
       <p>
         <a href="https://github.com/7ports/project-voltron">GitHub</a> &middot;
-        v2.6.4 &middot;
+        v2.7.0 &middot;
         MIT License &middot;
         Built by <a href="https://github.com/7ports">7ports</a>
       </p>

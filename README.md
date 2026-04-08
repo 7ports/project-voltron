@@ -106,6 +106,8 @@ See [Project Alexandria](https://github.com/7ports/project-alexandria) for setup
 | `submit_reflection` | Submit a post-session reflection on agent performance |
 | `list_reflections` | List stored reflections (for reviewing pending improvements) |
 | `run_agent_in_docker` | Launch a specialist agent in a Docker container with full permissions (called by scrum-master) |
+| `start_agent_in_docker` | Non-blocking agent launch; returns container_name and log_path immediately for polling |
+| `get_agent_output` | Poll a running agent container for live log output; shows last N lines in chat |
 | `update_progress` | Update agent task progress (called by scrum-master before/after each agent invocation) |
 | `get_progress` | View current agent task progress as a formatted dashboard |
 | `generate_dashboard` | Generate a standalone HTML dashboard from progress data |

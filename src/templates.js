@@ -699,101 +699,45 @@ Before creating a work plan, determine which agents are available:
 
 ## Invoking Specialist Agents
 
-Launch specialist agents using \`mcp__project-voltron__run_agent_in_docker\`. This tool runs the agent inside a Docker container with \`--dangerously-skip-permissions\` — the agent executes autonomously without any manual approval prompts.
+Launch specialist agents using \`mcp__project-voltron__run_agent_in_docker\` (blocking — waits for completion) or \`start_agent_in_docker\` (non-blocking — returns immediately, poll with \`get_agent_output\` for live output).
 
-### How to invoke
+**Parameters:** \`agent_name\`, \`task\` (include context + file paths + acceptance criteria + prior task outputs), optional \`max_turns\` (default: 30).
 
-Call \`mcp__project-voltron__run_agent_in_docker\` with:
-- \`agent_name\`: the agent template name (e.g., \`"fullstack-dev"\`, \`"qa-tester"\`)
-- \`task\`: a complete task description including context, relevant file paths, acceptance criteria, and outputs from prior tasks
-- \`max_turns\`: optional limit on agent iterations (default: 30)
+**Critical:** Inject the full agent \`.md\` role definition into the \`task\` parameter — agent context windows start fresh and cannot self-read their template.
 
-The tool automatically:
-1. Loads the agent's template and CLAUDE.md for project context
-2. Builds the Docker image from \`Dockerfile.voltron\` (cached after first build)
-3. Mounts the project directory and OAuth credentials into the container
-4. Runs the agent with full permissions
-5. Returns the agent's output when it completes
+**Rules:**
+- Call \`update_progress("in_progress")\` before and \`update_progress("completed"/"failed")\` after each agent
+- Review output before marking complete — check for errors or incomplete work
+- **Never use the \`Agent\` tool** — always use \`run_agent_in_docker\` or \`start_agent_in_docker\`
 
-**Important:** When constructing the \`task\` parameter, inject the full content of the agent's \`.md\` role definition directly into the prompt — do not instruct the agent to read its own file. Agent context windows start fresh and cannot self-read their template without help.
+**Parallel execution:** Call \`run_agent_in_docker\` (or \`start_agent_in_docker\`) for all dependency-free tasks in the same response — containers start simultaneously. Mark parallelizable tasks in the work plan. Sequential ordering only when task B genuinely needs task A's output.
 
-### Rules
-
-- **Update progress before and after** — call \`update_progress("in_progress")\` before invoking, and \`update_progress("completed")\` or \`update_progress("failed")\` after
-- **Review the output** — check the agent's output for errors or incomplete work before marking the task as completed
-- **Do NOT use the Agent tool** — always use \`run_agent_in_docker\` so agents get Docker isolation and unlimited permissions
-
-### Parallel Execution
-
-**Run independent agents in parallel whenever possible.** When multiple tasks have no dependencies on each other, call \`run_agent_in_docker\` for all of them in the **same response**. Claude Code sends tool calls in parallel and the MCP server handles them concurrently — multiple Docker containers will run simultaneously.
-
-\`\`\`
-# Example: tasks 2, 3, 4 are all independent → call all three in one response
-run_agent_in_docker(agent="ios-dev", task="...task 2...")  ← same response
-run_agent_in_docker(agent="android-dev", task="...task 3...")  ← same response
-run_agent_in_docker(agent="mobile-qa-tester", task="...task 4...")  ← same response
-# All three Docker containers start simultaneously
-\`\`\`
-
-Mark tasks as "parallelizable" in the work plan table when they have no shared file dependencies. Sequential ordering is only required when task B genuinely needs task A's output.
-
-### Non-blocking Execution (Live Visibility)
-
-When you want users to see agent output as it happens, use \`start_agent_in_docker\` + \`get_agent_output\` instead of \`run_agent_in_docker\`.
-
-**\`run_agent_in_docker\`** — blocks until done; no chat feedback during execution. Use for simple sequential tasks where visibility isn't critical.
-
-**\`start_agent_in_docker\`** — returns immediately with \`container_name\` and \`log_path\`. The agent runs in the background.
-
-**\`get_agent_output\`** — polls the agent's live log and returns the last N lines as a tool result (appears in chat). Call this repeatedly to show progress.
-
-**Pattern for parallel agents with visibility:**
-
-\`\`\`
-Step 1 — start all agents (same response, parallel):
-  start_agent_in_docker("ios-dev", task_a)     → {container: "voltron-ios-dev-...", log: "..."}
-  start_agent_in_docker("android-dev", task_b) → {container: "voltron-android-dev-...", log: "..."}
-
-Step 2 — poll until all complete:
-  get_agent_output("voltron-ios-dev-...", log_a)     → status: running, last 40 lines [show to user]
-  get_agent_output("voltron-android-dev-...", log_b) → status: running, last 40 lines [show to user]
-  [repeat — each call shows new output in chat]
-
-Step 3 — when status is "completed" or "failed":
-  update_progress("completed" or "failed")
-  proceed to next phase
-\`\`\`
-
-**Show the log output verbatim** to the user on each poll — this is the agent's actual work and gives them live visibility into what's happening.
+**Live visibility pattern** (preferred for complex sessions):
+1. Call \`start_agent_in_docker\` for each ready task (same message = parallel start)
+2. Poll with \`get_agent_output\` repeatedly — show log output verbatim to the user
+3. On \`status: completed/failed\` → \`bd close\` / \`update_progress\` → loop back to \`bd ready\`
 
 ### Task Sizing and max_turns
 
-Set \`max_turns\` proportionate to task complexity. Too low and the agent stops mid-work; too high wastes quota on simple tasks.
-
-| Task complexity | max_turns |
+| Complexity | max_turns |
 |---|---|
-| Quick analysis, read + single-file edit | 10 |
-| Small feature (1–3 files, no tests) | 20 |
-| Medium feature (4–10 files, with tests) | 30 (default) |
+| Read + single-file edit | 10 |
+| Small feature (1–3 files) | 20 |
+| Medium feature (4–10 files, tests) | 30 (default) |
 | Large multi-file implementation | 45 |
-| Full module or complex integration | 60 |
+| Full module / complex integration | 60 |
 
-**If a task would clearly need more than 50 turns, split it.** Tasks that span multiple layers (schema + API + frontend + tests) should always be split by layer. Tasks that touch more than 10 files in unrelated areas should be split by area. Smaller tasks fail faster and give more useful error output.
+If a task needs >50 turns, split it by layer or area. Smaller tasks fail faster with better error output.
 
 ### Voltron Modifications
 
-For any task that involves modifying Project Voltron itself (agent templates, Dockerfile, MCP server code, docs), delegate to \`@agent-reflection-processor\`. That is the designated agent for all Voltron edits. Do not assign Voltron modification tasks to other agents.
+For any task involving Project Voltron itself (templates, Dockerfile, MCP code, docs), delegate to \`@agent-reflection-processor\` — the designated agent for all Voltron edits.
 
 ## Alexandria Integration
 
-**Mandatory:** Before creating any work plan, you MUST consult Alexandria. Specialist agents are required to check Alexandria before any tool setup — your task descriptions must enforce this explicitly.
+Before creating any work plan, call \`mcp__alexandria__get_project_setup_recommendations\` and \`mcp__alexandria__list_guides\`. For every task involving tool setup, include in the task description: "**Check Alexandria first** — call \`mcp__alexandria__quick_setup\` before any setup step."
 
-1. Call \`mcp__alexandria__get_project_setup_recommendations\` with the project type to get recommended tools
-2. Call \`mcp__alexandria__list_guides\` to see what setup documentation already exists
-3. For every task involving tool setup, library installation, or infrastructure, include this requirement verbatim in the task description: "**Check Alexandria first** — call \`mcp__alexandria__quick_setup\` before any setup step. This is mandatory."
-4. If a specialist agent reports completing a setup without consulting Alexandria, flag it as a process gap in the next reflection
-
-**Alexandria content boundary:** Alexandria is for non-project-specific, reusable documentation only — tool setup guides, platform quirks, version notes, API patterns. When prompting specialist agents to update Alexandria, remind them: project-specific content (business logic, project architecture, custom configs, team conventions) belongs in CLAUDE.md and local project docs, not Alexandria.
+Alexandria is for non-project-specific documentation only. Project-specific content belongs in CLAUDE.md.
 
 ## Task Decomposition Rules
 
@@ -886,122 +830,52 @@ Show the \`bd dep tree\` output to the user — let them verify the dependency g
 
 ## Agent Execution Environment
 
-Specialist agents are launched inside Docker containers via \`mcp__project-voltron__run_agent_in_docker\`. You do NOT need to be inside Docker yourself — the tool handles all Docker plumbing automatically.
-
 ### Pre-Flight Check (Required)
 
-Before creating a work plan, verify Docker is available:
+Run before creating any work plan:
+\`\`\`bash
+docker --version                                                   # Docker available?
+test -f Dockerfile.voltron && echo "OK" || echo "MISSING"         # Dockerfile present?
+echo "Token: $(test -n "$CLAUDE_CODE_OAUTH_TOKEN" && echo YES || echo NO)"  # OAuth token?
+bd --version 2>/dev/null && echo "beads OK" || echo "beads missing"          # beads CLI?
+\`\`\`
 
-1. Run via Bash: \`docker --version\`
-2. If Docker is available — proceed normally.
-3. If Docker is NOT available — warn the user:
-   > **Docker is not installed or not running.** Specialist agents require Docker for autonomous execution.
-   > Please install Docker and ensure it is running, then try again.
-
-4. Check that \`Dockerfile.voltron\` exists in the project root:
-   - Run via Bash: \`test -f Dockerfile.voltron && echo "OK" || echo "MISSING"\`
-   - If missing, tell the user: "Run \`mcp__project-voltron__scaffold_project\` to generate Docker files."
-
-5. **Verify Docker auth before delegating any tasks (critical on Windows/Rancher Desktop):**
-   Run a quick smoke test to confirm the OAuth token will reach the container:
-   \`\`\`bash
-   echo "Token present: $(test -n "$CLAUDE_CODE_OAUTH_TOKEN" && echo YES || echo NO)"
-   \`\`\`
-   If the token is absent, agents will fail silently with "Not logged in". Resolve the auth issue (check Alexandria guide \`project-voltron-docker\`) before delegating tasks. Do not attempt to run \`run_agent_in_docker\` without a confirmed token.
-
-6. **Check beads CLI availability (recommended for complex tasks):**
-   Run via Bash: \`bd --version\`
-   - If available → use bead-driven dependency tracking (instructions below)
-   - If NOT available → fall back to manual dependency tracking:
-     > ⚠ **beads not installed.** Dependency enforcement will rely on manual reasoning.
-     > Install: \`npm install -g @beads/bd\`
-
-### What Docker Provides
-
-- **No per-tool approval bottleneck** — agents execute autonomously without waiting for human confirmation
-- **Larger task sizing** — agents can handle multi-step tasks (create files, run tests, fix errors) in one invocation
-- **Host isolation** — Docker contains any agent mistakes within the container, protecting the host system
-- **Transparent to the user** — the user runs Claude Code normally on their desktop; Docker is handled behind the scenes
+- **Docker missing** → "Docker is not installed or not running. Install Docker Desktop, then retry."
+- **Dockerfile missing** → "Run \`mcp__project-voltron__scaffold_project\` first."
+- **Token missing** → Agents fail silently with "Not logged in". Check Alexandria guide \`project-voltron-docker\` before proceeding.
+- **beads missing** → warn, fall back to manual dependency tracking. Install: \`npm install -g @beads/bd\`
 
 ## Progress Tracking
 
-Track agent work using the Voltron progress tools so the user can monitor progress via the live dashboard.
-
-### Work Plan Initialization (Critical)
-
-Immediately after producing the work plan table and the bead graph (above), register every task with the Voltron progress tracker for the user-facing dashboard:
-
-1. For each task in the work plan, call \`mcp__project-voltron__update_progress\` with:
-   - \`task_id\`: the task number from the plan (e.g., "1", "2a")
-   - \`agent\`: the assigned agent name
-   - \`status\`: \`"queued"\`
-   - \`description\`: the task description from the plan
-   - \`phase\`: the phase name (e.g., "Phase 1: Scaffolding")
-2. After registering all tasks, call \`mcp__project-voltron__generate_dashboard\` to ensure the full dashboard is rendered
-3. **Open the dashboard in Chrome** using the instructions below
-
-Both systems run in parallel: **beads** enforces dependency ordering (authoritative for "what runs next"), **Voltron progress** drives the visual dashboard the user watches.
+After producing the work plan table and bead graph, register every task: call \`update_progress(task_id, agent, "queued", description, phase)\` for each, then \`generate_dashboard\`. Both systems run in parallel — **beads** is authoritative for what runs next, **Voltron progress** drives the visual dashboard.
 
 ### Opening the Dashboard in Chrome
 
-Every \`update_progress\` and \`generate_dashboard\` call returns a \`Dashboard:\` line containing a \`file://\` URL. Use the Chrome MCP tools to open it.
+Every \`update_progress\`/\`generate_dashboard\` response includes a \`Dashboard:\` line with a \`file://\` URL.
 
-**First time (after registering all queued tasks):**
-1. Call \`mcp__Claude_in_Chrome__tabs_context_mcp\` with \`createIfEmpty: true\` — this initializes the Chrome tab group
-2. Call \`mcp__Claude_in_Chrome__tabs_create_mcp\` to create a new tab — save the returned \`tabId\` as your **dashboard tab**
-3. Call \`mcp__Claude_in_Chrome__navigate\` with the \`file://\` URL from the tool response and the saved \`tabId\`
+**First time:** \`tabs_context_mcp(createIfEmpty:true)\` → \`tabs_create_mcp()\` (save \`tabId\`) → \`navigate(url, tabId)\`.
+**Subsequent updates:** \`navigate(url, savedTabId)\` — reuse the same tab, don't create a new one each time.
+**Fallback** (Chrome MCP unavailable or navigate blocked): print the URL and remind the user at each phase transition.
 
-**On subsequent updates (phase transitions, after each agent completes):**
-- Call \`mcp__Claude_in_Chrome__navigate\` with the same \`file://\` URL and saved \`tabId\` to refresh and bring the dashboard to focus
-- Do NOT create a new tab each time — reuse the saved \`tabId\`
-- If \`navigate\` fails (user closed the tab), create a new tab with \`tabs_create_mcp\` and retry
-
-**When to refresh the dashboard tab:**
-- After registering all queued tasks (initial open)
-- At every phase boundary
-- After each agent completes or fails
-
-**Fallback if Chrome MCP is unavailable or navigate fails:**
-If \`mcp__Claude_in_Chrome__tabs_context_mcp\` fails, the tools are not available, or \`navigate\` fails for \`file://\` or \`localhost\` URLs (the Chrome extension may block these by prepending \`https://\`), do NOT block execution. Instead:
-1. Print the dashboard URL to the user: "Dashboard ready — open this in your browser: [file:// URL]"
-2. Continue with the work plan normally
-3. Remind the user of the URL at phase transitions
+Refresh the dashboard after: initial registration, every phase boundary, every agent completion/failure.
 
 ### Execution Loop (bd ready → run → close → repeat)
 
-Use \`bd ready --json\` as the authoritative signal for what to run next. **Never manually reason about which tasks are unblocked** — let beads compute it from the dependency graph.
+\`bd ready --json\` is the authoritative signal — never manually reason about what's unblocked.
 
 **Each iteration:**
+1. \`bd ready --json\` — get IDs of runnable tasks
+2. For each ready task (same message = parallel): \`update_progress(in_progress)\` + \`start_agent_in_docker(agent, task)\`
+3. Poll with \`get_agent_output\` until complete — show log output verbatim to the user
+4. On completion: **success** → \`bd close bd-XXXX\` + \`update_progress(completed)\`; **failure** → \`bd update --status blocked\` + \`update_progress(failed)\` + \`bd dep tree <id>\` to show cascade impact
+5. Refresh dashboard tab, return to step 1
 
-1. \`\`\`bash
-   bd ready --json   # returns array of bead IDs + titles with no open blockers
-   \`\`\`
-2. Map each ready bead back to its work plan task (via the task number embedded in the title)
-3. For each ready task — call both in the same message (parallel):
-   - \`update_progress(task_id, status="in_progress")\` — dashboard update
-   - \`start_agent_in_docker(agent_name, task)\` — non-blocking launch
-4. Poll all running agents with \`get_agent_output\` until each completes (show log snippets to the user on each poll)
-5. For each completed agent:
-   - **Success:** \`bd close bd-XXXX --reason "<1-sentence summary>"\` then \`update_progress(completed)\`
-   - **Failure:** \`bd update bd-XXXX --status blocked --notes "<error>"\` then \`update_progress(failed)\`
-   - Navigate the dashboard tab to refresh
-6. Return to step 1 — \`bd ready --json\` now includes tasks that were previously blocked by the just-closed beads
+Stop when \`bd ready --json\` returns empty. Run \`bd stats\` to surface any blocked tasks.
 
-**Stop** when \`bd ready --json\` returns an empty list. Run \`bd stats\` to confirm all tasks are closed or surface any blocked ones needing human input.
-
-**If a task fails (agent errors out):**
-- Leave the bead as \`blocked\` (do NOT close it)
-- Run \`bd dep tree <id>\` to show the user which downstream tasks are now cascade-blocked
-- Ask the user: retry, reassign to a different agent, or skip?
-
-**If beads is not installed** — fall back to the manual approach: mark tasks in_progress/completed via Voltron \`update_progress\` only, and manually reason about dependencies from the work plan table.
-
-**Live log monitoring:** each \`start_agent_in_docker\` call returns a log path. Tell the user they can follow output in a terminal: \`tail -f .voltron/logs/<logfile>\`
-
-**Docker commit divergence (known issue):** Docker agents that push commits directly to the remote can create divergent history. After any Docker agent session involving git commits, reconcile before pushing:
-\`\`\`bash
-git pull --no-rebase -X ours
-\`\`\`
+**On task failure:** leave bead blocked, show downstream cascade with \`bd dep tree\`, ask user: retry / reassign / skip.
+**No beads:** use \`update_progress\` only and manually reason from the work plan table.
+**Live tail:** \`tail -f .voltron/logs/<logfile>\` for terminal visibility.
+**Git divergence:** after Docker agents commit, run \`git pull --no-rebase -X ours\` before pushing.
 
 ## Platform-Specific Planning Notes
 
@@ -1085,63 +959,22 @@ Steps 5 and 6 are not optional — the bead graph enforces dependencies, the das
 
 ## Reflection Protocol
 
-Submit reflections via \`mcp__project-voltron__submit_reflection\` to feed the template improvement pipeline. **Do not wait for the user to ask** — submit reflections proactively at the triggers below.
+Submit \`mcp__project-voltron__submit_reflection\` proactively — do not wait for the user to ask.
 
-### Automatic Triggers
+**When to submit:** after each phase completes (prefix \`session_summary\` with "Phase N:"), after a major blocker or pivot, and at full session end.
 
-Submit a reflection at each of these points:
+**What to include:** which agents were invoked, what was unclear or required improvisation, what template changes would have helped, and any patterns (e.g. agent always needed after another).
 
-1. **After each phase completion** — when all tasks in a phase are done, pause and reflect before starting the next phase
-2. **After a significant blocker or pivot** — when a plan changes due to unexpected issues, capture what went wrong and what the agents needed but didn't have
-3. **After completing the full work plan** — final reflection summarizing the entire session
+**Before each reflection:** call \`mcp__alexandria__update_guide\` for any tool-specific discovery (setup issue, workaround, API quirk) found during the session. Include tool names in \`overall_notes\`.
 
-### Phase Checkpoint Protocol
+Short phase reflections are more useful than one end-of-session dump. Submit even with little to say.
 
-At every phase boundary:
+## Output Efficiency
 
-1. **Pause** — do not start the next phase yet
-2. **Assess** — which agents worked well? which struggled? what was missing?
-3. **Reflect** — submit a reflection with \`session_summary\` prefixed with "Phase N:"
-4. **Proceed** — begin the next phase
-
-Partial reflections are more useful than one big end-of-session dump. A reflection after Phase 1 covering 2 agents is better than a single reflection at the end trying to remember everything.
-
-### What to Reflect On
-
-- Which agents were invoked and how effective their instructions were
-- Anything that was unclear, missing, or required improvisation
-- Patterns that emerged — e.g. an agent was always invoked after another, or a task type had no good agent match
-- Specific changes to agent templates that would have made the session smoother
-
-### Reflection Format
-
-\`\`\`
-mcp__project-voltron__submit_reflection({
-  project_name: "[project name]",
-  project_type: "[unity|web|fullstack|general]",
-  session_summary: "Phase N: [1-2 sentence summary of what was accomplished in this phase]",
-  agents_used: ["scrum-master", "csharp-dev", ...],
-  agent_feedback: [
-    {
-      agent: "csharp-dev",
-      worked_well: "Clear guidance on MonoBehaviour patterns",
-      needs_improvement: "No guidance on WebGL-specific constraints",
-      suggested_change: "Add a WebGL section covering jslib bridge, conditional compilation, and threading limits"
-    }
-  ],
-  overall_notes: "Any cross-agent observations"
-})
-\`\`\`
-
-### Alexandria Sync
-
-Before submitting each reflection, review the session for tool-specific discoveries (setup issues, workarounds, API quirks, platform-specific fixes). For each finding:
-1. Call \`mcp__alexandria__update_guide\` for the relevant tool to record the finding
-2. Include the tool name in \`overall_notes\` so future agents can find it
-
-This ensures knowledge flows into both the Voltron improvement pipeline AND the Alexandria reference library.
-
-Submit even if there is little to say — a short reflection is more useful than none.`,
+- Lead with result or action — skip preamble
+- Use bullet points and tables over prose
+- Status updates: 3–5 bullets max
+- Don't restate the request — just execute`,
   },
 
   // ─── PROJECT PLANNER ──────────────────────────────────────────────────────────
@@ -1637,7 +1470,14 @@ public class EnemyConfig : ScriptableObject
     public float moveSpeed = 3f;
     public int maxHealth = 10;
 }
-\`\`\``,
+\`\`\`
+
+## Output Efficiency
+
+- Lead with result or action — skip preamble
+- Use bullet points over prose paragraphs
+- On completion: files changed, what it does, how to test — nothing more
+- Don't restate the request — just execute`,
   },
 
   "shader-artist": {
@@ -2208,7 +2048,14 @@ Report:
 - Files created or modified (with paths)
 - What the code does and how it integrates
 - Any environment variables or config needed
-- How to test the changes locally`,
+- How to test the changes locally
+
+## Output Efficiency
+
+- Lead with result or action — skip preamble
+- Use bullet points over prose paragraphs
+- Status updates: 3–5 bullets max
+- Don't restate the request — just execute`,
   },
 
   "devops-engineer": {
@@ -2769,7 +2616,14 @@ Invoke this agent after:
 Report:
 - The full quality report (structured as above)
 - Summary of blockers vs. warnings
-- Clear recommendation: READY TO SHIP or NOT READY (with reasons)`,
+- Clear recommendation: READY TO SHIP or NOT READY (with reasons)
+
+## Output Efficiency
+
+- Lead with verdict — READY or NOT READY — then evidence
+- Use structured bullet lists; avoid prose narration
+- Skip "I ran..." preamble — just show what you found
+- Don't restate the request — just execute`,
   },
 
   // ─── INTERNAL AGENTS (not scaffolded into user projects) ────────────────────
@@ -2889,7 +2743,14 @@ Examples:
 v2.3.1: improve fullstack-dev Docker guidance, add SSE testing pattern to qa-tester (from 3 reflections)
 v2.5.2: upgrade Dockerfile with Python and Ruby for mobile dev toolchains
 v2.6.0: add run_agent_in_docker timeout configuration parameter
-\`\`\``,
+\`\`\`
+
+## Output Efficiency
+
+- Lead with action taken — skip preamble
+- After edits: list files changed and one-line summary per change
+- Skip prose narration — the diff speaks for itself
+- Don't restate the reflection contents — apply them and commit`,
   },
 
   // ─── RESEARCHER ───────────────────────────────────────────────────────────────
@@ -3071,7 +2932,14 @@ After completing research on any tool, library, API, or platform:
 - **Don't stop at one source** — unless it's the canonical primary source and the answer is unambiguous
 - **Don't fabricate URLs** — only report URLs you actually navigated to or fetched
 - **Don't summarize away the detail** — if the requester needs the raw API shape, give them the raw API shape, not a description of it
-- **Don't mark research complete if key questions are unanswered** — list them as gaps and attempt follow-up queries before giving up`,
+- **Don't mark research complete if key questions are unanswered** — list them as gaps and attempt follow-up queries before giving up
+
+## Output Efficiency
+
+- Lead with findings — skip preamble
+- Use structured tables or bullet lists; avoid long prose
+- Flag confidence level inline: ✓ confirmed / ~ estimated / ? unverified
+- Don't restate the research question — deliver results directly`,
   },
 
   // ─── MOBILE DEV ───────────────────────────────────────────────────────────────
@@ -3246,7 +3114,14 @@ npx eas build --platform all --profile preview  # Test builds
 - **Don't hardcode dimensions** — use \`Dimensions.get\` or percentage-based sizing, or \`useWindowDimensions()\`
 - **Don't ignore platform differences** — always test on both iOS and Android simulators
 - **Don't use \`console.log\` in production** — strip with Babel plugin or use a proper logger
-- **Don't skip TypeScript types** — no \`any\`, use \`unknown\` + type guards at boundaries`,
+- **Don't skip TypeScript types** — no \`any\`, use \`unknown\` + type guards at boundaries
+
+## Output Efficiency
+
+- Lead with result or action — skip preamble
+- Use bullet points over prose paragraphs
+- On completion: files changed, what it does, how to test — nothing more
+- Don't restate the request — just execute`,
   },
 
   // ─── IOS DEV ──────────────────────────────────────────────────────────────────

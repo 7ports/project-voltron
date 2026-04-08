@@ -45,6 +45,12 @@ jobs:
           ")
           echo "count=$COUNT" >> $GITHUB_OUTPUT
           echo "Unprocessed reflections: $COUNT"
+          # Dynamic max-turns: 20 base + 12 per reflection, capped at 80
+          # Gives 32 turns for 1 reflection, 56 for 3, 80 for 5+
+          MAX_TURNS=$(( COUNT * 12 + 20 ))
+          if [ "$MAX_TURNS" -gt 80 ]; then MAX_TURNS=80; fi
+          echo "max_turns=$MAX_TURNS" >> $GITHUB_OUTPUT
+          echo "Max turns for this run: $MAX_TURNS"
 
       - name: No pending reflections — exiting
         if: steps.check.outputs.count == '0'
@@ -78,7 +84,7 @@ jobs:
           claude \
             --dangerously-skip-permissions \
             --model claude-sonnet-4-6 \
-            --max-turns 40 \
+            --max-turns ${{ steps.check.outputs.max_turns }} \
             -p "$(cat .github/prompts/process-reflections.md)"
 
       - name: Push branch and open PR

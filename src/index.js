@@ -425,6 +425,34 @@ server.tool(
       } catch { /* non-fatal — user can chmod manually */ }
     }
 
+    // Write .mcp.json — register project-voltron at project level for reliable MCP connection
+    // This is the canonical way Claude Code discovers MCP servers per-project and avoids
+    // the "user-scope registration not persisting" failure mode seen on new installs.
+    const mcpJsonPath = path.join(cwd, ".mcp.json");
+    let mcpJsonContent = {};
+    try {
+      mcpJsonContent = JSON.parse(await fs.readFile(mcpJsonPath, "utf-8"));
+    } catch { /* not found or invalid — start fresh */ }
+
+    if (!mcpJsonContent.mcpServers) mcpJsonContent.mcpServers = {};
+
+    if (mcpJsonContent.mcpServers["project-voltron"]) {
+      skipped.push({ path: ".mcp.json", reason: "project-voltron already registered" });
+    } else {
+      const voltronIndexPath = fileURLToPath(import.meta.url);
+      mcpJsonContent.mcpServers["project-voltron"] = {
+        type: "stdio",
+        command: "node",
+        args: [voltronIndexPath]
+      };
+      try {
+        await fs.writeFile(mcpJsonPath, JSON.stringify(mcpJsonContent, null, 2) + "\n", "utf-8");
+        written.push(".mcp.json");
+      } catch (err) {
+        noted.push({ path: ".mcp.json", note: `could not write: ${err.message} — run: claude mcp add project-voltron -- node "${fileURLToPath(import.meta.url)}"` });
+      }
+    }
+
     // Merge auto-update hook into .claude/settings.json (don't overwrite existing hooks)
     const settingsPath = path.join(cwd, ".claude", "settings.json");
     let existingSettings = {};

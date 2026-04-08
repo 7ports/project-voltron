@@ -38,101 +38,45 @@ Before creating a work plan, determine which agents are available:
 
 ## Invoking Specialist Agents
 
-Launch specialist agents using `mcp__project-voltron__run_agent_in_docker`. This tool runs the agent inside a Docker container with `--dangerously-skip-permissions` — the agent executes autonomously without any manual approval prompts.
+Launch specialist agents using `mcp__project-voltron__run_agent_in_docker` (blocking — waits for completion) or `start_agent_in_docker` (non-blocking — returns immediately, poll with `get_agent_output` for live output).
 
-### How to invoke
+**Parameters:** `agent_name`, `task` (include context + file paths + acceptance criteria + prior task outputs), optional `max_turns` (default: 30).
 
-Call `mcp__project-voltron__run_agent_in_docker` with:
-- `agent_name`: the agent template name (e.g., `"fullstack-dev"`, `"qa-tester"`)
-- `task`: a complete task description including context, relevant file paths, acceptance criteria, and outputs from prior tasks
-- `max_turns`: optional limit on agent iterations (default: 30)
+**Critical:** Inject the full agent `.md` role definition into the `task` parameter — agent context windows start fresh and cannot self-read their template.
 
-The tool automatically:
-1. Loads the agent's template and CLAUDE.md for project context
-2. Builds the Docker image from `Dockerfile.voltron` (cached after first build)
-3. Mounts the project directory and OAuth credentials into the container
-4. Runs the agent with full permissions
-5. Returns the agent's output when it completes
+**Rules:**
+- Call `update_progress("in_progress")` before and `update_progress("completed"/"failed")` after each agent
+- Review output before marking complete — check for errors or incomplete work
+- **Never use the `Agent` tool** — always use `run_agent_in_docker` or `start_agent_in_docker`
 
-**Important:** When constructing the `task` parameter, inject the full content of the agent's `.md` role definition directly into the prompt — do not instruct the agent to read its own file. Agent context windows start fresh and cannot self-read their template without help.
+**Parallel execution:** Call `run_agent_in_docker` (or `start_agent_in_docker`) for all dependency-free tasks in the same response — containers start simultaneously. Mark parallelizable tasks in the work plan. Sequential ordering only when task B genuinely needs task A's output.
 
-### Rules
-
-- **Update progress before and after** — call `update_progress("in_progress")` before invoking, and `update_progress("completed")` or `update_progress("failed")` after
-- **Review the output** — check the agent's output for errors or incomplete work before marking the task as completed
-- **Do NOT use the Agent tool** — always use `run_agent_in_docker` so agents get Docker isolation and unlimited permissions
-
-### Parallel Execution
-
-**Run independent agents in parallel whenever possible.** When multiple tasks have no dependencies on each other, call `run_agent_in_docker` for all of them in the **same response**. Claude Code sends tool calls in parallel and the MCP server handles them concurrently — multiple Docker containers will run simultaneously.
-
-```
-# Example: tasks 2, 3, 4 are all independent → call all three in one response
-run_agent_in_docker(agent="ios-dev", task="...task 2...")  ← same response
-run_agent_in_docker(agent="android-dev", task="...task 3...")  ← same response
-run_agent_in_docker(agent="mobile-qa-tester", task="...task 4...")  ← same response
-# All three Docker containers start simultaneously
-```
-
-Mark tasks as "parallelizable" in the work plan table when they have no shared file dependencies. Sequential ordering is only required when task B genuinely needs task A's output.
-
-### Non-blocking Execution (Live Visibility)
-
-When you want users to see agent output as it happens, use `start_agent_in_docker` + `get_agent_output` instead of `run_agent_in_docker`.
-
-**`run_agent_in_docker`** — blocks until done; no chat feedback during execution. Use for simple sequential tasks where visibility isn't critical.
-
-**`start_agent_in_docker`** — returns immediately with `container_name` and `log_path`. The agent runs in the background.
-
-**`get_agent_output`** — polls the agent's live log and returns the last N lines as a tool result (appears in chat). Call this repeatedly to show progress.
-
-**Pattern for parallel agents with visibility:**
-
-```
-Step 1 — start all agents (same response, parallel):
-  start_agent_in_docker("ios-dev", task_a)     → {container: "voltron-ios-dev-...", log: "..."}
-  start_agent_in_docker("android-dev", task_b) → {container: "voltron-android-dev-...", log: "..."}
-
-Step 2 — poll until all complete:
-  get_agent_output("voltron-ios-dev-...", log_a)     → status: running, last 40 lines [show to user]
-  get_agent_output("voltron-android-dev-...", log_b) → status: running, last 40 lines [show to user]
-  [repeat — each call shows new output in chat]
-
-Step 3 — when status is "completed" or "failed":
-  update_progress("completed" or "failed")
-  proceed to next phase
-```
-
-**Show the log output verbatim** to the user on each poll — this is the agent's actual work and gives them live visibility into what's happening.
+**Live visibility pattern** (preferred for complex sessions):
+1. Call `start_agent_in_docker` for each ready task (same message = parallel start)
+2. Poll with `get_agent_output` repeatedly — show log output verbatim to the user
+3. On `status: completed/failed` → `bd close` / `update_progress` → loop back to `bd ready`
 
 ### Task Sizing and max_turns
 
-Set `max_turns` proportionate to task complexity. Too low and the agent stops mid-work; too high wastes quota on simple tasks.
-
-| Task complexity | max_turns |
+| Complexity | max_turns |
 |---|---|
-| Quick analysis, read + single-file edit | 10 |
-| Small feature (1–3 files, no tests) | 20 |
-| Medium feature (4–10 files, with tests) | 30 (default) |
+| Read + single-file edit | 10 |
+| Small feature (1–3 files) | 20 |
+| Medium feature (4–10 files, tests) | 30 (default) |
 | Large multi-file implementation | 45 |
-| Full module or complex integration | 60 |
+| Full module / complex integration | 60 |
 
-**If a task would clearly need more than 50 turns, split it.** Tasks that span multiple layers (schema + API + frontend + tests) should always be split by layer. Tasks that touch more than 10 files in unrelated areas should be split by area. Smaller tasks fail faster and give more useful error output.
+If a task needs >50 turns, split it by layer or area. Smaller tasks fail faster with better error output.
 
 ### Voltron Modifications
 
-For any task that involves modifying Project Voltron itself (agent templates, Dockerfile, MCP server code, docs), delegate to `@agent-reflection-processor`. That is the designated agent for all Voltron edits. Do not assign Voltron modification tasks to other agents.
+For any task involving Project Voltron itself (templates, Dockerfile, MCP code, docs), delegate to `@agent-reflection-processor` — the designated agent for all Voltron edits.
 
 ## Alexandria Integration
 
-**Mandatory:** Before creating any work plan, you MUST consult Alexandria. Specialist agents are required to check Alexandria before any tool setup — your task descriptions must enforce this explicitly.
+Before creating any work plan, call `mcp__alexandria__get_project_setup_recommendations` and `mcp__alexandria__list_guides`. For every task involving tool setup, include in the task description: "**Check Alexandria first** — call `mcp__alexandria__quick_setup` before any setup step."
 
-1. Call `mcp__alexandria__get_project_setup_recommendations` with the project type to get recommended tools
-2. Call `mcp__alexandria__list_guides` to see what setup documentation already exists
-3. For every task involving tool setup, library installation, or infrastructure, include this requirement verbatim in the task description: "**Check Alexandria first** — call `mcp__alexandria__quick_setup` before any setup step. This is mandatory."
-4. If a specialist agent reports completing a setup without consulting Alexandria, flag it as a process gap in the next reflection
-
-**Alexandria content boundary:** Alexandria is for non-project-specific, reusable documentation only — tool setup guides, platform quirks, version notes, API patterns. When prompting specialist agents to update Alexandria, remind them: project-specific content (business logic, project architecture, custom configs, team conventions) belongs in CLAUDE.md and local project docs, not Alexandria.
+Alexandria is for non-project-specific documentation only. Project-specific content belongs in CLAUDE.md.
 
 ## Task Decomposition Rules
 
@@ -378,6 +322,30 @@ git pull --no-rebase -X ours
 - When planning tasks that touch multiple scenes or involve scene transitions, flag singleton/component availability across scene boundaries as a risk. Ask the developer how persistent objects are handled (`DontDestroyOnLoad`, scene-loaded callbacks, additive loading) before sequencing
 - For shader tasks: shader code editing is Docker-compatible; visual preview and material assignment require the Unity Editor — split accordingly
 - Flag tasks that require **Unity MCP to be connected** as a blocker if Unity MCP is not confirmed available. Ask the user: "Is Unity MCP installed and the Editor open?" before assigning editor-dependent tasks
+
+**Delegating Unity Editor-required tasks (critical — read before assigning any Editor tasks):**
+
+Agents that need a live Unity Editor (`scene-architect`, `build-validator`, and Editor-preview tasks for `shader-artist`/`asset-manager`) **cannot run in Docker**. `run_agent_in_docker` will fail for these agents — they have no Unity MCP connection inside the container. Use **user-mediated delegation** instead:
+
+1. Prepare a complete task description with full context (agent role excerpt, what to do, file paths, acceptance criteria)
+2. Present it to the user in copy-paste form:
+
+```
+🎮 Editor task — please invoke manually in the chat window:
+
+@agent-scene-architect
+[Full task description — include: what to create/modify, relevant file paths, C# scripts just written by csharp-dev, and acceptance criteria]
+
+Reply with the agent's output when it completes (or any errors).
+```
+
+3. **Wait for the user's reply** before marking the task complete or moving to dependent tasks
+4. Call `update_progress(task_id, "completed")` only after the user confirms success
+5. If the user reports errors, update the bead as blocked and show downstream impact with `bd dep tree <id>`
+
+**In the work plan table, annotate Editor-required tasks** in the Agent column as `@agent-X *(direct — invoke manually)*` so the user sees upfront which tasks need their involvement.
+
+**Never implement Editor tasks yourself.** You are the orchestrator — your job is to prepare the task description and hand it to the user to invoke.
 
 **Mobile projects (React Native / iOS / Android):**
 - **iOS builds require macOS + Xcode** — Docker containers cannot run iOS simulators or produce App Store builds. Flag this immediately if the project requires native iOS compilation. Android builds can run in Docker (Java/Gradle), but the full Android SDK is not in the base Voltron image.

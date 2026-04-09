@@ -8,11 +8,14 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { homedir } from "node:os";
 import {
   TEMPLATES,
   AGENT_NAMES,
   DOCKERFILE_CONTENT,
   VOLTRON_RUN_SCRIPT,
+  VOLTRON_ALLOW,
+  VOLTRON_DENY,
 } from "../src/templates.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -38,58 +41,111 @@ const installedContent = readFileSync(scrumMasterPath, "utf-8");
 const versionMatch = installedContent.match(/\*\*Version:\*\*\s+([\d.]+)/);
 const installedVersion = versionMatch ? versionMatch[1] : null;
 
-// Exit silently if already up to date
-if (installedVersion === currentVersion) {
-  process.exit(0);
-}
+const needsUpdate = installedVersion !== currentVersion;
 
-// ── Update agent files ────────────────────────────────────────────────────────
 let updated = 0;
 const updatedItems = [];
 
-for (const agentKey of AGENT_NAMES) {
-  const template = TEMPLATES[agentKey];
-  if (!template) continue;
+// ── Update agent files (only when version changed) ───────────────────────────
+if (needsUpdate) {
+  for (const agentKey of AGENT_NAMES) {
+    const template = TEMPLATES[agentKey];
+    if (!template) continue;
 
-  const agentFilename = template.destination.split("/").pop();
-  const agentPath = resolve(agentsDir, agentFilename);
+    const agentFilename = template.destination.split("/").pop();
+    const agentPath = resolve(agentsDir, agentFilename);
 
-  if (existsSync(agentPath)) {
-    writeFileSync(agentPath, template.content, "utf-8");
-    updated++;
-    updatedItems.push(agentKey);
+    if (existsSync(agentPath)) {
+      const existing = readFileSync(agentPath, "utf-8");
+      if (existing !== template.content) {
+        writeFileSync(agentPath, template.content, "utf-8");
+        updated++;
+        updatedItems.push(agentKey);
+      }
+    }
+  }
+
+  // Dockerfile.voltron — only update if it already exists (project uses Docker)
+  const dockerfilePath = resolve(projectRoot, "Dockerfile.voltron");
+  if (existsSync(dockerfilePath)) {
+    const existing = readFileSync(dockerfilePath, "utf-8");
+    if (existing !== DOCKERFILE_CONTENT) {
+      writeFileSync(dockerfilePath, DOCKERFILE_CONTENT, "utf-8");
+      updated++;
+      updatedItems.push("Dockerfile.voltron");
+    }
+  }
+
+  // scripts/voltron-run.sh — only update if it already exists
+  const runScriptPath = resolve(projectRoot, "scripts", "voltron-run.sh");
+  if (existsSync(runScriptPath)) {
+    const existing = readFileSync(runScriptPath, "utf-8");
+    if (existing !== VOLTRON_RUN_SCRIPT) {
+      writeFileSync(runScriptPath, VOLTRON_RUN_SCRIPT, "utf-8");
+      updated++;
+      updatedItems.push("voltron-run.sh");
+    }
   }
 }
 
-// ── Update infrastructure files ───────────────────────────────────────────────
-
-// Dockerfile.voltron — only update if it already exists (project uses Docker)
-const dockerfilePath = resolve(projectRoot, "Dockerfile.voltron");
-if (existsSync(dockerfilePath)) {
-  const existing = readFileSync(dockerfilePath, "utf-8");
-  if (existing !== DOCKERFILE_CONTENT) {
-    writeFileSync(dockerfilePath, DOCKERFILE_CONTENT, "utf-8");
-    updated++;
-    updatedItems.push("Dockerfile.voltron");
+// ── Update .mcp.json — ensure project-voltron is registered (always check) ───
+const mcpJsonPath = resolve(projectRoot, ".mcp.json");
+try {
+  let mcpJson = {};
+  if (existsSync(mcpJsonPath)) {
+    mcpJson = JSON.parse(readFileSync(mcpJsonPath, "utf-8"));
   }
+  if (!mcpJson.mcpServers) mcpJson.mcpServers = {};
+  if (!mcpJson.mcpServers["project-voltron"]) {
+    const voltronIndexPath = resolve(voltronRoot, "src", "index.js");
+    mcpJson.mcpServers["project-voltron"] = {
+      type: "stdio",
+      command: "node",
+      args: [voltronIndexPath],
+    };
+    writeFileSync(mcpJsonPath, JSON.stringify(mcpJson, null, 2) + "\n", "utf-8");
+    updated++;
+    updatedItems.push(".mcp.json");
+  }
+} catch {
+  // Non-fatal — .mcp.json update is best-effort
 }
 
-// scripts/voltron-run.sh — only update if it already exists
-const runScriptPath = resolve(projectRoot, "scripts", "voltron-run.sh");
-if (existsSync(runScriptPath)) {
-  const existing = readFileSync(runScriptPath, "utf-8");
-  if (existing !== VOLTRON_RUN_SCRIPT) {
-    writeFileSync(runScriptPath, VOLTRON_RUN_SCRIPT, "utf-8");
-    updated++;
-    updatedItems.push("voltron-run.sh");
+// ── Merge global ~/.claude/settings.json permissions (always check) ──────────
+try {
+  const globalSettingsPath = join(homedir(), ".claude", "settings.json");
+  let globalSettings = {};
+  if (existsSync(globalSettingsPath)) {
+    globalSettings = JSON.parse(readFileSync(globalSettingsPath, "utf-8"));
   }
+
+  const currentAllow = globalSettings?.permissions?.allow ?? [];
+  const currentDeny = globalSettings?.permissions?.deny ?? [];
+
+  const missingAllow = VOLTRON_ALLOW.filter((e) => !currentAllow.includes(e));
+  const missingDeny = VOLTRON_DENY.filter((e) => !currentDeny.includes(e));
+
+  if (missingAllow.length > 0 || missingDeny.length > 0) {
+    if (!globalSettings.permissions) globalSettings.permissions = {};
+    if (!globalSettings.permissions.allow) globalSettings.permissions.allow = [];
+    if (!globalSettings.permissions.deny) globalSettings.permissions.deny = [];
+    globalSettings.permissions.allow.push(...missingAllow);
+    globalSettings.permissions.deny.push(...missingDeny);
+    mkdirSync(dirname(globalSettingsPath), { recursive: true });
+    writeFileSync(globalSettingsPath, JSON.stringify(globalSettings, null, 2), "utf-8");
+    updated++;
+    updatedItems.push("~/.claude/settings.json");
+  }
+} catch {
+  // Non-fatal — global settings update is best-effort
 }
 
 // ── Report ────────────────────────────────────────────────────────────────────
 if (updated > 0) {
   const from = installedVersion ? `v${installedVersion}` : "unknown version";
+  const versionNote = needsUpdate ? ` from ${from} → v${currentVersion}` : "";
   console.log(
-    `[VOLTRON] Auto-updated ${updated} file(s) from ${from} → v${currentVersion}: ${updatedItems.join(", ")}`
+    `[VOLTRON] Auto-updated ${updated} file(s)${versionNote}: ${updatedItems.join(", ")}`
   );
 } else {
   process.exit(0);

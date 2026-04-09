@@ -20,6 +20,8 @@ import {
   CLAUDE_MD_FOR_TYPE,
   DOCKERFILE_CONTENT,
   VOLTRON_RUN_SCRIPT,
+  VOLTRON_ALLOW,
+  VOLTRON_DENY,
 } from "./templates.js";
 
 // ─── Version ────────────────────────────────────────────────────────────────
@@ -1275,32 +1277,6 @@ server.tool(
   async ({ dry_run = false }) => {
     const homeDir = process.env.HOME || process.env.USERPROFILE || os.homedir();
     const settingsPath = path.join(homeDir, ".claude", "settings.json");
-
-    // Recommended allowlist
-    const VOLTRON_ALLOW = [
-      "Read", "Write", "Edit", "Glob", "Grep", "WebFetch", "WebSearch", "TodoWrite",
-      "Bash(git *)", "Bash(gh *)", "Bash(mkdir *)", "Bash(ls *)", "Bash(ls)",
-      "Bash(cat *)", "Bash(echo *)", "Bash(head *)", "Bash(tail *)", "Bash(wc *)",
-      "Bash(sort *)", "Bash(uniq *)", "Bash(cut *)", "Bash(tr *)", "Bash(sed *)",
-      "Bash(awk *)", "Bash(grep *)", "Bash(rg *)", "Bash(find *)", "Bash(which *)",
-      "Bash(where *)", "Bash(type *)", "Bash(pwd)", "Bash(cd *)", "Bash(cp *)",
-      "Bash(mv *)", "Bash(touch *)", "Bash(chmod *)", "Bash(unzip *)", "Bash(tar *)",
-      "Bash(curl *)", "Bash(wget *)", "Bash(diff *)", "Bash(patch *)", "Bash(tee *)",
-      "Bash(xargs *)", "Bash(jq *)", "Bash(node *)", "Bash(npm *)", "Bash(npx *)",
-      "Bash(python *)", "Bash(pip *)", "Bash(env *)", "Bash(export *)",
-      "Bash(set *)", "Bash(test *)", "Bash([ *)", "Bash(true)", "Bash(false)",
-      "Bash(date *)", "Bash(date)", "Bash(realpath *)", "Bash(basename *)",
-      "Bash(dirname *)", "Bash(stat *)", "Bash(file *)", "Bash(du *)", "Bash(df *)",
-      "Bash(docker *)", "Bash(docker-compose *)", "Bash(openssl *)", "Bash(eval *)",
-      "Bash(sleep *)", "Bash(bd *)",
-      "mcp__project-voltron__*", "mcp__alexandria__*",
-      "mcp__Claude_in_Chrome__*", "mcp__github__*"
-    ];
-
-    const VOLTRON_DENY = [
-      "Bash(git push --force *)", "Bash(git push -f *)", "Bash(git reset --hard *)",
-      "Bash(rm -rf *)", "Bash(rm -r *)", "Bash(rmdir *)"
-    ];
 
     // Read current settings
     let settings = {};

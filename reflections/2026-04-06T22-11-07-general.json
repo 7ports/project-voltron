@@ -16,5 +16,5 @@
     }
   ],
   "overall_notes": "Key learnings captured in Alexandria (loki-grafana-stack guide): (1) GF_SECURITY_ADMIN_PASSWORD only applies on first DB init — reset via grafana cli if container started without correct env; (2) env() function deprecated in Alloy River — harmless warnings, still works; (3) loki.source.docker stale container errors after restart are benign; (4) Docker Compose .env loading — V2 looks in compose file directory, not CWD; use symlink or --env-file to bridge. Phase 3 DoD fully satisfied. Awaiting user signal before starting Phase 4.",
-  "processed": false
+  "processed": true
 }

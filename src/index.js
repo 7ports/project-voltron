@@ -1292,8 +1292,9 @@ server.tool(
       "Bash(date *)", "Bash(date)", "Bash(realpath *)", "Bash(basename *)",
       "Bash(dirname *)", "Bash(stat *)", "Bash(file *)", "Bash(du *)", "Bash(df *)",
       "Bash(docker *)", "Bash(docker-compose *)", "Bash(openssl *)", "Bash(eval *)",
-      "Bash(sleep *)",
-      "mcp__project-voltron__*", "mcp__alexandria__*"
+      "Bash(sleep *)", "Bash(bd *)",
+      "mcp__project-voltron__*", "mcp__alexandria__*",
+      "mcp__Claude_in_Chrome__*", "mcp__github__*"
     ];
 
     const VOLTRON_DENY = [

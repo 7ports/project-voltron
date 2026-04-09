@@ -15,5 +15,5 @@
     }
   ],
   "overall_notes": "Key architectural pattern established: stdio MCP servers cannot be probed by Prometheus (no HTTP port). The correct pattern is prom-client + timer-based Pushgateway push. This is now documented in both the Helldiver templates and Alexandria guide. Also discovered that Voltron Docker containers can use mcp__github__* tools for cross-repo operations — this is the reliable path for multi-repo work.",
-  "processed": false
+  "processed": true
 }

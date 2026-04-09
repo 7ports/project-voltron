@@ -15,5 +15,5 @@
     }
   ],
   "overall_notes": "The gen_manifest.py extension to update README.md worked correctly on first try. The regex approach using re.sub with re.DOTALL to find and replace the Guides table section was clean. Parallel execution of tasks 1 and 2 worked well — no conflicts since they touched different files.",
-  "processed": false
+  "processed": true
 }

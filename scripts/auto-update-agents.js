@@ -6,6 +6,7 @@
 // The hook runs from the project directory (cwd = project root).
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { execSync } from "node:child_process";
 import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
@@ -16,6 +17,7 @@ import {
   VOLTRON_RUN_SCRIPT,
   VOLTRON_ALLOW,
   VOLTRON_DENY,
+  voltronGitignoreBlock,
 } from "../src/templates.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -86,6 +88,41 @@ if (needsUpdate) {
       updatedItems.push("voltron-run.sh");
     }
   }
+
+  // Check for missing Voltron npm dependencies and install if needed
+  try {
+    const deps = Object.keys(pkg.dependencies || {});
+    const missingDeps = deps.filter(
+      (dep) => !existsSync(join(voltronRoot, "node_modules", dep))
+    );
+    if (missingDeps.length > 0) {
+      execSync(`npm install --prefix "${voltronRoot}" --silent`, { stdio: "ignore" });
+      updated++;
+      updatedItems.push(`npm install (${missingDeps.join(", ")})`);
+    }
+  } catch {
+    // Non-fatal — user can run npm install manually if needed
+  }
+}
+
+// ── Update .gitignore — add Voltron block if missing (always check) ──────────
+const gitignorePath = resolve(projectRoot, ".gitignore");
+try {
+  const block = voltronGitignoreBlock();
+  let gitignoreContent = "";
+  if (existsSync(gitignorePath)) {
+    gitignoreContent = readFileSync(gitignorePath, "utf-8");
+  }
+  if (!gitignoreContent.includes("# ── Voltron managed")) {
+    const separator = gitignoreContent.length > 0 && !gitignoreContent.endsWith("\n") ? "\n\n" : (gitignoreContent.length > 0 ? "\n" : "");
+    writeFileSync(gitignorePath, gitignoreContent + separator + block, "utf-8");
+    // Stage it so it's not left as an untracked change
+    try { execSync("git add .gitignore", { cwd: projectRoot, stdio: "ignore" }); } catch { /* not a git repo, non-fatal */ }
+    updated++;
+    updatedItems.push(".gitignore");
+  }
+} catch {
+  // Non-fatal
 }
 
 // ── Update .mcp.json — ensure project-voltron is registered (always check) ───

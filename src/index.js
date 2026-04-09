@@ -22,6 +22,7 @@ import {
   VOLTRON_RUN_SCRIPT,
   VOLTRON_ALLOW,
   VOLTRON_DENY,
+  voltronGitignoreBlock,
 } from "./templates.js";
 
 // ─── Version ────────────────────────────────────────────────────────────────
@@ -453,6 +454,25 @@ server.tool(
       } catch (err) {
         noted.push({ path: ".mcp.json", note: `could not write: ${err.message} — run: claude mcp add project-voltron -- node "${fileURLToPath(import.meta.url)}"` });
       }
+    }
+
+    // Write/update .gitignore — add Voltron block if not already present
+    const gitignorePath = path.join(cwd, ".gitignore");
+    try {
+      const gitignoreBlock = voltronGitignoreBlock();
+      let gitignoreContent = "";
+      try { gitignoreContent = await fs.readFile(gitignorePath, "utf-8"); } catch { /* new file */ }
+      if (!gitignoreContent.includes("# ── Voltron managed")) {
+        const separator = gitignoreContent.length > 0 && !gitignoreContent.endsWith("\n") ? "\n\n" : (gitignoreContent.length > 0 ? "\n" : "");
+        await fs.writeFile(gitignorePath, gitignoreContent + separator + gitignoreBlock, "utf-8");
+        written.push(".gitignore");
+        // Stage it immediately so it's never left as an untracked file
+        try { execSync("git add .gitignore", { cwd, stdio: "ignore" }); } catch { /* not a git repo yet, non-fatal */ }
+      } else {
+        skipped.push({ path: ".gitignore", reason: "Voltron block already present" });
+      }
+    } catch (err) {
+      noted.push({ path: ".gitignore", note: `could not write: ${err.message}` });
     }
 
     // Merge auto-update hook into .claude/settings.json (don't overwrite existing hooks)
@@ -1322,6 +1342,32 @@ server.tool(
       await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2));
     }
 
+    // Check Trello MCP registration in global settings
+    const trelloRegistered = !!settings?.mcpServers?.["trello"];
+    let trelloStatus = "";
+    if (!trelloRegistered && !dry_run) {
+      // Add Trello MCP config stub (credentials supplied via env vars by the user)
+      if (!settings.mcpServers) settings.mcpServers = {};
+      settings.mcpServers["trello"] = {
+        command: "npx",
+        args: ["-y", "@delorenj/mcp-server-trello"],
+        env: {
+          TRELLO_API_KEY: "${TRELLO_API_KEY}",
+          TRELLO_TOKEN: "${TRELLO_TOKEN}",
+        },
+      };
+      await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2));
+      trelloStatus = "✓ Registered (set TRELLO_API_KEY and TRELLO_TOKEN in your environment to activate)";
+    } else if (trelloRegistered) {
+      const hasKey = !!process.env.TRELLO_API_KEY;
+      const hasTok = !!process.env.TRELLO_TOKEN;
+      trelloStatus = hasKey && hasTok
+        ? "✓ Registered + credentials found"
+        : `✓ Registered — ${!hasKey ? "TRELLO_API_KEY " : ""}${!hasTok ? "TRELLO_TOKEN " : ""}missing from environment`;
+    } else {
+      trelloStatus = "⚠ Not registered (run without dry_run to add)";
+    }
+
     // Build report
     const allowStatus = missingAllow.length === 0
       ? `✓ All ${VOLTRON_ALLOW.length} entries present`
@@ -1341,6 +1387,7 @@ server.tool(
       `- **MCP Server:** ${mcpRegistered ? "✓ registered" : "⚠ not found in settings.json — run \`node scripts/setup.js\` to register"}`,
       `- **Allowlist:** ${allowStatus}`,
       `- **Deny rules:** ${denyStatus}`,
+      `- **Trello MCP:** ${trelloStatus}`,
       `- **Docker:** ${dockerStatus === "available" ? "✓ available" : "⚠ Docker not found — install Docker Desktop for agent execution"}`,
       `- **Claude Code:** ${versionStatus}`,
       "",

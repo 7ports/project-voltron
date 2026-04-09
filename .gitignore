@@ -2,3 +2,15 @@ node_modules/
 *.log
 .DS_Store
 Thumbs.db
+
+# ── Voltron managed ─────────────────────────────────────────────
+# Claude Code — machine-specific session settings
+.claude/settings.local.json
+.claude/worktrees/
+
+# Voltron — ephemeral runtime artifacts
+.voltron/logs/
+.voltron/dashboard.html
+.voltron/progress.json
+.voltron/screenshots/staged/
+# ── end Voltron managed ─────────────────────────────────────────

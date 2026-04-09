@@ -479,6 +479,20 @@ If the session included any tool setup, API integration, or platform-specific di
 
 ---
 
+## Trello (Optional)
+
+> Fill in if this project has a Trello board. When configured, the scrum-master can pull cards directly as backlog tasks.
+
+\`\`\`
+TRELLO_BOARD_ID=          # from board URL: trello.com/b/<BOARD_ID>/...
+\`\`\`
+
+Credentials (\`TRELLO_API_KEY\`, \`TRELLO_TOKEN\`) live in your shell environment or \`.env\` (gitignored). Get them at https://trello.com/power-ups/admin.
+
+**Dev server URL for visual verification:** http://localhost:PORT  ← update with your actual port
+
+---
+
 ## Things Claude Should Never Do
 
 - Commit \`.env\`, API keys, secrets, or credentials
@@ -662,7 +676,7 @@ If the session included any tool setup, API integration, or platform-specific di
     content: `---
 name: scrum-master
 description: Project coordinator that reads backlogs and project plans, breaks work into agent-sized tasks, and assigns them to the appropriate specialist agents. Invoke to plan a sprint, decompose a feature, or triage a backlog. This agent never implements — it only plans and delegates.
-tools: Read, Bash, mcp__project-voltron__run_agent_in_docker, mcp__project-voltron__start_agent_in_docker, mcp__project-voltron__get_agent_output, mcp__project-voltron__get_template, mcp__project-voltron__submit_reflection, mcp__project-voltron__list_templates, mcp__project-voltron__update_progress, mcp__project-voltron__get_progress, mcp__project-voltron__generate_dashboard, mcp__alexandria__get_project_setup_recommendations, mcp__alexandria__list_guides, mcp__alexandria__quick_setup, mcp__alexandria__update_guide, mcp__Claude_in_Chrome__tabs_context_mcp, mcp__Claude_in_Chrome__tabs_create_mcp, mcp__Claude_in_Chrome__navigate
+tools: Read, Bash, mcp__project-voltron__run_agent_in_docker, mcp__project-voltron__start_agent_in_docker, mcp__project-voltron__get_agent_output, mcp__project-voltron__get_template, mcp__project-voltron__submit_reflection, mcp__project-voltron__list_templates, mcp__project-voltron__update_progress, mcp__project-voltron__get_progress, mcp__project-voltron__generate_dashboard, mcp__alexandria__get_project_setup_recommendations, mcp__alexandria__list_guides, mcp__alexandria__quick_setup, mcp__alexandria__update_guide, mcp__Claude_in_Chrome__tabs_context_mcp, mcp__Claude_in_Chrome__tabs_create_mcp, mcp__Claude_in_Chrome__navigate, mcp__Claude_in_Chrome__computer, mcp__trello__list_boards, mcp__trello__set_active_board, mcp__trello__get_lists, mcp__trello__get_cards_by_list_id, mcp__trello__get_card, mcp__trello__update_card_details, mcp__trello__move_card, mcp__trello__add_comment, mcp__trello__get_recent_activity
 ---
 
 You are a Scrum Master and Project Coordinator. You read project plans, backlogs, and requirements, then break them into actionable tasks sized for individual specialist agents to complete. You never implement anything yourself — you plan, assign, and track.
@@ -969,6 +983,69 @@ Reply with the agent's output when it completes (or any errors).
 - **Platform divergence is a frequent source of bugs** — when a feature touches both iOS and Android, add an explicit acceptance criterion: "Verify behavior on both platforms (simulator/emulator)." Do not assume shared code behaves identically.
 - For App Store / Google Play submissions, always include a dedicated \`app-store-publisher\` task with Fastlane setup as a prerequisite. Flag certificate provisioning and API key setup (App Store Connect API, Google Play service account) as human-input blockers.
 - When planning mobile QA tasks, specify which platform(s) and device types (phone/tablet, OS version range). Detox requires a simulator to be pre-booted — add that as a prerequisite or include it in the task description.
+
+## Trello Integration (Optional)
+
+If the project has Trello configured (check CLAUDE.md for a \`## Trello\` section or \`TRELLO_BOARD_ID\`), use the Trello MCP tools to pull the backlog directly from the board instead of asking the user to describe tickets manually.
+
+### Reading the Trello Backlog
+
+\`\`\`
+1. mcp__trello__list_boards          — find the project board (or use TRELLO_BOARD_ID from CLAUDE.md)
+2. mcp__trello__set_active_board     — set the active board by ID
+3. mcp__trello__get_lists            — get all lists (columns) on the board
+4. mcp__trello__get_cards_by_list_id — get cards from one or more lists
+\`\`\`
+
+**When the user says "tackle [list name] cards"** (e.g. "tackle the To Do cards"):
+1. Fetch the matching list(s) by name
+2. Get all cards from those lists
+3. Each card becomes one or more tasks in the work plan (split large cards if needed)
+4. Use the card title as the task title; card description as acceptance criteria context
+
+**Filtering options users can request:**
+- By list/column: "tackle To Do", "tackle In Progress + Blocked"
+- By label: "tackle all cards labelled 'backend'"
+- By assignee: "tackle cards assigned to me"
+- By a specific card: "tackle card [URL or title]"
+
+### Updating Trello as Work Completes
+
+After each task completes successfully:
+1. \`mcp__trello__move_card\` — move the card to the "Done" (or equivalent) list
+2. \`mcp__trello__add_comment\` — add a brief completion note: "Completed by Voltron agent [agent-name]. [one-line summary of what was done]"
+
+On task failure: \`mcp__trello__add_comment\` with the error summary; leave card in its current list.
+
+### Trello Not Configured
+
+If Trello tools are unavailable or credentials are missing, skip silently — don't block work. Remind the user: "Trello not configured — add TRELLO_API_KEY and TRELLO_TOKEN to your environment and run \`setup_voltron\` to enable Trello integration."
+
+## Visual Change Verification (Web / Mobile Projects)
+
+When any task involves **UI or visual changes** (new components, style changes, layout updates, new pages), add an explicit verification step to the work plan:
+
+**After the implementing agent completes:**
+1. Navigate to the dev server URL in Chrome: \`mcp__Claude_in_Chrome__navigate\`
+2. Take a screenshot: \`mcp__Claude_in_Chrome__computer\` (action: screenshot)
+3. Save screenshot to \`.voltron/screenshots/<task-id>-<description>.png\` via Bash
+4. Include the screenshot in the completion summary shown to the user
+
+**For PRs that include visual changes:**
+1. Save before/after screenshots to \`.voltron/screenshots/\`
+2. Commit the screenshots to the branch: \`git add .voltron/screenshots/ && git commit -m "chore: add visual verification screenshots"\`
+3. Embed in the PR body:
+\`\`\`
+## Visual Changes
+
+| Before | After |
+|---|---|
+| ![Before](.voltron/screenshots/task-N-before.png) | ![After](.voltron/screenshots/task-N-after.png) |
+\`\`\`
+
+**Work plan annotation:** In the work plan table, add a "📸 Visual" tag to any task involving visible UI changes, so the user knows to expect screenshot verification.
+
+**Dev server URL:** Check CLAUDE.md for the local dev server port/URL. If not documented, ask the user before starting visual tasks: "What port does the dev server run on?"
 
 ## On Completion
 
@@ -2074,6 +2151,7 @@ Report:
 - What the code does and how it integrates
 - Any environment variables or config needed
 - How to test the changes locally
+- **If the change affects visible UI:** explicitly note "📸 Visual change — screenshot verification recommended" so the scrum-master knows to capture before/after screenshots
 
 ## Output Efficiency
 
@@ -4337,15 +4415,38 @@ export const VOLTRON_ALLOW = [
   "Bash(date *)", "Bash(date)", "Bash(realpath *)", "Bash(basename *)",
   "Bash(dirname *)", "Bash(stat *)", "Bash(file *)", "Bash(du *)", "Bash(df *)",
   "Bash(docker *)", "Bash(docker-compose *)", "Bash(openssl *)", "Bash(eval *)",
-  "Bash(sleep *)", "Bash(bd *)",
+  "Bash(sleep *)", "Bash(bd *)", "Bash(npm *)",
   "mcp__project-voltron__*", "mcp__alexandria__*",
-  "mcp__Claude_in_Chrome__*", "mcp__github__*",
+  "mcp__Claude_in_Chrome__*", "mcp__github__*", "mcp__trello__*",
 ];
 
 export const VOLTRON_DENY = [
   "Bash(git push --force *)", "Bash(git push -f *)", "Bash(git reset --hard *)",
   "Bash(rm -rf *)", "Bash(rm -r *)", "Bash(rmdir *)",
 ];
+
+// ─── Gitignore entries added/maintained by Voltron ───────────────────────────
+// Appended to .gitignore on scaffold and kept current by auto-update-agents.js
+export const VOLTRON_GITIGNORE_ENTRIES = [
+  "# Claude Code — machine-specific session settings",
+  ".claude/settings.local.json",
+  ".claude/worktrees/",
+  "",
+  "# Voltron — ephemeral runtime artifacts",
+  ".voltron/logs/",
+  ".voltron/dashboard.html",
+  ".voltron/progress.json",
+  ".voltron/screenshots/staged/",
+];
+
+// Returns the gitignore block as a string (with sentinel comments for idempotent updates)
+export function voltronGitignoreBlock() {
+  return (
+    "# ── Voltron managed ─────────────────────────────────────────────\n" +
+    VOLTRON_GITIGNORE_ENTRIES.join("\n") +
+    "\n# ── end Voltron managed ─────────────────────────────────────────\n"
+  );
+}
 
 // Returns the template keys appropriate for a given project type.
 // If no type provided, returns all agents + the general CLAUDE.md.

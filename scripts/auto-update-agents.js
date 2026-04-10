@@ -148,7 +148,7 @@ try {
   // Non-fatal — .mcp.json update is best-effort
 }
 
-// ── Merge global ~/.claude/settings.json permissions + MCP registration ──────
+// ── Merge global ~/.claude/settings.json permissions ─────────────────────────
 try {
   const globalSettingsPath = join(homedir(), ".claude", "settings.json");
   let globalSettings = {};
@@ -156,7 +156,7 @@ try {
     globalSettings = JSON.parse(readFileSync(globalSettingsPath, "utf-8"));
   }
 
-  let globalDirty = false;
+  let settingsDirty = false;
 
   // Permissions
   const currentAllow = globalSettings?.permissions?.allow ?? [];
@@ -169,22 +169,16 @@ try {
     if (!globalSettings.permissions.deny) globalSettings.permissions.deny = [];
     globalSettings.permissions.allow.push(...missingAllow);
     globalSettings.permissions.deny.push(...missingDeny);
-    globalDirty = true;
+    settingsDirty = true;
   }
 
-  // MCP server registration (global — makes Voltron available in all projects)
-  const voltronIndexPath = resolve(voltronRoot, "src", "index.js");
-  if (!globalSettings?.mcpServers?.["project-voltron"]) {
-    if (!globalSettings.mcpServers) globalSettings.mcpServers = {};
-    globalSettings.mcpServers["project-voltron"] = {
-      type: "stdio",
-      command: "node",
-      args: [voltronIndexPath],
-    };
-    globalDirty = true;
+  // Clean up stale mcpServers key (written incorrectly by v2.9.2 — wrong file)
+  if (globalSettings.mcpServers) {
+    delete globalSettings.mcpServers;
+    settingsDirty = true;
   }
 
-  if (globalDirty) {
+  if (settingsDirty) {
     mkdirSync(dirname(globalSettingsPath), { recursive: true });
     writeFileSync(globalSettingsPath, JSON.stringify(globalSettings, null, 2), "utf-8");
     updated++;
@@ -192,6 +186,31 @@ try {
   }
 } catch {
   // Non-fatal — global settings update is best-effort
+}
+
+// ── Register project-voltron in ~/.claude.json (the correct MCP config file) ─
+try {
+  const claudeJsonPath = join(homedir(), ".claude.json");
+  let claudeJson = {};
+  if (existsSync(claudeJsonPath)) {
+    claudeJson = JSON.parse(readFileSync(claudeJsonPath, "utf-8"));
+  }
+
+  const voltronIndexPath = resolve(voltronRoot, "src", "index.js");
+  if (!claudeJson?.mcpServers?.["project-voltron"]) {
+    if (!claudeJson.mcpServers) claudeJson.mcpServers = {};
+    claudeJson.mcpServers["project-voltron"] = {
+      type: "stdio",
+      command: "node",
+      args: [voltronIndexPath],
+      env: {},
+    };
+    writeFileSync(claudeJsonPath, JSON.stringify(claudeJson, null, 2), "utf-8");
+    updated++;
+    updatedItems.push("~/.claude.json");
+  }
+} catch {
+  // Non-fatal — ~/.claude.json update is best-effort
 }
 
 // ── Report ────────────────────────────────────────────────────────────────────

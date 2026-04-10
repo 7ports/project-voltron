@@ -8,7 +8,9 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
-import { execSync, spawn } from "node:child_process";
+import { execSync, spawn, exec as execCb } from "node:child_process";
+import { promisify } from "node:util";
+const exec = promisify(execCb);
 import os from "node:os";
 import {
   TEMPLATES,
@@ -77,15 +79,15 @@ function getClaudeVersion() {
  * @returns {{ root: string, source: string }}
  */
 // Returns null if Docker is ready, or an error string describing why it isn't.
-// Checks both CLI presence AND daemon availability (docker --version only proves CLI is installed).
-function checkDockerAvailable() {
+// Async — uses promisified exec so the MCP stdio transport stays alive during the check.
+async function checkDockerAvailable() {
   try {
-    execSync("docker --version", { stdio: "ignore" });
+    await exec("docker --version");
   } catch {
     return "Docker CLI is not installed or not in PATH. Install Docker Desktop and ensure it is in your PATH.";
   }
   try {
-    execSync("docker info", { stdio: "ignore", timeout: 10000 });
+    await exec("docker info", { timeout: 10000 });
   } catch {
     return "Docker is installed but the daemon is not running. Start Docker Desktop and wait for it to finish starting, then try again.";
   }
@@ -1313,11 +1315,18 @@ server.tool(
   async ({ dry_run = false }) => {
     const homeDir = process.env.HOME || process.env.USERPROFILE || os.homedir();
     const settingsPath = path.join(homeDir, ".claude", "settings.json");
+    const claudeJsonPath = path.join(homeDir, ".claude.json");
 
-    // Read current settings
+    // Read ~/.claude/settings.json (permissions only)
     let settings = {};
     try {
       settings = JSON.parse(await fs.readFile(settingsPath, "utf-8"));
+    } catch { /* file doesn't exist yet */ }
+
+    // Read ~/.claude.json (MCP server registrations)
+    let claudeJson = {};
+    try {
+      claudeJson = JSON.parse(await fs.readFile(claudeJsonPath, "utf-8"));
     } catch { /* file doesn't exist yet */ }
 
     const currentAllow = settings?.permissions?.allow ?? [];
@@ -1326,27 +1335,34 @@ server.tool(
     const missingAllow = VOLTRON_ALLOW.filter(e => !currentAllow.includes(e));
     const missingDeny = VOLTRON_DENY.filter(e => !currentDeny.includes(e));
 
-    // Check MCP registration — and auto-register if missing
-    const mcpRegistered = !!settings?.mcpServers?.["project-voltron"];
+    // Check MCP registration in ~/.claude.json (the correct file)
+    const mcpRegistered = !!claudeJson?.mcpServers?.["project-voltron"];
     let mcpStatus = "";
     if (!mcpRegistered && !dry_run) {
-      if (!settings.mcpServers) settings.mcpServers = {};
-      settings.mcpServers["project-voltron"] = {
+      if (!claudeJson.mcpServers) claudeJson.mcpServers = {};
+      claudeJson.mcpServers["project-voltron"] = {
         type: "stdio",
         command: "node",
         args: [__filename],
+        env: {},
       };
-      await fs.mkdir(path.dirname(settingsPath), { recursive: true });
-      await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2));
-      mcpStatus = "✓ Registered globally (restart Claude Code to activate)";
+      await fs.writeFile(claudeJsonPath, JSON.stringify(claudeJson, null, 2));
+      mcpStatus = "✓ Registered in ~/.claude.json (restart Claude Code to activate)";
     } else if (mcpRegistered) {
-      mcpStatus = "✓ Registered globally";
+      mcpStatus = "✓ Registered in ~/.claude.json";
     } else {
       mcpStatus = "⚠ Not registered (run without dry_run to add)";
     }
 
+    // Clean up stale mcpServers from settings.json (wrong file — written by v2.9.2)
+    if (!dry_run && settings.mcpServers) {
+      delete settings.mcpServers;
+      await fs.mkdir(path.dirname(settingsPath), { recursive: true });
+      await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2));
+    }
+
     // Check Docker (CLI + daemon)
-    const dockerCheckErr = checkDockerAvailable();
+    const dockerCheckErr = await checkDockerAvailable();
     const dockerStatus = dockerCheckErr === null ? "available"
       : dockerCheckErr.startsWith("Docker CLI") ? "not found"
       : "daemon not running";
@@ -1360,7 +1376,7 @@ server.tool(
         : `⚠ ${claudeVer.raw} — update recommended (minimum: ${CLAUDE_MIN_VERSION.major}.${CLAUDE_MIN_VERSION.minor}.${CLAUDE_MIN_VERSION.patch} for agent support)`
       : "⚠ Could not determine version (is claude in PATH?)";
 
-    // Apply permissions changes (unless dry_run)
+    // Apply permissions changes to settings.json (unless dry_run)
     if (!dry_run && (missingAllow.length > 0 || missingDeny.length > 0)) {
       if (!settings.permissions) settings.permissions = {};
       if (!settings.permissions.allow) settings.permissions.allow = [];
@@ -1371,13 +1387,14 @@ server.tool(
       await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2));
     }
 
-    // Check Trello MCP registration in global settings
-    const trelloRegistered = !!settings?.mcpServers?.["trello"];
+    // Check Trello MCP registration — also goes in ~/.claude.json
+    const trelloRegistered = !!claudeJson?.mcpServers?.["trello"];
     let trelloStatus = "";
     if (!trelloRegistered && !dry_run) {
-      // Add Trello MCP config stub (credentials supplied via env vars by the user)
-      if (!settings.mcpServers) settings.mcpServers = {};
-      settings.mcpServers["trello"] = {
+      // Add Trello MCP config stub to ~/.claude.json
+      if (!claudeJson.mcpServers) claudeJson.mcpServers = {};
+      claudeJson.mcpServers["trello"] = {
+        type: "stdio",
         command: "npx",
         args: ["-y", "@delorenj/mcp-server-trello"],
         env: {
@@ -1385,8 +1402,8 @@ server.tool(
           TRELLO_TOKEN: "${TRELLO_TOKEN}",
         },
       };
-      await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2));
-      trelloStatus = "✓ Registered (set TRELLO_API_KEY and TRELLO_TOKEN in your environment to activate)";
+      await fs.writeFile(claudeJsonPath, JSON.stringify(claudeJson, null, 2));
+      trelloStatus = "✓ Registered in ~/.claude.json (set TRELLO_API_KEY and TRELLO_TOKEN in your environment to activate)";
     } else if (trelloRegistered) {
       const hasKey = !!process.env.TRELLO_API_KEY;
       const hasTok = !!process.env.TRELLO_TOKEN;

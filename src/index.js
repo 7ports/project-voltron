@@ -1326,8 +1326,24 @@ server.tool(
     const missingAllow = VOLTRON_ALLOW.filter(e => !currentAllow.includes(e));
     const missingDeny = VOLTRON_DENY.filter(e => !currentDeny.includes(e));
 
-    // Check MCP registration
+    // Check MCP registration — and auto-register if missing
     const mcpRegistered = !!settings?.mcpServers?.["project-voltron"];
+    let mcpStatus = "";
+    if (!mcpRegistered && !dry_run) {
+      if (!settings.mcpServers) settings.mcpServers = {};
+      settings.mcpServers["project-voltron"] = {
+        type: "stdio",
+        command: "node",
+        args: [__filename],
+      };
+      await fs.mkdir(path.dirname(settingsPath), { recursive: true });
+      await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2));
+      mcpStatus = "✓ Registered globally (restart Claude Code to activate)";
+    } else if (mcpRegistered) {
+      mcpStatus = "✓ Registered globally";
+    } else {
+      mcpStatus = "⚠ Not registered (run without dry_run to add)";
+    }
 
     // Check Docker (CLI + daemon)
     const dockerCheckErr = checkDockerAvailable();
@@ -1344,7 +1360,7 @@ server.tool(
         : `⚠ ${claudeVer.raw} — update recommended (minimum: ${CLAUDE_MIN_VERSION.major}.${CLAUDE_MIN_VERSION.minor}.${CLAUDE_MIN_VERSION.patch} for agent support)`
       : "⚠ Could not determine version (is claude in PATH?)";
 
-    // Apply changes (unless dry_run)
+    // Apply permissions changes (unless dry_run)
     if (!dry_run && (missingAllow.length > 0 || missingDeny.length > 0)) {
       if (!settings.permissions) settings.permissions = {};
       if (!settings.permissions.allow) settings.permissions.allow = [];
@@ -1397,7 +1413,7 @@ server.tool(
     const report = [
       "## Project Voltron Health Check",
       "",
-      `- **MCP Server:** ${mcpRegistered ? "✓ registered" : "⚠ not found in settings.json — run \`node scripts/setup.js\` to register"}`,
+      `- **MCP Server:** ${mcpStatus}`,
       `- **Allowlist:** ${allowStatus}`,
       `- **Deny rules:** ${denyStatus}`,
       `- **Trello MCP:** ${trelloStatus}`,

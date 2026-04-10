@@ -148,7 +148,7 @@ try {
   // Non-fatal — .mcp.json update is best-effort
 }
 
-// ── Merge global ~/.claude/settings.json permissions (always check) ──────────
+// ── Merge global ~/.claude/settings.json permissions + MCP registration ──────
 try {
   const globalSettingsPath = join(homedir(), ".claude", "settings.json");
   let globalSettings = {};
@@ -156,18 +156,35 @@ try {
     globalSettings = JSON.parse(readFileSync(globalSettingsPath, "utf-8"));
   }
 
+  let globalDirty = false;
+
+  // Permissions
   const currentAllow = globalSettings?.permissions?.allow ?? [];
   const currentDeny = globalSettings?.permissions?.deny ?? [];
-
   const missingAllow = VOLTRON_ALLOW.filter((e) => !currentAllow.includes(e));
   const missingDeny = VOLTRON_DENY.filter((e) => !currentDeny.includes(e));
-
   if (missingAllow.length > 0 || missingDeny.length > 0) {
     if (!globalSettings.permissions) globalSettings.permissions = {};
     if (!globalSettings.permissions.allow) globalSettings.permissions.allow = [];
     if (!globalSettings.permissions.deny) globalSettings.permissions.deny = [];
     globalSettings.permissions.allow.push(...missingAllow);
     globalSettings.permissions.deny.push(...missingDeny);
+    globalDirty = true;
+  }
+
+  // MCP server registration (global — makes Voltron available in all projects)
+  const voltronIndexPath = resolve(voltronRoot, "src", "index.js");
+  if (!globalSettings?.mcpServers?.["project-voltron"]) {
+    if (!globalSettings.mcpServers) globalSettings.mcpServers = {};
+    globalSettings.mcpServers["project-voltron"] = {
+      type: "stdio",
+      command: "node",
+      args: [voltronIndexPath],
+    };
+    globalDirty = true;
+  }
+
+  if (globalDirty) {
     mkdirSync(dirname(globalSettingsPath), { recursive: true });
     writeFileSync(globalSettingsPath, JSON.stringify(globalSettings, null, 2), "utf-8");
     updated++;

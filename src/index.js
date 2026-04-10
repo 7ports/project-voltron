@@ -76,6 +76,22 @@ function getClaudeVersion() {
  * @param {string|undefined} rawRoot - explicit path passed by the tool caller
  * @returns {{ root: string, source: string }}
  */
+// Returns null if Docker is ready, or an error string describing why it isn't.
+// Checks both CLI presence AND daemon availability (docker --version only proves CLI is installed).
+function checkDockerAvailable() {
+  try {
+    execSync("docker --version", { stdio: "ignore" });
+  } catch {
+    return "Docker CLI is not installed or not in PATH. Install Docker Desktop and ensure it is in your PATH.";
+  }
+  try {
+    execSync("docker info", { stdio: "ignore", timeout: 10000 });
+  } catch {
+    return "Docker is installed but the daemon is not running. Start Docker Desktop and wait for it to finish starting, then try again.";
+  }
+  return null;
+}
+
 function detectProjectRoot(rawRoot) {
   // 1. Explicit parameter always wins
   if (rawRoot) {
@@ -1313,14 +1329,11 @@ server.tool(
     // Check MCP registration
     const mcpRegistered = !!settings?.mcpServers?.["project-voltron"];
 
-    // Check Docker
-    let dockerStatus = "unknown";
-    try {
-      execSync("docker --version", { stdio: "ignore" });
-      dockerStatus = "available";
-    } catch {
-      dockerStatus = "not found";
-    }
+    // Check Docker (CLI + daemon)
+    const dockerCheckErr = checkDockerAvailable();
+    const dockerStatus = dockerCheckErr === null ? "available"
+      : dockerCheckErr.startsWith("Docker CLI") ? "not found"
+      : "daemon not running";
 
     // Claude Code version check
     const claudeVer = getClaudeVersion();
@@ -1388,7 +1401,7 @@ server.tool(
       `- **Allowlist:** ${allowStatus}`,
       `- **Deny rules:** ${denyStatus}`,
       `- **Trello MCP:** ${trelloStatus}`,
-      `- **Docker:** ${dockerStatus === "available" ? "✓ available" : "⚠ Docker not found — install Docker Desktop for agent execution"}`,
+      `- **Docker:** ${dockerStatus === "available" ? "✓ available (daemon running)" : dockerStatus === "daemon not running" ? "⚠ Docker installed but daemon not running — start Docker Desktop" : "⚠ Docker not found — install Docker Desktop"}`,
       `- **Claude Code:** ${versionStatus}`,
       "",
       dry_run
@@ -1483,19 +1496,11 @@ server.tool(
     );
     await fs.writeFile(tmpFile, prompt);
 
-    // 5. Check Docker is available
-    try {
-      execSync("docker --version", { stdio: "ignore" });
-    } catch {
+    // 5. Check Docker CLI + daemon are both available
+    const dockerErr = checkDockerAvailable();
+    if (dockerErr) {
       await fs.unlink(tmpFile).catch(() => {});
-      return {
-        content: [
-          {
-            type: "text",
-            text: "Error: Docker is not installed or not running. Install Docker and ensure it is running, then try again.",
-          },
-        ],
-      };
+      return { content: [{ type: "text", text: `Error: ${dockerErr}` }] };
     }
 
     // 6. Check Dockerfile.voltron exists
@@ -1692,10 +1697,11 @@ server.tool(
     const tmpFile = path.join(os.tmpdir(), `voltron-${agent_name}-${Date.now()}.md`);
     await fs.writeFile(tmpFile, prompt);
 
-    // Check Docker is available
-    try { execSync("docker --version", { stdio: "ignore" }); } catch {
+    // Check Docker CLI + daemon are both available
+    const dockerErr2 = checkDockerAvailable();
+    if (dockerErr2) {
       await fs.unlink(tmpFile).catch(() => {});
-      return { content: [{ type: "text", text: "Error: Docker is not installed or not running." }] };
+      return { content: [{ type: "text", text: `Error: ${dockerErr2}` }] };
     }
 
     // Check Dockerfile.voltron exists

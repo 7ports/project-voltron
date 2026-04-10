@@ -875,6 +875,7 @@ Stop when \`bd ready --json\` returns empty. Run \`bd stats\` to surface any blo
 **On task failure:** leave bead blocked, show downstream cascade with \`bd dep tree\`, ask user: retry / reassign / skip.
 **No beads:** use \`update_progress\` only and manually reason from the work plan table.
 **Live tail:** \`tail -f .voltron/logs/<logfile>\` for terminal visibility.
+**Docker log latency:** containers produce 0-byte output for ~90s during Claude auth — this is normal. Do not interpret silence as failure; poll patiently until the flush.
 **Git divergence:** after Docker agents commit, run \`git pull --no-rebase -X ours\` before pushing.
 
 ## Platform-Specific Planning Notes

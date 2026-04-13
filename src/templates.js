@@ -866,7 +866,7 @@ Refresh the dashboard after: initial registration, every phase boundary, every a
 **Each iteration:**
 1. \`bd ready --json\` — get IDs of runnable tasks
 2. For each ready task (same message = parallel): \`update_progress(in_progress)\` + \`start_agent_in_docker(agent, task)\`
-3. Poll with \`get_agent_output\` until complete — show log output verbatim to the user
+3. Poll with \`get_agent_output\` until complete — show log output verbatim to the user. **Docker containers produce 0-byte output for the first ~90s (auth period) — this is expected. Do not retry or assume failure; logs flush all at once when auth completes.**
 4. On completion: **success** → \`bd close bd-XXXX\` + \`update_progress(completed)\`; **failure** → \`bd update --status blocked\` + \`update_progress(failed)\` + \`bd dep tree <id>\` to show cascade impact
 5. Refresh dashboard tab, return to step 1
 

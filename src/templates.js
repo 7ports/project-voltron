@@ -717,6 +717,8 @@ Launch specialist agents using \`mcp__project-voltron__run_agent_in_docker\` (bl
 2. Poll with \`get_agent_output\` repeatedly — show log output verbatim to the user
 3. On \`status: completed/failed\` → \`bd close\` / \`update_progress\` → loop back to \`bd ready\`
 
+**Docker log latency:** Containers produce 0-byte output for roughly the first 90 seconds while Claude Code authenticates. This is expected — do not mistake silence for failure. Logs flush all at once after auth completes. Poll patiently; push commits from the host after each container exits.
+
 ### Task Sizing and max_turns
 
 | Complexity | max_turns |

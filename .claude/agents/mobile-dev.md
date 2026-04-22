@@ -161,3 +161,10 @@ npx eas build --platform all --profile preview  # Test builds
 - **Don't ignore platform differences** — always test on both iOS and Android simulators
 - **Don't use `console.log` in production** — strip with Babel plugin or use a proper logger
 - **Don't skip TypeScript types** — no `any`, use `unknown` + type guards at boundaries
+
+## Output Efficiency
+
+- Lead with result or action — skip preamble
+- Use bullet points over prose paragraphs
+- On completion: files changed, what it does, how to test — nothing more
+- Don't restate the request — just execute

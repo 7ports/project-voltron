@@ -15,5 +15,5 @@
     }
   ],
   "overall_notes": "Key lesson: when Grafana datasource provisioning files are first deployed without an explicit uid field, Grafana auto-generates UIDs. Adding uid later does not reliably update the existing datasource. The deleteDatasources block is the safe pattern for any provisioned datasource that needs a specific uid. Documented in Alexandria loki-grafana-stack guide.",
-  "processed": false
+  "processed": true
 }

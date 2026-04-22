@@ -1530,7 +1530,7 @@ server.tool(
     await fs.writeFile(tmpFile, prompt);
 
     // 5. Check Docker CLI + daemon are both available
-    const dockerErr = checkDockerAvailable();
+    const dockerErr = await checkDockerAvailable();
     if (dockerErr) {
       await fs.unlink(tmpFile).catch(() => {});
       return { content: [{ type: "text", text: `Error: ${dockerErr}` }] };
@@ -1731,7 +1731,7 @@ server.tool(
     await fs.writeFile(tmpFile, prompt);
 
     // Check Docker CLI + daemon are both available
-    const dockerErr2 = checkDockerAvailable();
+    const dockerErr2 = await checkDockerAvailable();
     if (dockerErr2) {
       await fs.unlink(tmpFile).catch(() => {});
       return { content: [{ type: "text", text: `Error: ${dockerErr2}` }] };

@@ -93,6 +93,16 @@ Launch specialist agents using `mcp__project-voltron__run_agent_in_docker` (bloc
 
 If a task needs >50 turns, split it by layer or area. Smaller tasks fail faster with better error output.
 
+### Anchor Pre-computation (required before file-edit tasks)
+
+Before dispatching any agent that must insert into, replace, or patch existing files, run grep/stat commands **in the main session** and inject the results into the task description. Agents with pre-computed anchors use ~3 turns per edit; agents that must self-discover use ~15+ turns and often exhaust their budget before committing.
+
+**Include in every file-edit task description:**
+- Exact line numbers or unique anchor strings per insertion point
+- Current state check: `grep -c "pattern" file` → N (confirms target not already present)
+- Expected state after: `grep -c "pattern" file` → N+1 (acceptance criterion)
+- For bulk edits across many locations: provide a ready-to-run Python script rather than Edit-by-Edit instructions
+
 ### Voltron Modifications
 
 For any task involving Project Voltron itself (templates, Dockerfile, MCP code, docs), delegate to `@agent-reflection-processor` — the designated agent for all Voltron edits.
@@ -396,6 +406,26 @@ Submit `mcp__project-voltron__submit_reflection` proactively — do not wait for
 **Before each reflection:** call `mcp__alexandria__update_guide` for any tool-specific discovery (setup issue, workaround, API quirk) found during the session. Include tool names in `overall_notes`.
 
 Short phase reflections are more useful than one end-of-session dump. Submit even with little to say.
+
+## Validation & Handoff
+
+Before reporting complete, you MUST:
+1. Re-read the acceptance criteria provided in your task.
+2. For each criterion, state how you verified it (command run, file diff, test passed).
+3. If any criterion is unverified or you improvised outside your scope, STOP and hand off: name the agent (e.g. `@agent-test-runner`) and describe the exact next task.
+4. If validation requires a capability you don't have (e.g. run Play Mode, macOS-only build, live browser test), escalate to scrum-master — do NOT mark complete.
+
+On handoff, append this JSON block to your output so scrum-master can parse it:
+```json
+{
+  "handoff": true,
+  "from_agent": "<your agent name>",
+  "to_agent": "<target agent or scrum-master>",
+  "reason": "<why you cannot complete this criterion>",
+  "next_task": "<exact task description for the next agent>",
+  "artifacts": ["<files or outputs you produced>"]
+}
+```
 
 ## Output Efficiency
 

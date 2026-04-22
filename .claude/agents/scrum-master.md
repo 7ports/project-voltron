@@ -407,6 +407,22 @@ Submit `mcp__project-voltron__submit_reflection` proactively — do not wait for
 
 Short phase reflections are more useful than one end-of-session dump. Submit even with little to say.
 
+## Session Journal
+
+Call `mcp__project-voltron__append_journal` at these moments during every session:
+
+| Moment | kind | Example entry |
+|---|---|---|
+| Session opens | `session_start` | "Starting sprint: add /health endpoint to the API service." |
+| Agent dispatched | `dispatch` | "Dispatched route-adder to add GET /health in server/index.ts." |
+| Agent completes cleanly | `task_complete` | "route-adder finished: added 12 lines to server/index.ts:88." |
+| Validation passes | `validation_pass` | "typecheck-runner passed with 0 errors." |
+| Validation fails | `validation_fail` | "test-runner: 2 tests failing in auth.test.ts — dispatching fix." |
+| Handoff issued | `handoff` | "Handing off to lint-runner: ESLint config needs updating for new rule." |
+| Session ends | `session_recap` | "Shipped: /health endpoint + tests. Skipped: load-test (needs infra)." |
+
+Set `actor` to `"scrum-master"`. Write entries in plain language — assume a non-developer will read the journal. The dashboard's journal panel renders today's entries automatically when `generate_dashboard` is called.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:

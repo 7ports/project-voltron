@@ -927,6 +927,67 @@ server.tool(
   }
 );
 
+// ─── Tool: append_journal ──────────────────────────────────────────────────
+
+server.tool(
+  "append_journal",
+  "Append an entry to today's session journal (.voltron/journal/YYYY-MM-DD.md). Call at key moments: session start, task dispatch, task complete, validation pass/fail, handoff, session recap. Produces a human-readable narrative non-developers can follow.",
+  {
+    entry: z.string().describe("The journal entry text (1-3 sentences describing what happened)."),
+    kind: z
+      .enum(["session_start", "dispatch", "task_start", "task_complete", "validation_pass", "validation_fail", "handoff", "note", "session_recap"])
+      .describe("Kind of event being journaled."),
+    actor: z.string().describe("The agent or coordinator name logging this entry (e.g. 'scrum-master', 'typecheck-runner')."),
+  },
+  async ({ entry, kind, actor }) => {
+    const projectRoot = detectProjectRoot(undefined).root;
+    const journalDir = path.join(projectRoot, ".voltron", "journal");
+    await fs.mkdir(journalDir, { recursive: true });
+
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10);
+    const timeStr = now.toISOString().slice(11, 16);
+    const journalFile = path.join(journalDir, `${dateStr}.md`);
+
+    const kindIcon = {
+      session_start: "🚀", dispatch: "→", task_start: "▶", task_complete: "✓",
+      validation_pass: "✅", validation_fail: "❌", handoff: "↩", note: "📝", session_recap: "📋",
+    }[kind] || "•";
+
+    const line = `**${timeStr}** ${kindIcon} \`${actor}\` [${kind}] ${entry}\n`;
+    await fs.appendFile(journalFile, line, "utf-8");
+
+    return {
+      content: [{ type: "text", text: `Journal entry appended to .voltron/journal/${dateStr}.md` }],
+    };
+  }
+);
+
+// ─── Tool: get_journal ──────────────────────────────────────────────────────
+
+server.tool(
+  "get_journal",
+  "Read the session journal for a given date (default: today). Returns the full journal from .voltron/journal/YYYY-MM-DD.md.",
+  {
+    date: z.string().optional().describe("Date in YYYY-MM-DD format (default: today)."),
+  },
+  async ({ date }) => {
+    const projectRoot = detectProjectRoot(undefined).root;
+    const dateStr = date || new Date().toISOString().slice(0, 10);
+    const journalFile = path.join(projectRoot, ".voltron", "journal", `${dateStr}.md`);
+    try {
+      const content = await fs.readFile(journalFile, "utf-8");
+      return {
+        content: [{ type: "text", text: `# Session Journal — ${dateStr}\n\n${content}` }],
+      };
+    } catch {
+      return {
+        content: [{ type: "text", text: `No journal found for ${dateStr}. Use append_journal to start logging.` }],
+      };
+    }
+  }
+);
+
 // ─── Tool: list_reflections ─────────────────────────────────────────────────
 
 server.tool(
@@ -1192,7 +1253,17 @@ server.tool(
 
 // ─── Dashboard HTML generator (shared by update_progress and generate_dashboard)
 
-function buildDashboardHtml(progress) {
+function buildDashboardHtml(progress, journalContent = null) {
+  const journalDate = new Date().toISOString().slice(0, 10);
+  const journalHtml = journalContent
+    ? `<h2 class="section-title">Session Journal — ${journalDate}</h2><div class="journal">${
+        journalContent
+          .split("\n")
+          .filter(Boolean)
+          .map(l => `<div class="journal-line">${l.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>").replace(/`(.+?)`/g,"<code>$1</code>")}</div>`)
+          .join("")
+      }</div>`
+    : "";
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1224,11 +1295,17 @@ function buildDashboardHtml(progress) {
   .badge.failed { background: #3d1114; color: #f85149; }
   .badge.blocked { background: #3d1114; color: #f85149; }
   .phase-header { color: #58a6ff; font-size: 1.1rem; margin: 1.5rem 0 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid #30363d; }
+  .section-title { color: #58a6ff; font-size: 1.1rem; margin: 1.5rem 0 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid #30363d; }
+  .journal { background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 1rem; margin-bottom: 2rem; font-size: 0.85rem; line-height: 1.6; max-height: 300px; overflow-y: auto; }
+  .journal-line { padding: 0.15rem 0; border-bottom: 1px solid #21262d; }
+  .journal-line:last-child { border-bottom: none; }
+  .journal code { background: #161b22; padding: 0.1rem 0.3rem; border-radius: 4px; font-size: 0.8rem; }
 </style>
 </head>
 <body>
 <h1>Voltron Progress Dashboard</h1>
 <div class="updated">Last updated: ${progress.updated_at || "never"} (auto-refreshes every 5s)</div>
+${journalHtml}
 <div class="stats" id="stats"></div>
 <div id="phases"></div>
 <script>
@@ -1263,7 +1340,10 @@ async function regenerateDashboard() {
   const outFile = path.join(projectRoot, ".voltron", "dashboard.html");
   try {
     const progress = JSON.parse(await fs.readFile(progressFile, "utf-8"));
-    await fs.writeFile(outFile, buildDashboardHtml(progress));
+    const dateStr = new Date().toISOString().slice(0, 10);
+    let journalContent = null;
+    try { journalContent = await fs.readFile(path.join(projectRoot, ".voltron", "journal", `${dateStr}.md`), "utf-8"); } catch { /* no journal yet */ }
+    await fs.writeFile(outFile, buildDashboardHtml(progress, journalContent));
     return outFile;
   } catch {
     return null;
@@ -1295,7 +1375,10 @@ server.tool(
     }
 
     await fs.mkdir(path.dirname(outFile), { recursive: true });
-    await fs.writeFile(outFile, buildDashboardHtml(progress));
+    const dateStr = new Date().toISOString().slice(0, 10);
+    let journalContent = null;
+    try { journalContent = await fs.readFile(path.join(projectRoot, ".voltron", "journal", `${dateStr}.md`), "utf-8"); } catch { /* no journal yet */ }
+    await fs.writeFile(outFile, buildDashboardHtml(progress, journalContent));
 
     const fileUrl = dashboardUrl(outFile);
     return {

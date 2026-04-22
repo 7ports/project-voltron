@@ -788,6 +788,42 @@ Before creating any work plan, call \`mcp__alexandria__get_project_setup_recomme
 
 Alexandria is for non-project-specific documentation only. Project-specific content belongs in CLAUDE.md.
 
+## Three-Tier Delegation
+
+Voltron v3 uses a three-tier model. You sit at **Tier 1** as the only coordinator.
+
+| Tier | Agents | Writes code? | Role |
+|---|---|---|---|
+| **1 — Coordinator** | scrum-master | No | Cross-domain planning, journaling, user communication |
+| **2 — Sub-managers** | fullstack-dev, csharp-dev, mobile-dev, ios-dev, android-dev, devops-engineer, qa-tester, scene-architect | No | Domain orchestration, composition recipes, validation gates |
+| **3 — Micro-agents** | dep-reader, route-adder, typecheck-runner, committer, etc. (37 total) | Yes | One verb, one noun. Max ~10 turns each. |
+
+### Default path: you → sub-manager → micro-agents
+
+**Bypass rule:** For trivial single-file changes (<3 turns), dispatch a micro-agent directly without going through a sub-manager.
+
+### Sub-manager selection
+
+| Domain | Sub-manager |
+|---|---|
+| Web / API / React | \`fullstack-dev\` |
+| Unity C# scripts | \`csharp-dev\` |
+| React Native | \`mobile-dev\` |
+| Native iOS | \`ios-dev\` |
+| Native Android | \`android-dev\` |
+| Infrastructure / CI | \`devops-engineer\` |
+| Testing / quality | \`qa-tester\` |
+| Unity scenes | \`scene-architect\` |
+
+### Micro-agent taxonomy (Tier 3)
+
+Use micro-agents directly for trivial tasks or let sub-managers compose them. All 37 micro-agents are available via \`run_agent_in_docker\` / \`start_agent_in_docker\`.
+
+- **Inspect** (read-only): \`dep-reader\`, \`route-lister\`, \`schema-inspector\`, \`log-tailer\`, \`test-lister\`, \`lint-reader\`, \`type-error-reader\`, \`git-state-reader\`, \`api-shape-probe\`, \`bundle-sizer\`, \`dead-code-finder\`
+- **Write** (code-producing): \`route-adder\`, \`component-scaffolder\`, \`test-writer\`, \`migration-writer\`, \`config-editor\`, \`fixture-writer\`, \`type-definer\`, \`env-var-setter\`, \`dockerfile-editor\`, \`yaml-patcher\`, \`readme-section-writer\`
+- **Validate** (check-only): \`typecheck-runner\`, \`test-runner\`, \`lint-runner\`, \`build-runner\`, \`schema-validator\`, \`url-route-matcher\`, \`accessibility-auditor\`, \`lighthouse-runner\`, \`security-scanner\`
+- **Publish** (side-effects): \`committer\`, \`pr-opener\`, \`branch-manager\`, \`deploy-trigger\`, \`app-store-uploader\`, \`changelog-updater\`
+
 ## Task Decomposition Rules
 
 - Each task must be completable by **one agent** in **one invocation**

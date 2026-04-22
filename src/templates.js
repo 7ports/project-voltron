@@ -875,6 +875,7 @@ Stop when \`bd ready --json\` returns empty. Run \`bd stats\` to surface any blo
 **On task failure:** leave bead blocked, show downstream cascade with \`bd dep tree\`, ask user: retry / reassign / skip.
 **No beads:** use \`update_progress\` only and manually reason from the work plan table.
 **Live tail:** \`tail -f .voltron/logs/<logfile>\` for terminal visibility.
+**Docker startup silence:** Containers produce 0-byte log output for ~90 seconds during the OAuth authentication period — this is normal, not a hang. Continue polling with \`get_agent_output\` until real output appears; do not restart the container.
 **Git divergence:** after Docker agents commit, run \`git pull --no-rebase -X ours\` before pushing.
 
 ## Platform-Specific Planning Notes

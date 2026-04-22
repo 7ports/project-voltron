@@ -26,3 +26,9 @@ Thumbs.db
 # User research scratch
 docs/research/
 # ── end Voltron managed ─────────────────────────────────────────────
+
+# Beads / Dolt files (added by bd init)
+.beads/
+.dolt/
+*.db
+.beads-credential-key

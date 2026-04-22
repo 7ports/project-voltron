@@ -768,6 +768,16 @@ Launch specialist agents using \`mcp__project-voltron__run_agent_in_docker\` (bl
 
 If a task needs >50 turns, split it by layer or area. Smaller tasks fail faster with better error output.
 
+### Anchor Pre-computation (required before file-edit tasks)
+
+Before dispatching any agent that must insert into, replace, or patch existing files, run grep/stat commands **in the main session** and inject the results into the task description. Agents with pre-computed anchors use ~3 turns per edit; agents that must self-discover use ~15+ turns and often exhaust their budget before committing.
+
+**Include in every file-edit task description:**
+- Exact line numbers or unique anchor strings per insertion point
+- Current state check: \`grep -c "pattern" file\` → N (confirms target not already present)
+- Expected state after: \`grep -c "pattern" file\` → N+1 (acceptance criterion)
+- For bulk edits across many locations: provide a ready-to-run Python script rather than Edit-by-Edit instructions
+
 ### Voltron Modifications
 
 For any task involving Project Voltron itself (templates, Dockerfile, MCP code, docs), delegate to \`@agent-reflection-processor\` — the designated agent for all Voltron edits.
@@ -1072,6 +1082,26 @@ Submit \`mcp__project-voltron__submit_reflection\` proactively — do not wait f
 
 Short phase reflections are more useful than one end-of-session dump. Submit even with little to say.
 
+## Validation & Handoff
+
+Before reporting complete, you MUST:
+1. Re-read the acceptance criteria provided in your task.
+2. For each criterion, state how you verified it (command run, file diff, test passed).
+3. If any criterion is unverified or you improvised outside your scope, STOP and hand off: name the agent (e.g. \`@agent-test-runner\`) and describe the exact next task.
+4. If validation requires a capability you don't have (e.g. run Play Mode, macOS-only build, live browser test), escalate to scrum-master — do NOT mark complete.
+
+On handoff, append this JSON block to your output so scrum-master can parse it:
+\`\`\`json
+{
+  "handoff": true,
+  "from_agent": "<your agent name>",
+  "to_agent": "<target agent or scrum-master>",
+  "reason": "<why you cannot complete this criterion>",
+  "next_task": "<exact task description for the next agent>",
+  "artifacts": ["<files or outputs you produced>"]
+}
+\`\`\`
+
 ## Output Efficiency
 
 - Lead with result or action — skip preamble
@@ -1290,7 +1320,27 @@ End your response with:
 1. Confirmation that the plan document was saved
 2. A brief summary of the architecture and key decisions
 3. Any open questions that need human input
-4. The instruction to invoke scrum-master next`,
+4. The instruction to invoke scrum-master next
+## Validation & Handoff
+
+Before reporting complete, you MUST:
+1. Re-read the acceptance criteria provided in your task.
+2. For each criterion, state how you verified it (command run, file diff, test passed).
+3. If any criterion is unverified or you improvised outside your scope, STOP and hand off: name the agent (e.g. \`@agent-test-runner\`) and describe the exact next task.
+4. If validation requires a capability you don't have (e.g. run Play Mode, macOS-only build, live browser test), escalate to scrum-master — do NOT mark complete.
+
+On handoff, append this JSON block to your output so scrum-master can parse it:
+\`\`\`json
+{
+  "handoff": true,
+  "from_agent": "<your agent name>",
+  "to_agent": "<target agent or scrum-master>",
+  "reason": "<why you cannot complete this criterion>",
+  "next_task": "<exact task description for the next agent>",
+  "artifacts": ["<files or outputs you produced>"]
+}
+\`\`\`
+`,
   },
 
   // ─── UNITY AGENTS ────────────────────────────────────────────────────────────
@@ -1391,7 +1441,27 @@ Prefix group objects with \`---\` and use PascalCase for all GameObjects.
 Always end your response with:
 - A summary of every GameObject/prefab touched
 - The current state of the hierarchy (relevant portion)
-- Any missing references or setup steps the user should handle manually`,
+- Any missing references or setup steps the user should handle manually
+## Validation & Handoff
+
+Before reporting complete, you MUST:
+1. Re-read the acceptance criteria provided in your task.
+2. For each criterion, state how you verified it (command run, file diff, test passed).
+3. If any criterion is unverified or you improvised outside your scope, STOP and hand off: name the agent (e.g. \`@agent-test-runner\`) and describe the exact next task.
+4. If validation requires a capability you don't have (e.g. run Play Mode, macOS-only build, live browser test), escalate to scrum-master — do NOT mark complete.
+
+On handoff, append this JSON block to your output so scrum-master can parse it:
+\`\`\`json
+{
+  "handoff": true,
+  "from_agent": "<your agent name>",
+  "to_agent": "<target agent or scrum-master>",
+  "reason": "<why you cannot complete this criterion>",
+  "next_task": "<exact task description for the next agent>",
+  "artifacts": ["<files or outputs you produced>"]
+}
+\`\`\`
+`,
   },
 
   "csharp-dev": {
@@ -1575,6 +1645,26 @@ public class EnemyConfig : ScriptableObject
 }
 \`\`\`
 
+## Validation & Handoff
+
+Before reporting complete, you MUST:
+1. Re-read the acceptance criteria provided in your task.
+2. For each criterion, state how you verified it (command run, file diff, test passed).
+3. If any criterion is unverified or you improvised outside your scope, STOP and hand off: name the agent (e.g. \`@agent-test-runner\`) and describe the exact next task.
+4. If validation requires a capability you don't have (e.g. run Play Mode, macOS-only build, live browser test), escalate to scrum-master — do NOT mark complete.
+
+On handoff, append this JSON block to your output so scrum-master can parse it:
+\`\`\`json
+{
+  "handoff": true,
+  "from_agent": "<your agent name>",
+  "to_agent": "<target agent or scrum-master>",
+  "reason": "<why you cannot complete this criterion>",
+  "next_task": "<exact task description for the next agent>",
+  "artifacts": ["<files or outputs you produced>"]
+}
+\`\`\`
+
 ## Output Efficiency
 
 - Lead with result or action — skip preamble
@@ -1701,7 +1791,27 @@ Shader "Custom/MyShader"
 Report:
 - What shader/material files were created or modified
 - A screenshot or description of the visual result
-- Any platform caveats or performance notes the team should know`,
+- Any platform caveats or performance notes the team should know
+## Validation & Handoff
+
+Before reporting complete, you MUST:
+1. Re-read the acceptance criteria provided in your task.
+2. For each criterion, state how you verified it (command run, file diff, test passed).
+3. If any criterion is unverified or you improvised outside your scope, STOP and hand off: name the agent (e.g. \`@agent-test-runner\`) and describe the exact next task.
+4. If validation requires a capability you don't have (e.g. run Play Mode, macOS-only build, live browser test), escalate to scrum-master — do NOT mark complete.
+
+On handoff, append this JSON block to your output so scrum-master can parse it:
+\`\`\`json
+{
+  "handoff": true,
+  "from_agent": "<your agent name>",
+  "to_agent": "<target agent or scrum-master>",
+  "reason": "<why you cannot complete this criterion>",
+  "next_task": "<exact task description for the next agent>",
+  "artifacts": ["<files or outputs you produced>"]
+}
+\`\`\`
+`,
   },
 
   "build-validator": {
@@ -1857,7 +1967,27 @@ Claude Code should invoke this agent automatically after:
 - Any \`csharp-dev\` completes a script task
 - Any \`scene-architect\` makes structural changes
 - Before any \`git commit\` operation
-- When the user says "check everything", "validate", or "is it safe to commit?"`,
+- When the user says "check everything", "validate", or "is it safe to commit?"
+## Validation & Handoff
+
+Before reporting complete, you MUST:
+1. Re-read the acceptance criteria provided in your task.
+2. For each criterion, state how you verified it (command run, file diff, test passed).
+3. If any criterion is unverified or you improvised outside your scope, STOP and hand off: name the agent (e.g. \`@agent-test-runner\`) and describe the exact next task.
+4. If validation requires a capability you don't have (e.g. run Play Mode, macOS-only build, live browser test), escalate to scrum-master — do NOT mark complete.
+
+On handoff, append this JSON block to your output so scrum-master can parse it:
+\`\`\`json
+{
+  "handoff": true,
+  "from_agent": "<your agent name>",
+  "to_agent": "<target agent or scrum-master>",
+  "reason": "<why you cannot complete this criterion>",
+  "next_task": "<exact task description for the next agent>",
+  "artifacts": ["<files or outputs you produced>"]
+}
+\`\`\`
+`,
   },
 
   "asset-manager": {
@@ -1997,7 +2127,27 @@ Fix naming and import settings. One script needs relocation — confirm before m
 
 **Mandatory:** Before configuring import settings for any unfamiliar asset type or third-party asset store package, you MUST call \`mcp__alexandria__quick_setup\` first. Use \`mcp__alexandria__search_guides\` for known import pipeline issues if no exact guide exists. Never skip this step.
 
-**Alexandria content boundary:** Alexandria is for non-project-specific, reusable documentation only — asset import settings, known pipeline issues, third-party package configuration. Never record project-specific content (project folder structures, project-specific naming conventions, team workflow rules) in Alexandria. That belongs in CLAUDE.md.`,
+**Alexandria content boundary:** Alexandria is for non-project-specific, reusable documentation only — asset import settings, known pipeline issues, third-party package configuration. Never record project-specific content (project folder structures, project-specific naming conventions, team workflow rules) in Alexandria. That belongs in CLAUDE.md.
+## Validation & Handoff
+
+Before reporting complete, you MUST:
+1. Re-read the acceptance criteria provided in your task.
+2. For each criterion, state how you verified it (command run, file diff, test passed).
+3. If any criterion is unverified or you improvised outside your scope, STOP and hand off: name the agent (e.g. \`@agent-test-runner\`) and describe the exact next task.
+4. If validation requires a capability you don't have (e.g. run Play Mode, macOS-only build, live browser test), escalate to scrum-master — do NOT mark complete.
+
+On handoff, append this JSON block to your output so scrum-master can parse it:
+\`\`\`json
+{
+  "handoff": true,
+  "from_agent": "<your agent name>",
+  "to_agent": "<target agent or scrum-master>",
+  "reason": "<why you cannot complete this criterion>",
+  "next_task": "<exact task description for the next agent>",
+  "artifacts": ["<files or outputs you produced>"]
+}
+\`\`\`
+`,
   },
 
   // ─── WEB AGENTS ──────────────────────────────────────────────────────────────
@@ -2154,6 +2304,27 @@ Report:
 - Any environment variables or config needed
 - How to test the changes locally
 - **If the change affects visible UI:** explicitly note "📸 Visual change — screenshot verification recommended" so the scrum-master knows to capture before/after screenshots
+
+
+## Validation & Handoff
+
+Before reporting complete, you MUST:
+1. Re-read the acceptance criteria provided in your task.
+2. For each criterion, state how you verified it (command run, file diff, test passed).
+3. If any criterion is unverified or you improvised outside your scope, STOP and hand off: name the agent (e.g. \`@agent-test-runner\`) and describe the exact next task.
+4. If validation requires a capability you don't have (e.g. run Play Mode, macOS-only build, live browser test), escalate to scrum-master — do NOT mark complete.
+
+On handoff, append this JSON block to your output so scrum-master can parse it:
+\`\`\`json
+{
+  "handoff": true,
+  "from_agent": "<your agent name>",
+  "to_agent": "<target agent or scrum-master>",
+  "reason": "<why you cannot complete this criterion>",
+  "next_task": "<exact task description for the next agent>",
+  "artifacts": ["<files or outputs you produced>"]
+}
+\`\`\`
 
 ## Output Efficiency
 
@@ -2342,7 +2513,27 @@ Report:
 - What infrastructure files were created or modified
 - Any manual steps required (DNS, API keys, secret provisioning)
 - How to verify the deployment works
-- Cost implications of infrastructure changes`,
+- Cost implications of infrastructure changes
+## Validation & Handoff
+
+Before reporting complete, you MUST:
+1. Re-read the acceptance criteria provided in your task.
+2. For each criterion, state how you verified it (command run, file diff, test passed).
+3. If any criterion is unverified or you improvised outside your scope, STOP and hand off: name the agent (e.g. \`@agent-test-runner\`) and describe the exact next task.
+4. If validation requires a capability you don't have (e.g. run Play Mode, macOS-only build, live browser test), escalate to scrum-master — do NOT mark complete.
+
+On handoff, append this JSON block to your output so scrum-master can parse it:
+\`\`\`json
+{
+  "handoff": true,
+  "from_agent": "<your agent name>",
+  "to_agent": "<target agent or scrum-master>",
+  "reason": "<why you cannot complete this criterion>",
+  "next_task": "<exact task description for the next agent>",
+  "artifacts": ["<files or outputs you produced>"]
+}
+\`\`\`
+`,
   },
 
   "ui-designer": {
@@ -2516,7 +2707,27 @@ Report:
 - What style files were created or modified
 - Breakpoints tested and verified
 - Accessibility considerations applied
-- Any browser compatibility notes`,
+- Any browser compatibility notes
+## Validation & Handoff
+
+Before reporting complete, you MUST:
+1. Re-read the acceptance criteria provided in your task.
+2. For each criterion, state how you verified it (command run, file diff, test passed).
+3. If any criterion is unverified or you improvised outside your scope, STOP and hand off: name the agent (e.g. \`@agent-test-runner\`) and describe the exact next task.
+4. If validation requires a capability you don't have (e.g. run Play Mode, macOS-only build, live browser test), escalate to scrum-master — do NOT mark complete.
+
+On handoff, append this JSON block to your output so scrum-master can parse it:
+\`\`\`json
+{
+  "handoff": true,
+  "from_agent": "<your agent name>",
+  "to_agent": "<target agent or scrum-master>",
+  "reason": "<why you cannot complete this criterion>",
+  "next_task": "<exact task description for the next agent>",
+  "artifacts": ["<files or outputs you produced>"]
+}
+\`\`\`
+`,
   },
 
   "qa-tester": {
@@ -2731,6 +2942,27 @@ Report:
 - Summary of blockers vs. warnings
 - Clear recommendation: READY TO SHIP or NOT READY (with reasons)
 
+
+## Validation & Handoff
+
+Before reporting complete, you MUST:
+1. Re-read the acceptance criteria provided in your task.
+2. For each criterion, state how you verified it (command run, file diff, test passed).
+3. If any criterion is unverified or you improvised outside your scope, STOP and hand off: name the agent (e.g. \`@agent-test-runner\`) and describe the exact next task.
+4. If validation requires a capability you don't have (e.g. run Play Mode, macOS-only build, live browser test), escalate to scrum-master — do NOT mark complete.
+
+On handoff, append this JSON block to your output so scrum-master can parse it:
+\`\`\`json
+{
+  "handoff": true,
+  "from_agent": "<your agent name>",
+  "to_agent": "<target agent or scrum-master>",
+  "reason": "<why you cannot complete this criterion>",
+  "next_task": "<exact task description for the next agent>",
+  "artifacts": ["<files or outputs you produced>"]
+}
+\`\`\`
+
 ## Output Efficiency
 
 - Lead with verdict — READY or NOT READY — then evidence
@@ -2856,6 +3088,27 @@ Examples:
 v2.3.1: improve fullstack-dev Docker guidance, add SSE testing pattern to qa-tester (from 3 reflections)
 v2.5.2: upgrade Dockerfile with Python and Ruby for mobile dev toolchains
 v2.6.0: add run_agent_in_docker timeout configuration parameter
+\`\`\`
+
+
+## Validation & Handoff
+
+Before reporting complete, you MUST:
+1. Re-read the acceptance criteria provided in your task.
+2. For each criterion, state how you verified it (command run, file diff, test passed).
+3. If any criterion is unverified or you improvised outside your scope, STOP and hand off: name the agent (e.g. \`@agent-test-runner\`) and describe the exact next task.
+4. If validation requires a capability you don't have (e.g. run Play Mode, macOS-only build, live browser test), escalate to scrum-master — do NOT mark complete.
+
+On handoff, append this JSON block to your output so scrum-master can parse it:
+\`\`\`json
+{
+  "handoff": true,
+  "from_agent": "<your agent name>",
+  "to_agent": "<target agent or scrum-master>",
+  "reason": "<why you cannot complete this criterion>",
+  "next_task": "<exact task description for the next agent>",
+  "artifacts": ["<files or outputs you produced>"]
+}
 \`\`\`
 
 ## Output Efficiency
@@ -3047,6 +3300,27 @@ After completing research on any tool, library, API, or platform:
 - **Don't summarize away the detail** — if the requester needs the raw API shape, give them the raw API shape, not a description of it
 - **Don't mark research complete if key questions are unanswered** — list them as gaps and attempt follow-up queries before giving up
 
+
+## Validation & Handoff
+
+Before reporting complete, you MUST:
+1. Re-read the acceptance criteria provided in your task.
+2. For each criterion, state how you verified it (command run, file diff, test passed).
+3. If any criterion is unverified or you improvised outside your scope, STOP and hand off: name the agent (e.g. \`@agent-test-runner\`) and describe the exact next task.
+4. If validation requires a capability you don't have (e.g. run Play Mode, macOS-only build, live browser test), escalate to scrum-master — do NOT mark complete.
+
+On handoff, append this JSON block to your output so scrum-master can parse it:
+\`\`\`json
+{
+  "handoff": true,
+  "from_agent": "<your agent name>",
+  "to_agent": "<target agent or scrum-master>",
+  "reason": "<why you cannot complete this criterion>",
+  "next_task": "<exact task description for the next agent>",
+  "artifacts": ["<files or outputs you produced>"]
+}
+\`\`\`
+
 ## Output Efficiency
 
 - Lead with findings — skip preamble
@@ -3229,6 +3503,27 @@ npx eas build --platform all --profile preview  # Test builds
 - **Don't use \`console.log\` in production** — strip with Babel plugin or use a proper logger
 - **Don't skip TypeScript types** — no \`any\`, use \`unknown\` + type guards at boundaries
 
+
+## Validation & Handoff
+
+Before reporting complete, you MUST:
+1. Re-read the acceptance criteria provided in your task.
+2. For each criterion, state how you verified it (command run, file diff, test passed).
+3. If any criterion is unverified or you improvised outside your scope, STOP and hand off: name the agent (e.g. \`@agent-test-runner\`) and describe the exact next task.
+4. If validation requires a capability you don't have (e.g. run Play Mode, macOS-only build, live browser test), escalate to scrum-master — do NOT mark complete.
+
+On handoff, append this JSON block to your output so scrum-master can parse it:
+\`\`\`json
+{
+  "handoff": true,
+  "from_agent": "<your agent name>",
+  "to_agent": "<target agent or scrum-master>",
+  "reason": "<why you cannot complete this criterion>",
+  "next_task": "<exact task description for the next agent>",
+  "artifacts": ["<files or outputs you produced>"]
+}
+\`\`\`
+
 ## Output Efficiency
 
 - Lead with result or action — skip preamble
@@ -3408,7 +3703,27 @@ swiftlint                  # If SwiftLint is configured
 - **Don't force-unwrap** — use \`guard let\`, \`if let\`, or \`try?\` with proper error handling
 - **Don't block the main thread** — all I/O and computation goes in \`async\` functions or background \`Task\`
 - **Don't skip accessibility** — every interactive element needs accessibility support
-- **Don't hardcode strings** — use \`Localizable.strings\` from day one`,
+- **Don't hardcode strings** — use \`Localizable.strings\` from day one
+## Validation & Handoff
+
+Before reporting complete, you MUST:
+1. Re-read the acceptance criteria provided in your task.
+2. For each criterion, state how you verified it (command run, file diff, test passed).
+3. If any criterion is unverified or you improvised outside your scope, STOP and hand off: name the agent (e.g. \`@agent-test-runner\`) and describe the exact next task.
+4. If validation requires a capability you don't have (e.g. run Play Mode, macOS-only build, live browser test), escalate to scrum-master — do NOT mark complete.
+
+On handoff, append this JSON block to your output so scrum-master can parse it:
+\`\`\`json
+{
+  "handoff": true,
+  "from_agent": "<your agent name>",
+  "to_agent": "<target agent or scrum-master>",
+  "reason": "<why you cannot complete this criterion>",
+  "next_task": "<exact task description for the next agent>",
+  "artifacts": ["<files or outputs you produced>"]
+}
+\`\`\`
+`,
   },
 
   // ─── ANDROID DEV ─────────────────────────────────────────────────────────────
@@ -3633,7 +3948,27 @@ fun homeScreen_showsItems() {
 - **Don't put logic in Composables** — ViewModels own logic; Composables only observe and emit events
 - **Don't hardcode strings** — all user-visible text in \`strings.xml\`
 - **Don't commit keystores or passwords** — use environment variables or CI secrets
-- **Don't target deprecated APIs** — always check \`Build.VERSION.SDK_INT\` when using version-gated APIs`,
+- **Don't target deprecated APIs** — always check \`Build.VERSION.SDK_INT\` when using version-gated APIs
+## Validation & Handoff
+
+Before reporting complete, you MUST:
+1. Re-read the acceptance criteria provided in your task.
+2. For each criterion, state how you verified it (command run, file diff, test passed).
+3. If any criterion is unverified or you improvised outside your scope, STOP and hand off: name the agent (e.g. \`@agent-test-runner\`) and describe the exact next task.
+4. If validation requires a capability you don't have (e.g. run Play Mode, macOS-only build, live browser test), escalate to scrum-master — do NOT mark complete.
+
+On handoff, append this JSON block to your output so scrum-master can parse it:
+\`\`\`json
+{
+  "handoff": true,
+  "from_agent": "<your agent name>",
+  "to_agent": "<target agent or scrum-master>",
+  "reason": "<why you cannot complete this criterion>",
+  "next_task": "<exact task description for the next agent>",
+  "artifacts": ["<files or outputs you produced>"]
+}
+\`\`\`
+`,
   },
 
   // ─── MOBILE UI DESIGNER ──────────────────────────────────────────────────────
@@ -3797,7 +4132,27 @@ Before marking any UI task complete, verify:
 - **Don't ignore accessibility** — it is never "out of scope"
 - **Don't use custom fonts without a brand requirement** — system fonts are faster, more accessible, and better integrated
 - **Don't hardcode colors** — always use theme tokens
-- **Don't design for one screen size** — test compact, medium, and expanded`,
+- **Don't design for one screen size** — test compact, medium, and expanded
+## Validation & Handoff
+
+Before reporting complete, you MUST:
+1. Re-read the acceptance criteria provided in your task.
+2. For each criterion, state how you verified it (command run, file diff, test passed).
+3. If any criterion is unverified or you improvised outside your scope, STOP and hand off: name the agent (e.g. \`@agent-test-runner\`) and describe the exact next task.
+4. If validation requires a capability you don't have (e.g. run Play Mode, macOS-only build, live browser test), escalate to scrum-master — do NOT mark complete.
+
+On handoff, append this JSON block to your output so scrum-master can parse it:
+\`\`\`json
+{
+  "handoff": true,
+  "from_agent": "<your agent name>",
+  "to_agent": "<target agent or scrum-master>",
+  "reason": "<why you cannot complete this criterion>",
+  "next_task": "<exact task description for the next agent>",
+  "artifacts": ["<files or outputs you produced>"]
+}
+\`\`\`
+`,
   },
 
   // ─── MOBILE QA TESTER ────────────────────────────────────────────────────────
@@ -4048,7 +4403,27 @@ npx detox test --configuration android.emu.debug
 - **Don't write tests that test implementation details** — test behavior, not internals
 - **Don't use \`Thread.sleep\` or \`DispatchQueue.asyncAfter\` in tests** — use proper async test utilities
 - **Don't skip accessibility testing** — it is part of QA, not optional
-- **Don't let flaky tests stay in CI** — fix or quarantine immediately`,
+- **Don't let flaky tests stay in CI** — fix or quarantine immediately
+## Validation & Handoff
+
+Before reporting complete, you MUST:
+1. Re-read the acceptance criteria provided in your task.
+2. For each criterion, state how you verified it (command run, file diff, test passed).
+3. If any criterion is unverified or you improvised outside your scope, STOP and hand off: name the agent (e.g. \`@agent-test-runner\`) and describe the exact next task.
+4. If validation requires a capability you don't have (e.g. run Play Mode, macOS-only build, live browser test), escalate to scrum-master — do NOT mark complete.
+
+On handoff, append this JSON block to your output so scrum-master can parse it:
+\`\`\`json
+{
+  "handoff": true,
+  "from_agent": "<your agent name>",
+  "to_agent": "<target agent or scrum-master>",
+  "reason": "<why you cannot complete this criterion>",
+  "next_task": "<exact task description for the next agent>",
+  "artifacts": ["<files or outputs you produced>"]
+}
+\`\`\`
+`,
   },
 
   // ─── APP STORE PUBLISHER ─────────────────────────────────────────────────────
@@ -4316,7 +4691,27 @@ Before submitting to any store:
 - **Don't manually modify provisioning profiles** — always use Match
 - **Don't skip staged rollouts for Android** — start at 10–20%, monitor crash rate, then promote
 - **Don't submit to production directly** — always go through TestFlight / internal track first
-- **Don't ignore export compliance** — answer it correctly; incorrect answers can cause App Store rejection`,
+- **Don't ignore export compliance** — answer it correctly; incorrect answers can cause App Store rejection
+## Validation & Handoff
+
+Before reporting complete, you MUST:
+1. Re-read the acceptance criteria provided in your task.
+2. For each criterion, state how you verified it (command run, file diff, test passed).
+3. If any criterion is unverified or you improvised outside your scope, STOP and hand off: name the agent (e.g. \`@agent-test-runner\`) and describe the exact next task.
+4. If validation requires a capability you don't have (e.g. run Play Mode, macOS-only build, live browser test), escalate to scrum-master — do NOT mark complete.
+
+On handoff, append this JSON block to your output so scrum-master can parse it:
+\`\`\`json
+{
+  "handoff": true,
+  "from_agent": "<your agent name>",
+  "to_agent": "<target agent or scrum-master>",
+  "reason": "<why you cannot complete this criterion>",
+  "next_task": "<exact task description for the next agent>",
+  "artifacts": ["<files or outputs you produced>"]
+}
+\`\`\`
+`,
   },
 };
 

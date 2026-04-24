@@ -20,5 +20,5 @@
     }
   ],
   "overall_notes": "Docker containers consistently produce 0-byte logs during the ~90s auth period, then flush everything at completion. This is expected behavior — do not mistake silence for failure. The T4 portal agent was fastest (2min) because it touched only one file. Researcher was slowest (5min) due to web search API calls. Pattern: start parallel, poll patiently, push from host after each container exits Dead.",
-  "processed": false
+  "processed": true
 }

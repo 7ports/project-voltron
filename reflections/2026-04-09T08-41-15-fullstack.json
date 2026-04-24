@@ -12,5 +12,5 @@
     }
   ],
   "overall_notes": "Critical pattern discovered: when a PR is raised from a branch that was previously used for another PR, the GitHub UI may default the base branch to the worktree branch (claude/unruffled-agnesi) rather than master. Always verify baseRefName when creating PRs from feature branches that have had prior PRs. The deploy workflow path filter (src/**) was correct — the issue was purely the wrong merge target. Also: gh CLI unavailable in Docker containers — deployment trigger commands must be run from host.",
-  "processed": false
+  "processed": true
 }

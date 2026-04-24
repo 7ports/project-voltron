@@ -12,5 +12,5 @@
     }
   ],
   "overall_notes": "Implementation was already in the working tree when the session resumed — both features had been applied to files. The session recovered cleanly by reading modified files from system-reminder notifications, identified remaining work (QA + push), and completed the loop. Pattern: after compaction or session resume, check git diff to discover what's already done before dispatching agents.",
-  "processed": false
+  "processed": true
 }

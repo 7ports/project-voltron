@@ -2089,6 +2089,7 @@ router.get('/api/ais/stream', (req: Request, res: Response) => {
 2. Run \`npm run lint\` — fix all errors before reporting back (warnings should be reviewed)
 3. Do not report done while typecheck or lint errors remain
 4. Summarize: files created/modified, what the code does, how to test it
+5. **Turn budget awareness:** if you have ≤5 turns remaining and have made verified changes, commit immediately — do not start reading or exploring further. An uncommitted session produces zero output.
 
 ## Common Pitfalls
 
@@ -2310,6 +2311,8 @@ primary_region = "yyz"  # or closest to users
 4. Always include comments explaining non-obvious configuration choices
 5. Test locally where possible (\`terraform plan\`, \`docker build\`, \`act\` for GitHub Actions)
 6. **Post-deploy verification:** after pushing a fix, wait ~90 seconds then query the affected API endpoint or health check to confirm the fix resolved the issue. Do not mark a task complete based solely on a successful deploy — verify the observable outcome.
+7. **\`gh\` CLI in Docker containers:** \`gh\` is not available inside Docker containers — any GitHub CLI commands (creating PRs, triggering workflows, checking run status) must be run from the host machine. If you need to create a PR or trigger a workflow from within a container, output the required command and let the orchestrator run it from the host.
+8. **PR base branch:** when raising a PR from a feature branch that has had prior PRs, always verify the \`--base\` flag explicitly. The GitHub CLI may default to a previously-used branch (e.g. a worktree branch) rather than \`main\`/\`master\`. Always pass \`--base main\` (or the canonical default branch) unless the task explicitly targets a different base.
 
 ## Cross-Repo File Operations
 
@@ -2494,6 +2497,7 @@ You are a Senior UI/UX Designer and CSS Architect. You create beautiful, respons
 4. Use browser DevTools responsive mode to verify breakpoints
 5. Test with keyboard navigation after implementing interactive elements
 6. **Apply noted dependencies immediately** — if you note that a feature requires a supporting change (e.g. "requires \`viewport-fit=cover\` in the meta viewport tag"), make that change in the same task rather than leaving it as a comment for a future task
+7. **Commit as soon as typecheck and lint pass** — do not continue exploring or refining once changes are verified. Never let the session end with uncommitted verified changes; a session that exits without committing produces zero output.
 
 ## What You Don't Do
 

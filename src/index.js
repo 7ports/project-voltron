@@ -94,6 +94,49 @@ async function checkDockerAvailable() {
   return null;
 }
 
+// Build voltron-agent image only when stale or missing.
+// Compares image LastTagTime against Dockerfile mtime — skips rebuild
+// when the image is already current. Eliminates the 30-120s rebuild
+// overhead on every agent launch.
+async function ensureVoltronImage(cwd, dockerfilePath) {
+  try {
+    const imageTimeStr = execSync(
+      'docker image inspect voltron-agent --format "{{.Metadata.LastTagTime}}"',
+      { encoding: "utf-8", stdio: "pipe" }
+    ).trim();
+    const dockerfileStat = await fs.stat(dockerfilePath);
+    if (imageTimeStr && new Date(imageTimeStr) > dockerfileStat.mtime) {
+      return { ok: true, built: false };
+    }
+  } catch { /* image missing or inspect failed — fall through to build */ }
+
+  return new Promise((resolve) => {
+    let buildStderr = "";
+    const buildProc = spawn(
+      "docker",
+      ["build", "-t", "voltron-agent", "-f", dockerfilePath, cwd],
+      { stdio: ["ignore", "ignore", "pipe"], cwd }
+    );
+    buildProc.stderr?.on("data", (chunk) => { buildStderr += chunk.toString(); });
+    const timer = setTimeout(() => {
+      buildProc.kill();
+      resolve({ ok: false, error: `Error: Docker build timed out after 120s.\n\n${buildStderr.trim().slice(-2000)}` });
+    }, 120000);
+    buildProc.on("close", (code) => {
+      clearTimeout(timer);
+      if (code !== 0) {
+        resolve({ ok: false, error: `Error: Docker image build failed.\n\nBuild output:\n${buildStderr.trim().slice(-2000)}` });
+      } else {
+        resolve({ ok: true, built: true });
+      }
+    });
+    buildProc.on("error", (err) => {
+      clearTimeout(timer);
+      resolve({ ok: false, error: `Error: Docker build spawn failed: ${err.message}` });
+    });
+  });
+}
+
 function detectProjectRoot(rawRoot) {
   // 1. Explicit parameter always wins
   if (rawRoot) {
@@ -927,6 +970,141 @@ server.tool(
   }
 );
 
+// ─── Tool: append_journal ──────────────────────────────────────────────────
+
+server.tool(
+  "append_journal",
+  "Append an entry to today's session journal (.voltron/journal/YYYY-MM-DD.md). Call at key moments: session start, task dispatch, task complete, validation pass/fail, handoff, session recap. Produces a human-readable narrative non-developers can follow.",
+  {
+    entry: z.string().describe("The journal entry text (1-3 sentences describing what happened)."),
+    kind: z
+      .enum(["session_start", "dispatch", "task_start", "task_complete", "validation_pass", "validation_fail", "handoff", "note", "session_recap"])
+      .describe("Kind of event being journaled."),
+    actor: z.string().describe("The agent or coordinator name logging this entry (e.g. 'scrum-master', 'typecheck-runner')."),
+  },
+  async ({ entry, kind, actor }) => {
+    const projectRoot = detectProjectRoot(undefined).root;
+    const journalDir = path.join(projectRoot, ".voltron", "journal");
+    await fs.mkdir(journalDir, { recursive: true });
+
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10);
+    const timeStr = now.toISOString().slice(11, 16);
+    const journalFile = path.join(journalDir, `${dateStr}.md`);
+
+    const kindIcon = {
+      session_start: "🚀", dispatch: "→", task_start: "▶", task_complete: "✓",
+      validation_pass: "✅", validation_fail: "❌", handoff: "↩", note: "📝", session_recap: "📋",
+    }[kind] || "•";
+
+    const line = `**${timeStr}** ${kindIcon} \`${actor}\` [${kind}] ${entry}\n`;
+    await fs.appendFile(journalFile, line, "utf-8");
+
+    return {
+      content: [{ type: "text", text: `Journal entry appended to .voltron/journal/${dateStr}.md` }],
+    };
+  }
+);
+
+// ─── Tool: get_journal ──────────────────────────────────────────────────────
+
+server.tool(
+  "get_journal",
+  "Read the session journal for a given date (default: today). Returns the full journal from .voltron/journal/YYYY-MM-DD.md.",
+  {
+    date: z.string().optional().describe("Date in YYYY-MM-DD format (default: today)."),
+  },
+  async ({ date }) => {
+    const projectRoot = detectProjectRoot(undefined).root;
+    const dateStr = date || new Date().toISOString().slice(0, 10);
+    const journalFile = path.join(projectRoot, ".voltron", "journal", `${dateStr}.md`);
+    try {
+      const content = await fs.readFile(journalFile, "utf-8");
+      return {
+        content: [{ type: "text", text: `# Session Journal — ${dateStr}\n\n${content}` }],
+      };
+    } catch {
+      return {
+        content: [{ type: "text", text: `No journal found for ${dateStr}. Use append_journal to start logging.` }],
+      };
+    }
+  }
+);
+
+// ─── Tool: submit_analysis ─────────────────────────────────────────────────
+
+server.tool(
+  "submit_analysis",
+  "Persist a code analysis report to .voltron/analyses/<timestamp>-<topic>.md. Called by code-analyst after coordinating Inspect-layer micro-agents. Returns the relative path of the written report.",
+  {
+    topic: z
+      .string()
+      .describe(
+        "Slug for the analysis topic (e.g. 'test-coverage-gaps', 'api-surface-audit')"
+      ),
+    summary: z
+      .string()
+      .describe("1-paragraph plain-English summary of findings"),
+    findings: z
+      .array(
+        z.object({
+          severity: z.enum(["info", "warn", "error"]),
+          description: z.string(),
+          file: z.string().optional(),
+        })
+      )
+      .describe("Structured list of findings with severity, description, and optional file reference"),
+  },
+  async ({ topic, summary, findings }) => {
+    const projectRoot = detectProjectRoot(undefined).root;
+    const analysesDir = path.join(projectRoot, ".voltron", "analyses");
+    await fs.mkdir(analysesDir, { recursive: true });
+
+    const now = new Date();
+    const timestamp = now.toISOString().replace(/[:.]/g, "-").slice(0, 19);
+    const filename = `${timestamp}-${topic}.md`;
+    const filePath = path.join(analysesDir, filename);
+
+    const iconMap = { error: "🔴", warn: "🟡", info: "🔵" };
+    const findingLines =
+      findings.length === 0
+        ? ["_No findings._"]
+        : findings.map((f) => {
+            const icon = iconMap[f.severity] || "•";
+            const fileRef = f.file ? ` \`${f.file}\`` : "";
+            return `- ${icon} **${f.severity.toUpperCase()}**${fileRef}: ${f.description}`;
+          });
+
+    const reportLines = [
+      `# Code Analysis: ${topic}`,
+      ``,
+      `**Generated:** ${now.toISOString()}`,
+      ``,
+      `## Summary`,
+      ``,
+      summary,
+      ``,
+      `## Findings`,
+      ``,
+      ...findingLines,
+      ``,
+      `---`,
+      `_Generated by code-analyst via Project Voltron_`,
+    ];
+
+    await fs.writeFile(filePath, reportLines.join("\n"), "utf-8");
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `.voltron/analyses/${filename}`,
+        },
+      ],
+    };
+  }
+);
+
 // ─── Tool: list_reflections ─────────────────────────────────────────────────
 
 server.tool(
@@ -1192,7 +1370,17 @@ server.tool(
 
 // ─── Dashboard HTML generator (shared by update_progress and generate_dashboard)
 
-function buildDashboardHtml(progress) {
+function buildDashboardHtml(progress, journalContent = null) {
+  const journalDate = new Date().toISOString().slice(0, 10);
+  const journalHtml = journalContent
+    ? `<h2 class="section-title">Session Journal — ${journalDate}</h2><div class="journal">${
+        journalContent
+          .split("\n")
+          .filter(Boolean)
+          .map(l => `<div class="journal-line">${l.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>").replace(/`(.+?)`/g,"<code>$1</code>")}</div>`)
+          .join("")
+      }</div>`
+    : "";
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1224,11 +1412,17 @@ function buildDashboardHtml(progress) {
   .badge.failed { background: #3d1114; color: #f85149; }
   .badge.blocked { background: #3d1114; color: #f85149; }
   .phase-header { color: #58a6ff; font-size: 1.1rem; margin: 1.5rem 0 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid #30363d; }
+  .section-title { color: #58a6ff; font-size: 1.1rem; margin: 1.5rem 0 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid #30363d; }
+  .journal { background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 1rem; margin-bottom: 2rem; font-size: 0.85rem; line-height: 1.6; max-height: 300px; overflow-y: auto; }
+  .journal-line { padding: 0.15rem 0; border-bottom: 1px solid #21262d; }
+  .journal-line:last-child { border-bottom: none; }
+  .journal code { background: #161b22; padding: 0.1rem 0.3rem; border-radius: 4px; font-size: 0.8rem; }
 </style>
 </head>
 <body>
 <h1>Voltron Progress Dashboard</h1>
 <div class="updated">Last updated: ${progress.updated_at || "never"} (auto-refreshes every 5s)</div>
+${journalHtml}
 <div class="stats" id="stats"></div>
 <div id="phases"></div>
 <script>
@@ -1263,7 +1457,10 @@ async function regenerateDashboard() {
   const outFile = path.join(projectRoot, ".voltron", "dashboard.html");
   try {
     const progress = JSON.parse(await fs.readFile(progressFile, "utf-8"));
-    await fs.writeFile(outFile, buildDashboardHtml(progress));
+    const dateStr = new Date().toISOString().slice(0, 10);
+    let journalContent = null;
+    try { journalContent = await fs.readFile(path.join(projectRoot, ".voltron", "journal", `${dateStr}.md`), "utf-8"); } catch { /* no journal yet */ }
+    await fs.writeFile(outFile, buildDashboardHtml(progress, journalContent));
     return outFile;
   } catch {
     return null;
@@ -1295,7 +1492,10 @@ server.tool(
     }
 
     await fs.mkdir(path.dirname(outFile), { recursive: true });
-    await fs.writeFile(outFile, buildDashboardHtml(progress));
+    const dateStr = new Date().toISOString().slice(0, 10);
+    let journalContent = null;
+    try { journalContent = await fs.readFile(path.join(projectRoot, ".voltron", "journal", `${dateStr}.md`), "utf-8"); } catch { /* no journal yet */ }
+    await fs.writeFile(outFile, buildDashboardHtml(progress, journalContent));
 
     const fileUrl = dashboardUrl(outFile);
     return {
@@ -1414,6 +1614,63 @@ server.tool(
       trelloStatus = "⚠ Not registered (run without dry_run to add)";
     }
 
+
+    // Check Stringer (optional — codebase baseline analysis)
+    let stringerStatus = "";
+    let stringerInstalled = false;
+    try {
+      execSync("stringer --version", { stdio: "ignore", timeout: 5000 });
+      stringerInstalled = true;
+    } catch { /* not installed */ }
+
+    if (stringerInstalled) {
+      const stringerRegistered = !!claudeJson?.mcpServers?.["stringer"];
+      if (!stringerRegistered && !dry_run) {
+        if (!claudeJson.mcpServers) claudeJson.mcpServers = {};
+        claudeJson.mcpServers["stringer"] = {
+          type: "stdio",
+          command: "stringer",
+          args: ["mcp", "serve"],
+          env: {},
+        };
+        await fs.writeFile(claudeJsonPath, JSON.stringify(claudeJson, null, 2));
+        stringerStatus = "✓ Installed + MCP registered (restart Claude Code to activate)";
+      } else if (stringerRegistered) {
+        stringerStatus = "✓ Installed + MCP registered";
+      } else {
+        stringerStatus = "✓ Installed (run without dry_run to register MCP)";
+      }
+
+      // Check for baseline in project root
+      const projectRoot = detectProjectRoot(undefined).root;
+      const baselinePath = path.join(projectRoot, ".voltron", "stringer", "baseline.json");
+      const lastScanPath = path.join(projectRoot, ".voltron", "stringer", "last-scan.json");
+      const hasBaseline = existsSync(baselinePath);
+      const hasLastScan = existsSync(lastScanPath);
+
+      if (!hasBaseline) {
+        stringerStatus += " — no baseline yet (run @agent-stringer-baseline-builder to create one)";
+      } else if (hasLastScan) {
+        try {
+          const lastScan = JSON.parse(await fs.readFile(lastScanPath, "utf-8"));
+          const ageDays = Math.floor((Date.now() - new Date(lastScan.timestamp)) / 86400000);
+          stringerStatus += ` — baseline ${ageDays}d old${ageDays > 14 ? " ⚠ stale — run @agent-stringer-baseline-builder to refresh" : ""}`;
+        } catch { /* non-fatal */ }
+      }
+    } else {
+      stringerStatus = "not installed (optional) — install stringer for codebase baseline analysis";
+    }
+
+
+    // Check APM (Agent Package Manager — optional, enhances install experience)
+    let apmStatus = "";
+    try {
+      execSync("apm --version", { stdio: "ignore", timeout: 5000 });
+      apmStatus = "✓ Installed — `apm install 7ports/project-voltron` reinstalls all agents + MCP";
+    } catch {
+      apmStatus = "not installed (optional) — `pip install apm-cli` for one-command agent deployment";
+    }
+
     // Build report
     const allowStatus = missingAllow.length === 0
       ? `✓ All ${VOLTRON_ALLOW.length} entries present`
@@ -1434,6 +1691,8 @@ server.tool(
       `- **Allowlist:** ${allowStatus}`,
       `- **Deny rules:** ${denyStatus}`,
       `- **Trello MCP:** ${trelloStatus}`,
+      `- **Stringer:** ${stringerStatus}`,
+      `- **APM:** ${apmStatus}`,
       `- **Docker:** ${dockerStatus === "available" ? "✓ available (daemon running)" : dockerStatus === "daemon not running" ? "⚠ Docker installed but daemon not running — start Docker Desktop" : "⚠ Docker not found — install Docker Desktop"}`,
       `- **Claude Code:** ${versionStatus}`,
       "",
@@ -1536,54 +1795,20 @@ server.tool(
       return { content: [{ type: "text", text: `Error: ${dockerErr}` }] };
     }
 
-    // 6. Check Dockerfile.voltron exists
+    // 6. Ensure voltron-agent image is current (skips rebuild if Dockerfile unchanged)
     const dockerfilePath = path.join(cwd, "Dockerfile.voltron");
     try {
       await fs.access(dockerfilePath);
     } catch {
       await fs.unlink(tmpFile).catch(() => {});
       return {
-        content: [
-          {
-            type: "text",
-            text: "Error: Dockerfile.voltron not found in project root. Run scaffold_project first to generate it.",
-          },
-        ],
+        content: [{ type: "text", text: "Error: Dockerfile.voltron not found in project root. Run scaffold_project first to generate it." }],
       };
     }
-
-    // 7. Build image — async spawn so parallel agent invocations don't block each other
-    try {
-      await new Promise((resolve, reject) => {
-        let buildStderr = "";
-        const buildProc = spawn(
-          "docker",
-          ["build", "-t", "voltron-agent", "-f", dockerfilePath, cwd],
-          { stdio: ["ignore", "ignore", "pipe"], cwd }
-        );
-        buildProc.stderr?.on("data", (chunk) => { buildStderr += chunk.toString(); });
-        const timer = setTimeout(() => {
-          buildProc.kill();
-          reject(Object.assign(new Error("Docker build timed out"), { stderr: buildStderr }));
-        }, 120000);
-        buildProc.on("close", (code) => {
-          clearTimeout(timer);
-          if (code !== 0) reject(Object.assign(new Error("Build failed"), { stderr: buildStderr }));
-          else resolve();
-        });
-        buildProc.on("error", (err) => { clearTimeout(timer); reject(err); });
-      });
-    } catch (err) {
+    const imageResult = await ensureVoltronImage(cwd, dockerfilePath);
+    if (!imageResult.ok) {
       await fs.unlink(tmpFile).catch(() => {});
-      const buildStderr = err.stderr ? `\n\nBuild output:\n${err.stderr.trim().slice(-2000)}` : "";
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Error: Docker image build failed.${buildStderr}`,
-          },
-        ],
-      };
+      return { content: [{ type: "text", text: imageResult.error }] };
     }
 
     // 8. Regenerate dashboard to show this agent as active
@@ -1613,7 +1838,14 @@ server.tool(
       // No ~/.gitconfig — agents must set git identity manually if they need to commit
     }
 
-    // Pass through Claude auth env vars so the agent inside Docker can authenticate
+    // v3.3.2: auth comes purely from CLAUDE_CODE_OAUTH_TOKEN env var.
+    // We deliberately do NOT mount ~/.claude or ~/.claude.json. Smoke testing on 2026-04-27
+    // showed ~/.claude.json was the silent-hang root cause: it contains host-specific MCP
+    // server registrations (e.g. `node "C:\\Users\\..."`) that claude tries to spawn at
+    // startup and stalls for 60-90s waiting for. Container is headless (`-p`) with the full
+    // task in /tmp/task.md, so no MCP config is needed. Same 5-line prompt:
+    //   with ~/.claude.json:ro mounted -> ~90s (often hangs)
+    //   without that mount             -> ~4s consistently
     const authEnvArgs = [];
     if (process.env.CLAUDE_CODE_OAUTH_TOKEN) {
       authEnvArgs.push("-e", `CLAUDE_CODE_OAUTH_TOKEN=${process.env.CLAUDE_CODE_OAUTH_TOKEN}`);
@@ -1631,13 +1863,13 @@ server.tool(
       "--entrypoint", "bash",
       ...authEnvArgs,
       "-v", `${cwd}:/workspace`,
-      "-v", `${homeDir}/.claude:/home/voltron/.claude`,
-      "-v", `${homeDir}/.claude.json:/home/voltron/.claude.json:ro`,
       ...gitConfigMount,        // mount ~/.gitconfig if present so git commits work
       "-v", `${tmpFile}:/tmp/task.md:ro`,
       "voltron-agent",
       "-c",
-      `claude --dangerously-skip-permissions --max-turns ${max_turns} -p "$(cat /tmp/task.md)" 2>&1 | tee /workspace/.voltron/logs/${logFilename}; exit \${PIPESTATUS[0]}`,
+      // v3.3.2: breadcrumb-wrapped — surfaces stalls before claude produces its first byte.
+      // [entry]/[claude-version]/[exec]/[exit] echoes localize hangs to mount, auth, parse, or run.
+      `{ echo "[entry] $(date -Is) host=$(hostname) user=$(whoami)"; echo "[claude-version] $(claude --version 2>&1)"; echo "[exec] $(date -Is) starting prompt"; claude --dangerously-skip-permissions --max-turns ${max_turns} -p "$(cat /tmp/task.md)" 2>&1; CLAUDE_EXIT=\$?; echo "[exit] $(date -Is) code=\$CLAUDE_EXIT"; exit \$CLAUDE_EXIT; } | tee /workspace/.voltron/logs/${logFilename}; exit \${PIPESTATUS[0]}`,
     ];
 
     // Async spawn — allows multiple agents to run in parallel Docker containers
@@ -1737,27 +1969,16 @@ server.tool(
       return { content: [{ type: "text", text: `Error: ${dockerErr2}` }] };
     }
 
-    // Check Dockerfile.voltron exists
+    // Ensure voltron-agent image is current (skips rebuild if Dockerfile unchanged)
     const dockerfilePath = path.join(cwd, "Dockerfile.voltron");
     try { await fs.access(dockerfilePath); } catch {
       await fs.unlink(tmpFile).catch(() => {});
       return { content: [{ type: "text", text: "Error: Dockerfile.voltron not found. Run scaffold_project first." }] };
     }
-
-    // Build image
-    try {
-      await new Promise((resolve, reject) => {
-        let buildStderr = "";
-        const buildProc = spawn("docker", ["build", "-t", "voltron-agent", "-f", dockerfilePath, cwd], { stdio: ["ignore", "ignore", "pipe"], cwd });
-        buildProc.stderr?.on("data", (chunk) => { buildStderr += chunk.toString(); });
-        const timer = setTimeout(() => { buildProc.kill(); reject(Object.assign(new Error("Docker build timed out"), { stderr: buildStderr })); }, 120000);
-        buildProc.on("close", (code) => { clearTimeout(timer); if (code !== 0) reject(Object.assign(new Error("Build failed"), { stderr: buildStderr })); else resolve(); });
-        buildProc.on("error", (err) => { clearTimeout(timer); reject(err); });
-      });
-    } catch (err) {
+    const imageResult2 = await ensureVoltronImage(cwd, dockerfilePath);
+    if (!imageResult2.ok) {
       await fs.unlink(tmpFile).catch(() => {});
-      const buildStderr = err.stderr ? `\n\nBuild output:\n${err.stderr.trim().slice(-2000)}` : "";
-      return { content: [{ type: "text", text: `Error: Docker image build failed.${buildStderr}` }] };
+      return { content: [{ type: "text", text: imageResult2.error }] };
     }
 
     // Set up log infrastructure
@@ -1768,14 +1989,23 @@ server.tool(
     const logsDir = path.join(cwd, ".voltron", "logs");
     await fs.mkdir(logsDir, { recursive: true });
     const logPath = path.join(logsDir, logFilename);
-    // Create empty log file so get_agent_output can read it immediately
+    // Create empty log file + .started timestamp so get_agent_output tracks elapsed time
     await fs.writeFile(logPath, "");
+    await fs.writeFile(logPath + ".started", new Date().toISOString(), "utf-8");
 
     // Mount auth and gitconfig
     const homeDir = process.env.HOME || process.env.USERPROFILE || os.homedir();
     const gitConfigPath = path.join(homeDir, ".gitconfig");
     let gitConfigMount = [];
     try { await fs.access(gitConfigPath); gitConfigMount = ["-v", `${gitConfigPath}:/home/voltron/.gitconfig:ro`]; } catch { /* no gitconfig */ }
+    // v3.3.2: auth comes purely from CLAUDE_CODE_OAUTH_TOKEN env var.
+    // We deliberately do NOT mount ~/.claude or ~/.claude.json. Smoke testing on 2026-04-27
+    // showed ~/.claude.json was the silent-hang root cause: it contains host-specific MCP
+    // server registrations (e.g. `node "C:\\Users\\..."`) that claude tries to spawn at
+    // startup and stalls for 60-90s waiting for. Container is headless (`-p`) with the full
+    // task in /tmp/task.md, so no MCP config is needed. Same 5-line prompt:
+    //   with ~/.claude.json:ro mounted -> ~90s (often hangs)
+    //   without that mount             -> ~4s consistently
     const authEnvArgs = [];
     if (process.env.CLAUDE_CODE_OAUTH_TOKEN) authEnvArgs.push("-e", `CLAUDE_CODE_OAUTH_TOKEN=${process.env.CLAUDE_CODE_OAUTH_TOKEN}`);
     if (process.env.ANTHROPIC_API_KEY) authEnvArgs.push("-e", `ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY}`);
@@ -1786,14 +2016,13 @@ server.tool(
       "--entrypoint", "bash",
       ...authEnvArgs,
       "-v", `${cwd}:/workspace`,
-      "-v", `${homeDir}/.claude:/home/voltron/.claude`,
-      "-v", `${homeDir}/.claude.json:/home/voltron/.claude.json:ro`,
       ...gitConfigMount,
       "-v", `${tmpFile}:/tmp/task.md:ro`,
       "voltron-agent",
       "-c",
-      // Write exit code to .exit file so get_agent_output can detect completion
-      `claude --dangerously-skip-permissions --max-turns ${max_turns} -p "$(cat /tmp/task.md)" 2>&1 | tee /workspace/.voltron/logs/${logFilename}; echo "\${PIPESTATUS[0]}" > /workspace/.voltron/logs/${logFilename}.exit; exit \${PIPESTATUS[0]}`,
+      // v3.3.2: breadcrumb-wrapped + .exit file write. Brace group emits localizing markers,
+      // tee captures everything, PIPESTATUS[0] preserves claude's real exit code.
+      `{ echo "[entry] $(date -Is) host=$(hostname) user=$(whoami)"; echo "[claude-version] $(claude --version 2>&1)"; echo "[exec] $(date -Is) starting prompt"; claude --dangerously-skip-permissions --max-turns ${max_turns} -p "$(cat /tmp/task.md)" 2>&1; CLAUDE_EXIT=\$?; echo "[exit] $(date -Is) code=\$CLAUDE_EXIT"; exit \$CLAUDE_EXIT; } | tee /workspace/.voltron/logs/${logFilename}; EXIT=\${PIPESTATUS[0]}; echo "\$EXIT" > /workspace/.voltron/logs/${logFilename}.exit; exit \$EXIT`,
     ];
 
     // Detached spawn — returns immediately, container runs in background
@@ -1805,6 +2034,7 @@ server.tool(
 
     await regenerateDashboard();
 
+    const startedAt = new Date().toISOString();
     return {
       content: [{
         type: "text",
@@ -1813,13 +2043,20 @@ server.tool(
           ``,
           `**Container:** \`${containerName}\``,
           `**Log:** \`${logPath}\``,
+          `**Started at:** ${startedAt}`,
+          `**Image build:** ${imageResult2.built ? "rebuilt (Dockerfile changed)" : "skipped (image current)"}`,
           ``,
-          `The agent is now running in the background. Use \`get_agent_output\` to poll for progress:`,
+          `Poll progress with:`,
           `\`\`\``,
           `get_agent_output({ container_name: "${containerName}", log_path: "${logPath}" })`,
           `\`\`\``,
           ``,
-          `You can also tail the log in a terminal: \`tail -f "${logPath}"\``,
+          `**Polling cadence (don't wait arbitrary amounts):**`,
+          `- Spin-up (0 lines, <45s elapsed): poll every 10s`,
+          `- Active (lines growing): poll every 30s, pass \`since_line: <next_line>\` for incremental output`,
+          `- Stalled (no new lines for 3 polls): kill with \`docker kill ${containerName}\``,
+          ``,
+          `Live tail in a terminal: \`tail -f "${logPath}"\``,
         ].join("\n"),
       }],
     };
@@ -1828,13 +2065,14 @@ server.tool(
 
 server.tool(
   "get_agent_output",
-  "Poll a running agent container for its latest output. Returns the last N lines of the agent's log and whether it is still running. Call this repeatedly to show real-time progress in the chat window.",
+  "Poll a running agent for its latest output. Returns log lines, status, elapsed time, and a next_line cursor for incremental polling. Pass since_line: <prev next_line> to get only new output. Includes phase hints (spin-up / stalled / long-running) so scrum-master knows whether to keep waiting or surface a warning to the user.",
   {
     container_name: z.string().describe("Container name returned by start_agent_in_docker"),
     log_path: z.string().describe("Absolute log file path returned by start_agent_in_docker"),
-    tail_lines: z.number().optional().describe("Number of log lines to return (default: 40)"),
+    tail_lines: z.number().optional().describe("Max lines to return (default: 40). Used as a cap when since_line is set, or as the tail size when it is not."),
+    since_line: z.number().optional().describe("Return lines starting from this 0-based index. Pass the next_line value from the previous response to receive only new output. Omit on the first poll to get the last tail_lines lines."),
   },
-  async ({ container_name, log_path, tail_lines = 40 }) => {
+  async ({ container_name, log_path, tail_lines = 40, since_line }) => {
     // Check if container is still running
     let isRunning = false;
     try {
@@ -1853,25 +2091,75 @@ server.tool(
       exitCode = parseInt(exitStr.trim(), 10);
     } catch { /* not written yet */ }
 
-    // Read log file
+    // Race fix: container stopped but .exit not yet flushed — wait 600ms and retry once
+    if (!isRunning && exitCode === null) {
+      await new Promise(r => setTimeout(r, 600));
+      try {
+        const exitStr = await fs.readFile(exitCodePath, "utf-8");
+        exitCode = parseInt(exitStr.trim(), 10);
+      } catch { /* still not written — true transient state */ }
+    }
+
+    // Compute elapsed time from .started file (written by start_agent_in_docker)
+    let elapsedSeconds = null;
+    try {
+      const startedStr = await fs.readFile(log_path + ".started", "utf-8");
+      elapsedSeconds = Math.round((Date.now() - new Date(startedStr.trim()).getTime()) / 1000);
+    } catch { /* no .started — pre-v3.3.1 container, elapsed unknown */ }
+
+    // Read log
     let logContent = "";
-    try { logContent = await fs.readFile(log_path, "utf-8"); } catch { logContent = "(log file not yet available)"; }
+    try { logContent = await fs.readFile(log_path, "utf-8"); } catch { logContent = ""; }
     const allLines = logContent.split("\n").filter(line => line.length > 0);
     const totalLines = allLines.length;
-    const tailLines = allLines.slice(-tail_lines).join("\n");
 
-    // Determine status
-    let status;
-    if (isRunning) {
-      status = "running";
-    } else if (exitCode === 0) {
-      status = "completed";
-    } else if (exitCode !== null) {
-      status = "failed";
+    // Slice — incremental (since_line) vs tail
+    let outputLines;
+    let lineRangeDesc;
+    let nextLine;
+    if (since_line !== undefined && since_line >= 0) {
+      const start = Math.min(since_line, totalLines);
+      const end = Math.min(start + tail_lines, totalLines);
+      outputLines = allLines.slice(start, end);
+      nextLine = end;
+      lineRangeDesc = outputLines.length > 0
+        ? `Lines ${start + 1}–${end} of ${totalLines}`
+        : `No new lines since index ${since_line} (total: ${totalLines})`;
     } else {
-      // Container stopped but .exit not written yet — transient state
-      status = "unknown (container stopped, exit code pending — retry in a moment)";
+      outputLines = allLines.slice(-tail_lines);
+      nextLine = totalLines;
+      lineRangeDesc = `Last ${Math.min(tail_lines, totalLines)} of ${totalLines} lines`;
     }
+
+    // Status
+    let status;
+    if (isRunning) status = "running";
+    else if (exitCode === 0) status = "completed";
+    else if (exitCode !== null) status = "failed";
+    else status = "unknown";
+
+    // Format elapsed
+    const elapsedStr = elapsedSeconds !== null
+      ? `  |  **Elapsed:** ${Math.floor(elapsedSeconds / 60)}m${String(elapsedSeconds % 60).padStart(2, "0")}s`
+      : "";
+
+    // Phase hint — tells scrum-master what to do next
+    let phaseHint = "";
+    if (status === "running" && totalLines === 0) {
+      if (elapsedSeconds === null || elapsedSeconds < 45) {
+        phaseHint = `\n⏳ **Spin-up phase** — container initializing (normal for first 10–30s). Poll again in ~10s.`;
+      } else {
+        phaseHint = `\n⚠ **No output after ${elapsedSeconds}s** — container may be waiting for auth or hung. Verify CLAUDE_CODE_OAUTH_TOKEN is set. Kill: \`docker kill ${container_name}\``;
+      }
+    } else if (status === "running" && elapsedSeconds !== null && elapsedSeconds > 600) {
+      phaseHint = `\n⚠ **Running ${Math.floor(elapsedSeconds / 60)}m** — if no new output for several polls, agent may be stalled. Kill: \`docker kill ${container_name}\``;
+    } else if (status === "unknown") {
+      phaseHint = `\nℹ Container stopped but exit code not yet written. Poll again in 1–2s to resolve.`;
+    }
+
+    const nextHint = status === "running"
+      ? `\n💡 Next poll: \`get_agent_output({ container_name: "${container_name}", log_path: "${log_path}", since_line: ${nextLine} })\``
+      : `\nAgent finished. Close the bead, update progress, dispatch the next task.`;
 
     return {
       content: [{
@@ -1879,14 +2167,15 @@ server.tool(
         text: [
           `## Agent output — \`${container_name}\``,
           ``,
-          `**Status:** ${status}${exitCode !== null ? `  |  **Exit code:** ${exitCode}` : ""}`,
-          `**Lines so far:** ${totalLines}  |  **Showing last ${Math.min(tail_lines, totalLines)}**`,
+          `**Status:** ${status}${exitCode !== null ? `  |  **Exit code:** ${exitCode}` : ""}${elapsedStr}`,
+          `**${lineRangeDesc}**  |  **next_line:** ${nextLine}`,
+          phaseHint,
           ``,
           `\`\`\``,
-          tailLines || "(no output yet)",
+          outputLines.length > 0 ? outputLines.join("\n") : "(no output yet)",
           `\`\`\``,
-          status === "running" ? `\nCall \`get_agent_output\` again to see newer output.` : `\nAgent has finished. Review the output above.`,
-        ].join("\n"),
+          nextHint,
+        ].filter(s => s !== "").join("\n"),
       }],
     };
   }

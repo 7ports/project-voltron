@@ -2,7 +2,7 @@
   "timestamp": "2026-04-09T07:03:08.187Z",
   "project_name": "toronto-ferry-tracker-v2",
   "project_type": "fullstack",
-  "session_summary": "Phase 10 bug sprint: fixed 5 production bugs. (1) Server VesselPosition now emits sog+cog — root cause of dead stats and broken dead reckoning. (2) Dead reckoning now uses COG direction + sog speed; vessels glide between AIS pings instead of freezing. (3) localStorage cache pre-populates vessels on cold load. (4) Mobile bottom sheet uses React.createPortal to escape overflow:hidden grid ancestor. (5) Researcher identified Ongiara (MMSI 316045066) as the missing 5th ferry via MarineTraffic. QA passed all 3 gates with one minor ESLint fix (.claude/worktrees/ noise). bd stats: 4/4 closed, 0 blocked. PR #10 raised.",
+  "session_summary": "Phase 10 bug sprint: fixed 5 production bugs. (1) Server VesselPosition now emits sog+cog \u2014 root cause of dead stats and broken dead reckoning. (2) Dead reckoning now uses COG direction + sog speed; vessels glide between AIS pings instead of freezing. (3) localStorage cache pre-populates vessels on cold load. (4) Mobile bottom sheet uses React.createPortal to escape overflow:hidden grid ancestor. (5) Researcher identified Ongiara (MMSI 316045066) as the missing 5th ferry via MarineTraffic. QA passed all 3 gates with one minor ESLint fix (.claude/worktrees/ noise). bd stats: 4/4 closed, 0 blocked. PR #10 raised.",
   "agents_used": [
     "fullstack-dev",
     "researcher",
@@ -19,6 +19,6 @@
       "agent": "qa-tester"
     }
   ],
-  "overall_notes": "Docker containers consistently produce 0-byte logs during the ~90s auth period, then flush everything at completion. This is expected behavior — do not mistake silence for failure. The T4 portal agent was fastest (2min) because it touched only one file. Researcher was slowest (5min) due to web search API calls. Pattern: start parallel, poll patiently, push from host after each container exits Dead.",
-  "processed": false
+  "overall_notes": "Docker containers consistently produce 0-byte logs during the ~90s auth period, then flush everything at completion. This is expected behavior \u2014 do not mistake silence for failure. The T4 portal agent was fastest (2min) because it touched only one file. Researcher was slowest (5min) due to web search API calls. Pattern: start parallel, poll patiently, push from host after each container exits Dead.",
+  "processed": true
 }

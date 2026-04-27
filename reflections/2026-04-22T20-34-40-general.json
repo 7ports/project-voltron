@@ -1,0 +1,19 @@
+{
+  "timestamp": "2026-04-22T20:34:40.180Z",
+  "project_name": "project-voltron",
+  "project_type": "general",
+  "session_summary": "Phase 3+4+1 milestone — v3.0.0 shipped on v3-overhaul branch (PR #11 ready for review). Delivered: (1) Universal Validation & Handoff section in all 19 agent templates + Anchor Pre-computation rule in scrum-master (v2.10.0). (2) Session Journal — append_journal/get_journal MCP tools, dashboard panel integration (v2.11.0). (3) Three-tier agent model — 37 micro-agents across Inspect/Write/Validate/Publish layers, 8 sub-manager rewrites (Write/Edit removed, composition recipes added), scrum-master three-tier delegation section, micro-agent catalog in docs/index.html (v3.0.0). Total: 56 agents now in templates.js.",
+  "agents_used": [
+    "reflection-processor"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "reflection-processor",
+      "worked_well": "Pre-written Python scripts (phase1a, phase1b, phase1c) were the key insight — agent only needed to run one command and commit rather than planning and executing N edits. This consistently worked even at max_turns=15.",
+      "needs_improvement": "Agent exhausts ALL turns on boot/planning before doing any work. Even with a 4-step task and max_turns=20, it hits the limit before the commit step. The max_turns bridge bug (integer coerced to string, defaults to 30) is still present — integer values in task params are serialized as strings.",
+      "suggested_change": "Add to reflection-processor template: 'When given a task that starts with a bash command to run, execute it FIRST in your very first tool call — do not read files, do not plan, do not explore. The task description IS the plan. Turn 1 = run the command.'"
+    }
+  ],
+  "overall_notes": "Critical pattern established: pre-compute all file edits as a Python script in the main session, give the agent a single 'run this script and commit' task. Agents that explore before acting exhaust turns; agents given a ready-to-run script succeed in 5-8 turns. The 'Anchor Pre-computation' rule added to scrum-master template captures this. Max turns bridge bug still present — keep max_turns at 15-20 for script-run tasks, never 30. Docker agents cannot push to GitHub (no SSH/token) — always push from host after commit.",
+  "processed": false
+}

@@ -276,6 +276,16 @@
       .hero p { font-size: 1rem; }
     }
 
+
+    .tier-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+    .tier-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1.25rem; }
+    .tier-card h3 { color: #58a6ff; margin-bottom: 0.75rem; font-size: 1rem; }
+    .tier-badge { font-size: 0.7rem; background: #30363d; color: #8b949e; padding: 0.1rem 0.5rem; border-radius: 10px; font-weight: 400; margin-left: 0.4rem; }
+    .tier-card code { display: inline-block; background: #0d1117; border: 1px solid #30363d; border-radius: 4px; padding: 0.1rem 0.4rem; font-size: 0.75rem; margin: 0.15rem; color: #79c0ff; }
+    .tier-inspect { border-top: 3px solid #388bfd; }
+    .tier-write  { border-top: 3px solid #3fb950; }
+    .tier-validate { border-top: 3px solid #d29922; }
+    .tier-publish { border-top: 3px solid #a371f7; }
   </style>
 </head>
 <body>
@@ -286,12 +296,12 @@
       <h1>Project Voltron</h1>
       <p>Specialized agent teams for Claude Code, served via MCP. Scaffold Unity, web, mobile, or general projects with battle-tested subagent templates — Alexandria-aware, self-improving, and auto-updating.</p>
       <div class="badge-row">
-        <span class="badge">v2.9.5</span>
+        <span class="badge">v3.3.2</span>
         <span class="badge">MCP Server</span>
         <span class="badge">Unity</span>
         <span class="badge">Web / Fullstack</span>
         <span class="badge">Mobile</span>
-        <span class="badge">19 Agents</span>
+        <span class="badge">63 Agents</span>
         <span class="badge">MIT License</span>
       </div>
     </div>
@@ -510,6 +520,80 @@
           </div>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- Micro-agent Catalog -->
+  <section class="micro-catalog">
+    <div class="container">
+      <h2>Micro-Agent Catalog <span class="badge" style="font-size:0.7rem;vertical-align:middle">v3.0 new</span></h2>
+      <p class="section-sub">37 focused workers across four layers — each does one verb on one noun. Composed by sub-managers or dispatched directly by scrum-master for trivial tasks.</p>
+      <div class="tier-grid">
+        <div class="tier-card tier-inspect">
+          <h3>Inspect <span class="tier-badge">Read-only · 11 agents</span></h3>
+          <code>dep-reader</code> <code>route-lister</code> <code>schema-inspector</code> <code>log-tailer</code> <code>test-lister</code> <code>lint-reader</code> <code>type-error-reader</code> <code>git-state-reader</code> <code>api-shape-probe</code> <code>bundle-sizer</code> <code>dead-code-finder</code>
+        </div>
+        <div class="tier-card tier-write">
+          <h3>Write <span class="tier-badge">Code-producing · 11 agents</span></h3>
+          <code>route-adder</code> <code>component-scaffolder</code> <code>test-writer</code> <code>migration-writer</code> <code>config-editor</code> <code>fixture-writer</code> <code>type-definer</code> <code>env-var-setter</code> <code>dockerfile-editor</code> <code>yaml-patcher</code> <code>readme-section-writer</code>
+        </div>
+        <div class="tier-card tier-validate">
+          <h3>Validate <span class="tier-badge">Check-only · 9 agents</span></h3>
+          <code>typecheck-runner</code> <code>test-runner</code> <code>lint-runner</code> <code>build-runner</code> <code>schema-validator</code> <code>url-route-matcher</code> <code>accessibility-auditor</code> <code>lighthouse-runner</code> <code>security-scanner</code>
+        </div>
+        <div class="tier-card tier-publish">
+          <h3>Publish <span class="tier-badge">Side-effects · 6 agents</span></h3>
+          <code>committer</code> <code>pr-opener</code> <code>branch-manager</code> <code>deploy-trigger</code> <code>app-store-uploader</code> <code>changelog-updater</code>
+        </div>
+      </div>
+      <h3 style="color:#58a6ff;margin-top:2rem;font-size:1rem">Tier-1 Coordinators <span class="tier-badge" style="background:#1f2937;color:#8b949e;padding:0.15rem 0.5rem;border-radius:10px;font-size:0.7rem">v3.1 new</span></h3>
+      <p style="color:#8b949e;font-size:0.875rem;margin:0.5rem 0 1rem">Two specialist coordinators join scrum-master at Tier 1.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem">
+        <div class="tier-card" style="border-top:3px solid #58a6ff">
+          <h3 style="color:#58a6ff">code-analyst</h3>
+          <p style="color:#8b949e;font-size:0.85rem">Directs all 11 Inspect-layer micro-agents to audit a codebase — coverage gaps, dead code, API shapes, dependency health. Produces persisted reports in <code>.voltron/analyses/</code>. Invoke before non-trivial implementation work.</p>
+        </div>
+        <div class="tier-card" style="border-top:3px solid #3fb950">
+          <h3 style="color:#3fb950">doc-writer</h3>
+          <p style="color:#8b949e;font-size:0.85rem">Owns all prose documentation — README, CHANGELOG, ADRs, API reference, Mermaid diagrams. Dispatches <code>adr-writer</code>, <code>api-doc-generator</code>, and <code>diagram-maker</code>. Writes end-of-session recaps.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stringer Integration -->
+  <section style="background:#0d1117;padding:3rem 0;border-top:1px solid #21262d">
+    <div class="container">
+      <h2>Stringer Integration <span class="badge" style="font-size:0.7rem;vertical-align:middle">v3.2 new</span></h2>
+      <p class="section-sub">Persistent codebase baseline for smarter analysis. Build once, read cheap every session.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;margin-top:1.5rem">
+        <div class="tier-card" style="border-top:3px solid #388bfd">
+          <h3 style="color:#58a6ff">stringer-baseline-builder</h3>
+          <p style="color:#8b949e;font-size:0.85rem">Runs <code>stringer scan</code> and saves a structured baseline to <code>.voltron/stringer/baseline.json</code>. Skips gracefully if stringer is not installed. Run once on project setup; refresh when prompted (every 14 days or 50 commits).</p>
+        </div>
+        <div class="tier-card" style="border-top:3px solid #3fb950">
+          <h3 style="color:#3fb950">stringer-delta-reader</h3>
+          <p style="color:#8b949e;font-size:0.85rem">Reads the baseline and runs a cheap <code>stringer --delta</code> check each session. Reports what changed since the baseline, whether a refresh is needed, and surfaces new signals as structured findings.</p>
+        </div>
+      </div>
+      <p style="color:#8b949e;font-size:0.85rem;margin-top:1.25rem"><strong style="color:#58a6ff">How it works:</strong> <code>setup_voltron</code> auto-detects stringer and registers its MCP server (<code>stringer mcp serve</code>) in <code>~/.claude.json</code>. The <code>code-analyst</code> coordinator reads the baseline before dispatching Inspect-layer agents, giving every analysis a free head start on what changed.</p>
+    </div>
+  </section>
+
+  <!-- APM -->
+  <section style="background:#161b22;padding:3rem 0;border-top:1px solid #21262d">
+    <div class="container">
+      <h2>Install via APM <span class="badge" style="font-size:0.7rem;vertical-align:middle">v3.3 new</span></h2>
+      <p class="section-sub">One command deploys all 63 agents + MCP server registration using the <a href="https://github.com/microsoft/apm" style="color:#58a6ff">Agent Package Manager</a>.</p>
+      <div style="background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:1.25rem 1.5rem;margin:1.5rem 0;font-family:monospace;font-size:0.9rem">
+        <div style="color:#8b949e;margin-bottom:0.5rem"># Install APM (once)</div>
+        <div style="color:#e6edf3">pip install apm-cli</div>
+        <br/>
+        <div style="color:#8b949e;margin-bottom:0.5rem"># Deploy Voltron to Claude Code (any project)</div>
+        <div style="color:#e6edf3">apm install 7ports/project-voltron</div>
+      </div>
+      <p style="color:#8b949e;font-size:0.85rem">APM automatically deploys all agent <code>.md</code> files to <code>.claude/agents/</code> and registers the Voltron MCP server in <code>~/.claude.json</code>. Claude can run this command on itself. The <code>apm.yml</code> manifest is always kept in sync with the latest agent set — when new agents are added to Voltron, run <code>apm update 7ports/project-voltron</code> to get them.</p>
+      <p style="color:#8b949e;font-size:0.85rem;margin-top:0.75rem">The classic <code>setup_voltron</code> MCP tool remains the primary setup path and works without APM. APM is an additional convenience for users who prefer a CLI-first workflow.</p>
     </div>
   </section>
 
@@ -762,7 +846,7 @@ node scripts/setup.js</code></pre>
     <div class="container">
       <p>
         <a href="https://github.com/7ports/project-voltron">GitHub</a> &middot;
-        v2.9.5 &middot;
+        v3.3.2 &middot;
         MIT License &middot;
         Built by <a href="https://github.com/7ports">7ports</a>
       </p>

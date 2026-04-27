@@ -1,0 +1,35 @@
+name: project-voltron
+version: 3.3.2
+description: >
+  MCP server providing 63 specialized agent templates for Claude Code.
+  Three-tier hierarchy: coordinator (scrum-master, code-analyst, doc-writer),
+  sub-managers (8 domain orchestrators), and micro-agents (37+ narrow workers)
+  covering Unity, web/fullstack, mobile (iOS/Android/React Native), and general
+  software development with validation/handoff, session journaling, and
+  Stringer codebase baseline integration.
+author: 7ports
+license: MIT
+target: claude
+includes: auto
+
+dependencies:
+  mcp:
+    - name: project-voltron
+      registry: false
+      transport: stdio
+      command: npx
+      args:
+        - "-y"
+        - "project-voltron"
+
+scripts:
+  setup: npm install
+  update: node scripts/build-apm-manifest.js
+
+compilation:
+  strategy: distributed
+  exclude:
+    - "node_modules/**"
+    - "reflections/**"
+    - ".voltron/**"
+    - "apm_modules/**"

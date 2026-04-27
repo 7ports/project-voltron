@@ -11,23 +11,23 @@
   "agent_feedback": [
     {
       "agent": "fullstack-dev",
-      "worked_well": "6 simultaneous Docker containers with zero merge conflicts across overlapping files. The Billy Bishop agent proactively fixed a pre-existing MapLibre v5 type error (StyleDataEvent → MapStyleDataEvent) and implemented the styledata handler, making the icon-fix task redundant — good cross-task awareness. Schedule fallback for status pill was clean and correct on first attempt.",
-      "needs_improvement": "Task 2 (icon fix, max_turns=20) exited with code 1 and produced zero output — silent failure. When a task is very small (single file, one useEffect change), the agent may spend most turns reading before writing and run out before committing.",
-      "suggested_change": "For single-file targeted fixes, start with max_turns=25 not 20. Add a reminder in the role: if you have ≤5 turns remaining and have made changes, commit immediately before exploring further."
+      "worked_well": "6 simultaneous Docker containers with zero merge conflicts across overlapping files. The Billy Bishop agent proactively fixed a pre-existing MapLibre v5 type error (StyleDataEvent \u2192 MapStyleDataEvent) and implemented the styledata handler, making the icon-fix task redundant \u2014 good cross-task awareness. Schedule fallback for status pill was clean and correct on first attempt.",
+      "needs_improvement": "Task 2 (icon fix, max_turns=20) exited with code 1 and produced zero output \u2014 silent failure. When a task is very small (single file, one useEffect change), the agent may spend most turns reading before writing and run out before committing.",
+      "suggested_change": "For single-file targeted fixes, start with max_turns=25 not 20. Add a reminder in the role: if you have \u22645 turns remaining and have made changes, commit immediately before exploring further."
     },
     {
       "agent": "ui-designer",
       "worked_well": "Made all correct CSS changes to PanelShell.css (44px touch targets, shadow, chevron styling, collapsed height 88px). Changes were complete and correct.",
-      "needs_improvement": "Hit max_turns=20 without committing — made all the right changes but ran out of turns before the git commit step. The agent spent turns reading and validating before writing.",
-      "suggested_change": "Increase default max_turns for ui-designer to 30. Add explicit rule to the template: commit after typecheck+lint pass regardless of remaining turns — never let the session end with uncommitted verified changes."
+      "needs_improvement": "Hit max_turns=20 without committing \u2014 made all the right changes but ran out of turns before the git commit step. The agent spent turns reading and validating before writing.",
+      "suggested_change": "Increase default max_turns for ui-designer to 30. Add explicit rule to the template: commit after typecheck+lint pass regardless of remaining turns \u2014 never let the session end with uncommitted verified changes."
     },
     {
       "agent": "qa-tester",
       "worked_well": "Clean first-pass with zero regressions. Correctly flagged missing backend ESLint config as non-blocking tech debt rather than blocking the sprint. Bundle size reporting was useful.",
-      "needs_improvement": "Nothing significant — ran well.",
+      "needs_improvement": "Nothing significant \u2014 ran well.",
       "suggested_change": "No changes needed."
     }
   ],
-  "overall_notes": "Docker cold-start pattern: all containers showed 0-byte logs for 2+ minutes — normal, not a failure. Best practice: poll get_agent_output with block=false, then after 90s switch to direct tail of the log file via bash. Context compaction mid-sprint: bd ready + get_progress + git log --oneline are sufficient to fully reconstruct sprint state — no work was lost. Tech debt surfaced: server/package.json has no ESLint configured — worth adding in a future sprint.",
-  "processed": false
+  "overall_notes": "Docker cold-start pattern: all containers showed 0-byte logs for 2+ minutes \u2014 normal, not a failure. Best practice: poll get_agent_output with block=false, then after 90s switch to direct tail of the log file via bash. Context compaction mid-sprint: bd ready + get_progress + git log --oneline are sufficient to fully reconstruct sprint state \u2014 no work was lost. Tech debt surfaced: server/package.json has no ESLint configured \u2014 worth adding in a future sprint.",
+  "processed": true
 }

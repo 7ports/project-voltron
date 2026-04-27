@@ -915,6 +915,7 @@ Stop when \`bd ready --json\` returns empty. Run \`bd stats\` to surface any blo
 **On task failure:** leave bead blocked, show downstream cascade with \`bd dep tree\`, ask user: retry / reassign / skip.
 **No beads:** use \`update_progress\` only and manually reason from the work plan table.
 **Live tail:** \`tail -f .voltron/logs/<logfile>\` for terminal visibility.
+**Docker cold-start:** Containers produce 0-byte logs for the first ~90 seconds while the agent authenticates — this is normal, not a failure. Poll with \`get_agent_output\` during this window; after 90s with no output, switch to \`tail -f .voltron/logs/<logfile>\` via Bash for direct visibility.
 **Git divergence:** after Docker agents commit, run \`git pull --no-rebase -X ours\` before pushing.
 
 ## Platform-Specific Planning Notes
@@ -2089,6 +2090,7 @@ router.get('/api/ais/stream', (req: Request, res: Response) => {
 2. Run \`npm run lint\` — fix all errors before reporting back (warnings should be reviewed)
 3. Do not report done while typecheck or lint errors remain
 4. Summarize: files created/modified, what the code does, how to test it
+5. **Turn budget:** If you have ≤5 turns remaining and have made changes, commit immediately — do not keep exploring or refining.
 
 ## Common Pitfalls
 
@@ -2494,6 +2496,7 @@ You are a Senior UI/UX Designer and CSS Architect. You create beautiful, respons
 4. Use browser DevTools responsive mode to verify breakpoints
 5. Test with keyboard navigation after implementing interactive elements
 6. **Apply noted dependencies immediately** — if you note that a feature requires a supporting change (e.g. "requires \`viewport-fit=cover\` in the meta viewport tag"), make that change in the same task rather than leaving it as a comment for a future task
+7. **Commit on passing checks:** As soon as typecheck and lint pass, commit. Never end the session with uncommitted verified changes — run out of turns after committing, not before.
 
 ## What You Don't Do
 

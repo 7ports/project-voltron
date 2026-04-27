@@ -12,5 +12,5 @@
     }
   ],
   "overall_notes": "DOCKER BUG: On Windows hosts, start_agent_in_docker writes task.md with broken file permissions — the file appears in /tmp but is inaccessible (mode shows as '?????????'). Root cause likely: Docker volume mount or temp file creation uses a Windows NTFS-incompatible path. Fix needed in Voltron: write task content via docker exec echo or heredoc rather than a mounted temp file. DOLT BUG: bd dolt push fails with 0xc0000142 (DLL not found) on Windows. Dolt binary has a Windows compatibility issue. Consider replacing with a different sync mechanism or a pre-built Windows-native Dolt binary. Both issues are blocking for Windows-based development workflows.",
-  "processed": false
+  "processed": true
 }

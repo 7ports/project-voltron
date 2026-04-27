@@ -29,5 +29,5 @@
     }
   ],
   "overall_notes": "Docker cold-start pattern: all containers showed 0-byte logs for 2+ minutes — normal, not a failure. Best practice: poll get_agent_output with block=false, then after 90s switch to direct tail of the log file via bash. Context compaction mid-sprint: bd ready + get_progress + git log --oneline are sufficient to fully reconstruct sprint state — no work was lost. Tech debt surfaced: server/package.json has no ESLint configured — worth adding in a future sprint.",
-  "processed": false
+  "processed": true
 }

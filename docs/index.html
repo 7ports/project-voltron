@@ -296,7 +296,7 @@
       <h1>Project Voltron</h1>
       <p>Specialized agent teams for Claude Code, served via MCP. Scaffold Unity, web, mobile, or general projects with battle-tested subagent templates — Alexandria-aware, self-improving, and auto-updating.</p>
       <div class="badge-row">
-        <span class="badge">v3.2.0</span>
+        <span class="badge">v3.3.0</span>
         <span class="badge">MCP Server</span>
         <span class="badge">Unity</span>
         <span class="badge">Web / Fullstack</span>
@@ -580,6 +580,23 @@
     </div>
   </section>
 
+  <!-- APM -->
+  <section style="background:#161b22;padding:3rem 0;border-top:1px solid #21262d">
+    <div class="container">
+      <h2>Install via APM <span class="badge" style="font-size:0.7rem;vertical-align:middle">v3.3 new</span></h2>
+      <p class="section-sub">One command deploys all 63 agents + MCP server registration using the <a href="https://github.com/microsoft/apm" style="color:#58a6ff">Agent Package Manager</a>.</p>
+      <div style="background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:1.25rem 1.5rem;margin:1.5rem 0;font-family:monospace;font-size:0.9rem">
+        <div style="color:#8b949e;margin-bottom:0.5rem"># Install APM (once)</div>
+        <div style="color:#e6edf3">pip install apm-cli</div>
+        <br/>
+        <div style="color:#8b949e;margin-bottom:0.5rem"># Deploy Voltron to Claude Code (any project)</div>
+        <div style="color:#e6edf3">apm install 7ports/project-voltron</div>
+      </div>
+      <p style="color:#8b949e;font-size:0.85rem">APM automatically deploys all agent <code>.md</code> files to <code>.claude/agents/</code> and registers the Voltron MCP server in <code>~/.claude.json</code>. Claude can run this command on itself. The <code>apm.yml</code> manifest is always kept in sync with the latest agent set — when new agents are added to Voltron, run <code>apm update 7ports/project-voltron</code> to get them.</p>
+      <p style="color:#8b949e;font-size:0.85rem;margin-top:0.75rem">The classic <code>setup_voltron</code> MCP tool remains the primary setup path and works without APM. APM is an additional convenience for users who prefer a CLI-first workflow.</p>
+    </div>
+  </section>
+
   <!-- Install -->
   <section class="install">
     <div class="container">
@@ -829,7 +846,7 @@ node scripts/setup.js</code></pre>
     <div class="container">
       <p>
         <a href="https://github.com/7ports/project-voltron">GitHub</a> &middot;
-        v3.2.0 &middot;
+        v3.3.0 &middot;
         MIT License &middot;
         Built by <a href="https://github.com/7ports">7ports</a>
       </p>

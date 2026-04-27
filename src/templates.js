@@ -3153,8 +3153,9 @@ When invoked by the scrum-master with a specific task:
 4. **Verify syntax:** \`node --check src/index.js && node --check src/templates.js\`
 5. **Parse check:** \`node --input-type=module -e "import('./src/templates.js').then(() => console.log('OK'))"\`
 6. **Bump the version** in \`package.json\` — patch for improvements, minor for new agents/features
-7. **Update docs/index.html and README.md** — keep version badges, agent counts, and descriptions in sync
-8. **Commit** with a clear message describing what changed and why
+7. **Rebuild APM manifest:** \`npm run build:apm\` — regenerates \`.apm/agents/\` and syncs \`apm.yml\` version
+8. **Update docs/index.html and README.md** — keep version badges, agent counts, and descriptions in sync
+9. **Commit** with a clear message describing what changed and why
 
 ## Reflection Processing Mode
 
@@ -3168,8 +3169,9 @@ When invoked by CI to process session reflections:
 6. **Apply improvements** — make surgical, targeted edits based on \`suggested_change\` fields. Improvements can extend beyond agent templates: fix the Dockerfile if agents report environment issues, improve MCP server tool descriptions if agents misuse them, update docs if they're inaccurate.
 7. **Mark each reflection** as \`processed: true\` in its JSON file.
 8. **Bump the patch version** in \`package.json\`.
-9. **Update \`docs/index.html\`** and \`README.md\` if agent behavior descriptions changed.
-10. **Commit** all changes.
+9. **Rebuild APM manifest:** \`npm run build:apm\`
+10. **Update \`docs/index.html\`** and \`README.md\` if agent behavior descriptions changed.
+11. **Commit** all changes.
 
 ## Template Editing Rules
 

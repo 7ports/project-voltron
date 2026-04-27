@@ -1618,6 +1618,16 @@ server.tool(
       stringerStatus = "not installed (optional) — install stringer for codebase baseline analysis";
     }
 
+
+    // Check APM (Agent Package Manager — optional, enhances install experience)
+    let apmStatus = "";
+    try {
+      execSync("apm --version", { stdio: "ignore", timeout: 5000 });
+      apmStatus = "✓ Installed — `apm install 7ports/project-voltron` reinstalls all agents + MCP";
+    } catch {
+      apmStatus = "not installed (optional) — `pip install apm-cli` for one-command agent deployment";
+    }
+
     // Build report
     const allowStatus = missingAllow.length === 0
       ? `✓ All ${VOLTRON_ALLOW.length} entries present`
@@ -1639,6 +1649,7 @@ server.tool(
       `- **Deny rules:** ${denyStatus}`,
       `- **Trello MCP:** ${trelloStatus}`,
       `- **Stringer:** ${stringerStatus}`,
+      `- **APM:** ${apmStatus}`,
       `- **Docker:** ${dockerStatus === "available" ? "✓ available (daemon running)" : dockerStatus === "daemon not running" ? "⚠ Docker installed but daemon not running — start Docker Desktop" : "⚠ Docker not found — install Docker Desktop"}`,
       `- **Claude Code:** ${versionStatus}`,
       "",

@@ -1,6 +1,6 @@
 {
   "name": "project-voltron",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "description": "MCP server providing specialized agent templates for Claude Code \u2014 Unity game dev, web/fullstack development, mobile (iOS/Android/React Native), and general software projects with a scrum-master coordinator.",
   "main": "src/index.js",
   "type": "module",
@@ -10,7 +10,8 @@
   "scripts": {
     "start": "node src/index.js",
     "setup": "node scripts/setup.js",
-    "postinstall": "node scripts/setup.js"
+    "postinstall": "node scripts/setup.js",
+    "build:apm": "node scripts/build-apm-manifest.js"
   },
   "keywords": [
     "mcp",

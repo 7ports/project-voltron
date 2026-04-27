@@ -1838,7 +1838,14 @@ server.tool(
       // No ~/.gitconfig — agents must set git identity manually if they need to commit
     }
 
-    // Pass through Claude auth env vars so the agent inside Docker can authenticate
+    // v3.3.2: auth comes purely from CLAUDE_CODE_OAUTH_TOKEN env var.
+    // We deliberately do NOT mount ~/.claude or ~/.claude.json. Smoke testing on 2026-04-27
+    // showed ~/.claude.json was the silent-hang root cause: it contains host-specific MCP
+    // server registrations (e.g. `node "C:\\Users\\..."`) that claude tries to spawn at
+    // startup and stalls for 60-90s waiting for. Container is headless (`-p`) with the full
+    // task in /tmp/task.md, so no MCP config is needed. Same 5-line prompt:
+    //   with ~/.claude.json:ro mounted -> ~90s (often hangs)
+    //   without that mount             -> ~4s consistently
     const authEnvArgs = [];
     if (process.env.CLAUDE_CODE_OAUTH_TOKEN) {
       authEnvArgs.push("-e", `CLAUDE_CODE_OAUTH_TOKEN=${process.env.CLAUDE_CODE_OAUTH_TOKEN}`);
@@ -1856,13 +1863,13 @@ server.tool(
       "--entrypoint", "bash",
       ...authEnvArgs,
       "-v", `${cwd}:/workspace`,
-      "-v", `${homeDir}/.claude:/home/voltron/.claude`,
-      "-v", `${homeDir}/.claude.json:/home/voltron/.claude.json:ro`,
       ...gitConfigMount,        // mount ~/.gitconfig if present so git commits work
       "-v", `${tmpFile}:/tmp/task.md:ro`,
       "voltron-agent",
       "-c",
-      `claude --dangerously-skip-permissions --max-turns ${max_turns} -p "$(cat /tmp/task.md)" 2>&1 | tee /workspace/.voltron/logs/${logFilename}; exit \${PIPESTATUS[0]}`,
+      // v3.3.2: breadcrumb-wrapped — surfaces stalls before claude produces its first byte.
+      // [entry]/[claude-version]/[exec]/[exit] echoes localize hangs to mount, auth, parse, or run.
+      `{ echo "[entry] $(date -Is) host=$(hostname) user=$(whoami)"; echo "[claude-version] $(claude --version 2>&1)"; echo "[exec] $(date -Is) starting prompt"; claude --dangerously-skip-permissions --max-turns ${max_turns} -p "$(cat /tmp/task.md)" 2>&1; CLAUDE_EXIT=\$?; echo "[exit] $(date -Is) code=\$CLAUDE_EXIT"; exit \$CLAUDE_EXIT; } | tee /workspace/.voltron/logs/${logFilename}; exit \${PIPESTATUS[0]}`,
     ];
 
     // Async spawn — allows multiple agents to run in parallel Docker containers
@@ -1991,6 +1998,14 @@ server.tool(
     const gitConfigPath = path.join(homeDir, ".gitconfig");
     let gitConfigMount = [];
     try { await fs.access(gitConfigPath); gitConfigMount = ["-v", `${gitConfigPath}:/home/voltron/.gitconfig:ro`]; } catch { /* no gitconfig */ }
+    // v3.3.2: auth comes purely from CLAUDE_CODE_OAUTH_TOKEN env var.
+    // We deliberately do NOT mount ~/.claude or ~/.claude.json. Smoke testing on 2026-04-27
+    // showed ~/.claude.json was the silent-hang root cause: it contains host-specific MCP
+    // server registrations (e.g. `node "C:\\Users\\..."`) that claude tries to spawn at
+    // startup and stalls for 60-90s waiting for. Container is headless (`-p`) with the full
+    // task in /tmp/task.md, so no MCP config is needed. Same 5-line prompt:
+    //   with ~/.claude.json:ro mounted -> ~90s (often hangs)
+    //   without that mount             -> ~4s consistently
     const authEnvArgs = [];
     if (process.env.CLAUDE_CODE_OAUTH_TOKEN) authEnvArgs.push("-e", `CLAUDE_CODE_OAUTH_TOKEN=${process.env.CLAUDE_CODE_OAUTH_TOKEN}`);
     if (process.env.ANTHROPIC_API_KEY) authEnvArgs.push("-e", `ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY}`);
@@ -2001,14 +2016,13 @@ server.tool(
       "--entrypoint", "bash",
       ...authEnvArgs,
       "-v", `${cwd}:/workspace`,
-      "-v", `${homeDir}/.claude:/home/voltron/.claude`,
-      "-v", `${homeDir}/.claude.json:/home/voltron/.claude.json:ro`,
       ...gitConfigMount,
       "-v", `${tmpFile}:/tmp/task.md:ro`,
       "voltron-agent",
       "-c",
-      // Write exit code to .exit file so get_agent_output can detect completion
-      `claude --dangerously-skip-permissions --max-turns ${max_turns} -p "$(cat /tmp/task.md)" 2>&1 | tee /workspace/.voltron/logs/${logFilename}; echo "\${PIPESTATUS[0]}" > /workspace/.voltron/logs/${logFilename}.exit; exit \${PIPESTATUS[0]}`,
+      // v3.3.2: breadcrumb-wrapped + .exit file write. Brace group emits localizing markers,
+      // tee captures everything, PIPESTATUS[0] preserves claude's real exit code.
+      `{ echo "[entry] $(date -Is) host=$(hostname) user=$(whoami)"; echo "[claude-version] $(claude --version 2>&1)"; echo "[exec] $(date -Is) starting prompt"; claude --dangerously-skip-permissions --max-turns ${max_turns} -p "$(cat /tmp/task.md)" 2>&1; CLAUDE_EXIT=\$?; echo "[exit] $(date -Is) code=\$CLAUDE_EXIT"; exit \$CLAUDE_EXIT; } | tee /workspace/.voltron/logs/${logFilename}; EXIT=\${PIPESTATUS[0]}; echo "\$EXIT" > /workspace/.voltron/logs/${logFilename}.exit; exit \$EXIT`,
     ];
 
     // Detached spawn — returns immediately, container runs in background

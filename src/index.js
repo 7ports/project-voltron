@@ -1571,6 +1571,53 @@ server.tool(
       trelloStatus = "⚠ Not registered (run without dry_run to add)";
     }
 
+
+    // Check Stringer (optional — codebase baseline analysis)
+    let stringerStatus = "";
+    let stringerInstalled = false;
+    try {
+      execSync("stringer --version", { stdio: "ignore", timeout: 5000 });
+      stringerInstalled = true;
+    } catch { /* not installed */ }
+
+    if (stringerInstalled) {
+      const stringerRegistered = !!claudeJson?.mcpServers?.["stringer"];
+      if (!stringerRegistered && !dry_run) {
+        if (!claudeJson.mcpServers) claudeJson.mcpServers = {};
+        claudeJson.mcpServers["stringer"] = {
+          type: "stdio",
+          command: "stringer",
+          args: ["mcp", "serve"],
+          env: {},
+        };
+        await fs.writeFile(claudeJsonPath, JSON.stringify(claudeJson, null, 2));
+        stringerStatus = "✓ Installed + MCP registered (restart Claude Code to activate)";
+      } else if (stringerRegistered) {
+        stringerStatus = "✓ Installed + MCP registered";
+      } else {
+        stringerStatus = "✓ Installed (run without dry_run to register MCP)";
+      }
+
+      // Check for baseline in project root
+      const projectRoot = detectProjectRoot(undefined).root;
+      const baselinePath = path.join(projectRoot, ".voltron", "stringer", "baseline.json");
+      const lastScanPath = path.join(projectRoot, ".voltron", "stringer", "last-scan.json");
+      const hasBaseline = existsSync(baselinePath);
+      const hasLastScan = existsSync(lastScanPath);
+
+      if (!hasBaseline) {
+        stringerStatus += " — no baseline yet (run @agent-stringer-baseline-builder to create one)";
+      } else if (hasLastScan) {
+        try {
+          const lastScan = JSON.parse(await fs.readFile(lastScanPath, "utf-8"));
+          const ageDays = Math.floor((Date.now() - new Date(lastScan.timestamp)) / 86400000);
+          stringerStatus += ` — baseline ${ageDays}d old${ageDays > 14 ? " ⚠ stale — run @agent-stringer-baseline-builder to refresh" : ""}`;
+        } catch { /* non-fatal */ }
+      }
+    } else {
+      stringerStatus = "not installed (optional) — install stringer for codebase baseline analysis";
+    }
+
     // Build report
     const allowStatus = missingAllow.length === 0
       ? `✓ All ${VOLTRON_ALLOW.length} entries present`
@@ -1591,6 +1638,7 @@ server.tool(
       `- **Allowlist:** ${allowStatus}`,
       `- **Deny rules:** ${denyStatus}`,
       `- **Trello MCP:** ${trelloStatus}`,
+      `- **Stringer:** ${stringerStatus}`,
       `- **Docker:** ${dockerStatus === "available" ? "✓ available (daemon running)" : dockerStatus === "daemon not running" ? "⚠ Docker installed but daemon not running — start Docker Desktop" : "⚠ Docker not found — install Docker Desktop"}`,
       `- **Claude Code:** ${versionStatus}`,
       "",

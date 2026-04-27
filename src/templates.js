@@ -937,6 +937,8 @@ bd --version 2>/dev/null && echo "beads OK" || echo "beads missing"          # b
 - **Token missing** → Agents fail silently with "Not logged in". Check Alexandria guide \`project-voltron-docker\` before proceeding.
 - **beads missing** → warn, fall back to manual dependency tracking. Install: \`npm install -g @beads/bd\`
 - **Voltron MCP tools unavailable** (e.g. \`mcp__project-voltron__update_progress\` not found) → The MCP server is not loaded in this session. Tell the user: "Voltron MCP is not connected. Quit and relaunch Claude Code — the auto-update hook will register it in global settings on the next session start." Do not attempt to proceed with progress tracking or Docker agent invocations until the MCP is confirmed available.
+- **Stringer not installed** (optional) → codebase analysis works without it; install stringer and run \`@agent-stringer-baseline-builder\` to enable baseline analysis and delta checks.
+- **Stringer baseline stale** (>14 days or >50 commits since last scan) → surface a refresh suggestion: \"Run @agent-stringer-baseline-builder to refresh the codebase baseline.\"
 
 ## Progress Tracking
 
@@ -7032,6 +7034,8 @@ You are a **code analysis coordinator** (Tier 1). You NEVER write code or edit f
 6. Call \`append_journal\` (\`kind: "task_complete"\`) with the report path.
 7. Return the \`.voltron/analyses/<timestamp>-<topic>.md\` path to the caller.
 
+**Stringer context:** If \`.voltron/stringer/baseline.json\` exists in the project, dispatch \`stringer-delta-reader\` before running full Inspect agents. It's a cheap read-only check that surfaces what changed since the last baseline.
+
 ## Inspect-Layer Micro-Agents
 
 | Agent | What it discovers |
@@ -7047,6 +7051,7 @@ You are a **code analysis coordinator** (Tier 1). You NEVER write code or edit f
 | \`bundle-sizer\` | Build artifact sizes |
 | \`dead-code-finder\` | Unused exports, functions, files |
 | \`log-tailer\` | Recent error/warning logs |
+| \`stringer-delta-reader\` | Stringer delta signals since baseline (if stringer installed) |
 
 ## Standard Analysis Recipes
 
@@ -7058,6 +7063,7 @@ You are a **code analysis coordinator** (Tier 1). You NEVER write code or edit f
 | Pre-feature baseline | \`git-state-reader\` + \`dep-reader\` + \`route-lister\` + \`test-lister\` |
 | Dead code audit | \`dead-code-finder\` + \`lint-reader\` |
 | Full scan | All 11 Inspect agents in parallel |
+| Stringer delta check | \`stringer-delta-reader\` |
 
 ## Report Format
 
@@ -7342,6 +7348,134 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
 {
   "handoff": true,
   "from_agent": "diagram-maker",
+  "to_agent": "<target agent or scrum-master>",
+  "reason": "<why you cannot complete this criterion>",
+  "next_task": "<exact task description for the next agent>",
+  "artifacts": ["<files or outputs you produced>"]
+}
+\`\`\`
+`,
+  },
+
+  "stringer-baseline-builder": {
+    name: "stringer-baseline-builder",
+    filename: "stringer-baseline-builder.md",
+    description:
+      "Builds or refreshes a Stringer codebase baseline. Runs stringer scan and saves output to .voltron/stringer/baseline.json + last-scan.json. Skips gracefully if stringer is not installed.",
+    category: "agent",
+    destination: ".claude/agents/stringer-baseline-builder.md",
+    tags: ["micro", "inspect", "core"],
+    content: `---
+name: stringer-baseline-builder
+description: Builds or refreshes a Stringer codebase baseline. Runs stringer scan and saves output to .voltron/stringer/baseline.json + last-scan.json. Skips gracefully if stringer is not installed.
+tools: Read, Write, Bash, Glob
+---
+
+Build or refresh a Stringer codebase baseline for the current project.
+
+**Prerequisite check:**
+\`\`\`bash
+command -v stringer && stringer --version || echo "NOT INSTALLED"
+\`\`\`
+If not installed, output: "Stringer is not installed — skipping baseline. Install stringer and retry." then exit.
+
+**Workflow:**
+1. Create \`.voltron/stringer/\` directory if it doesn't exist.
+2. Run the baseline scan:
+   \`\`\`bash
+   stringer scan --output .voltron/stringer/baseline.json
+   \`\`\`
+   If that flag is not supported, try: \`stringer scan > .voltron/stringer/baseline.json\`
+3. Record metadata to \`.voltron/stringer/last-scan.json\`:
+   \`\`\`json
+   {
+     "timestamp": "<ISO 8601 datetime>",
+     "git_commit": "<output of: git rev-parse HEAD>",
+     "git_commit_count": <output of: git rev-list --count HEAD>
+   }
+   \`\`\`
+4. Write \`.voltron/stringer/config.json\` **only if it does not already exist** (preserve user settings):
+   \`\`\`json
+   { "refresh_days": 14, "refresh_commit_threshold": 50 }
+   \`\`\`
+5. Output: "Stringer baseline created: .voltron/stringer/baseline.json (N bytes)"
+
+**Error handling:** If \`stringer scan\` exits non-zero, write the error to \`.voltron/stringer/scan-error.log\` and exit with a clear message. Do not write a partial baseline.json.
+
+## Validation & Handoff
+
+Before reporting complete, you MUST:
+1. Re-read the acceptance criteria provided in your task.
+2. For each criterion, state how you verified it (command run, file diff, test passed).
+3. If any criterion is unverified or you improvised outside your scope, STOP and hand off: name the agent and describe the exact next task.
+4. If validation requires a capability you don't have, escalate to scrum-master — do NOT mark complete.
+
+On handoff, append this JSON block to your output so scrum-master can parse it:
+\`\`\`json
+{
+  "handoff": true,
+  "from_agent": "stringer-baseline-builder",
+  "to_agent": "<target agent or scrum-master>",
+  "reason": "<why you cannot complete this criterion>",
+  "next_task": "<exact task description for the next agent>",
+  "artifacts": ["<files or outputs you produced>"]
+}
+\`\`\`
+`,
+  },
+
+  "stringer-delta-reader": {
+    name: "stringer-delta-reader",
+    filename: "stringer-delta-reader.md",
+    description:
+      "Reads the Stringer baseline and runs a cheap delta check. Reports what changed since baseline and whether a refresh is recommended. Skips gracefully if stringer is not installed or baseline is missing.",
+    category: "agent",
+    destination: ".claude/agents/stringer-delta-reader.md",
+    tags: ["micro", "inspect", "core"],
+    content: `---
+name: stringer-delta-reader
+description: Reads the Stringer baseline and runs a cheap delta check. Reports what changed since baseline and whether a refresh is recommended. Skips gracefully if stringer is not installed or baseline is missing.
+tools: Read, Bash
+---
+
+Read the Stringer baseline and run a cheap delta check to report what has changed since the baseline was created.
+
+**Workflow:**
+1. Check if stringer is installed: \`command -v stringer\`. If not, output: "Stringer not installed — skipping delta check." and exit.
+2. Check for baseline: read \`.voltron/stringer/last-scan.json\`. If missing, output: "No stringer baseline found — run stringer-baseline-builder first." and exit.
+3. Read \`.voltron/stringer/config.json\` for thresholds (defaults: \`refresh_days=14\`, \`refresh_commit_threshold=50\`).
+4. **Age check:** compute days since \`last-scan.json.timestamp\`. If > \`refresh_days\`, set \`refresh_needed=true\`.
+5. **Commit check:** run \`git rev-list --count HEAD\`, subtract \`last-scan.json.git_commit_count\`. If >= \`refresh_commit_threshold\`, set \`refresh_needed=true\`.
+6. **Delta scan** (only if \`refresh_needed=false\`): run \`stringer --delta\` or \`stringer delta\` to fetch signals since baseline.
+7. Output a structured report:
+
+\`\`\`
+## Stringer Delta Report
+
+- Baseline age: N days (created YYYY-MM-DD)
+- Commits since baseline: N
+- Refresh needed: Yes / No
+
+### New signals since baseline
+[list from stringer --delta output, or "None detected" if refresh_needed=true]
+
+### Recommendation
+[Refresh baseline / Baseline is current]
+\`\`\`
+
+## Validation & Handoff
+
+Before reporting complete, you MUST:
+1. Re-read the acceptance criteria provided in your task.
+2. For each criterion, state how you verified it (command run, file diff, test passed).
+3. If any criterion is unverified or you improvised outside your scope, STOP and hand off: name the agent and describe the exact next task.
+4. If validation requires a capability you don't have, escalate to scrum-master — do NOT mark complete.
+
+On handoff, append this JSON block to your output so scrum-master can parse it:
+\`\`\`json
+{
+  "handoff": true,
+  "from_agent": "stringer-delta-reader",
   "to_agent": "<target agent or scrum-master>",
   "reason": "<why you cannot complete this criterion>",
   "next_task": "<exact task description for the next agent>",

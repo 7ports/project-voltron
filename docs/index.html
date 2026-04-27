@@ -296,12 +296,12 @@
       <h1>Project Voltron</h1>
       <p>Specialized agent teams for Claude Code, served via MCP. Scaffold Unity, web, mobile, or general projects with battle-tested subagent templates — Alexandria-aware, self-improving, and auto-updating.</p>
       <div class="badge-row">
-        <span class="badge">v3.1.0</span>
+        <span class="badge">v3.2.0</span>
         <span class="badge">MCP Server</span>
         <span class="badge">Unity</span>
         <span class="badge">Web / Fullstack</span>
         <span class="badge">Mobile</span>
-        <span class="badge">61 Agents</span>
+        <span class="badge">63 Agents</span>
         <span class="badge">MIT License</span>
       </div>
     </div>
@@ -561,6 +561,25 @@
     </div>
   </section>
 
+  <!-- Stringer Integration -->
+  <section style="background:#0d1117;padding:3rem 0;border-top:1px solid #21262d">
+    <div class="container">
+      <h2>Stringer Integration <span class="badge" style="font-size:0.7rem;vertical-align:middle">v3.2 new</span></h2>
+      <p class="section-sub">Persistent codebase baseline for smarter analysis. Build once, read cheap every session.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;margin-top:1.5rem">
+        <div class="tier-card" style="border-top:3px solid #388bfd">
+          <h3 style="color:#58a6ff">stringer-baseline-builder</h3>
+          <p style="color:#8b949e;font-size:0.85rem">Runs <code>stringer scan</code> and saves a structured baseline to <code>.voltron/stringer/baseline.json</code>. Skips gracefully if stringer is not installed. Run once on project setup; refresh when prompted (every 14 days or 50 commits).</p>
+        </div>
+        <div class="tier-card" style="border-top:3px solid #3fb950">
+          <h3 style="color:#3fb950">stringer-delta-reader</h3>
+          <p style="color:#8b949e;font-size:0.85rem">Reads the baseline and runs a cheap <code>stringer --delta</code> check each session. Reports what changed since the baseline, whether a refresh is needed, and surfaces new signals as structured findings.</p>
+        </div>
+      </div>
+      <p style="color:#8b949e;font-size:0.85rem;margin-top:1.25rem"><strong style="color:#58a6ff">How it works:</strong> <code>setup_voltron</code> auto-detects stringer and registers its MCP server (<code>stringer mcp serve</code>) in <code>~/.claude.json</code>. The <code>code-analyst</code> coordinator reads the baseline before dispatching Inspect-layer agents, giving every analysis a free head start on what changed.</p>
+    </div>
+  </section>
+
   <!-- Install -->
   <section class="install">
     <div class="container">
@@ -810,7 +829,7 @@ node scripts/setup.js</code></pre>
     <div class="container">
       <p>
         <a href="https://github.com/7ports/project-voltron">GitHub</a> &middot;
-        v3.1.0 &middot;
+        v3.2.0 &middot;
         MIT License &middot;
         Built by <a href="https://github.com/7ports">7ports</a>
       </p>

@@ -2,7 +2,7 @@
   "timestamp": "2026-04-09T07:58:45.799Z",
   "project_name": "toronto-ferry-tracker-v2",
   "project_type": "fullstack",
-  "session_summary": "Phase 11: Fixed busyness heuristic operating-hours gate + theme overhaul with map style switching. Both features were implemented (files modified) prior to this session's active work — likely by the user or prior agents. This session: ran pre-flight, dispatched qa-tester Docker agent which confirmed 0 TS errors / 0 lint warnings, committed all 7 changed files (af5244f), committed Voltron agent template auto-updates (f205358), pushed branch. bd stats: 6/6 closed.",
+  "session_summary": "Phase 11: Fixed busyness heuristic operating-hours gate + theme overhaul with map style switching. Both features were implemented (files modified) prior to this session's active work \u2014 likely by the user or prior agents. This session: ran pre-flight, dispatched qa-tester Docker agent which confirmed 0 TS errors / 0 lint warnings, committed all 7 changed files (af5244f), committed Voltron agent template auto-updates (f205358), pushed branch. bd stats: 6/6 closed.",
   "agents_used": [
     "qa-tester"
   ],
@@ -11,6 +11,6 @@
       "agent": "qa-tester"
     }
   ],
-  "overall_notes": "Implementation was already in the working tree when the session resumed — both features had been applied to files. The session recovered cleanly by reading modified files from system-reminder notifications, identified remaining work (QA + push), and completed the loop. Pattern: after compaction or session resume, check git diff to discover what's already done before dispatching agents.",
-  "processed": false
+  "overall_notes": "Implementation was already in the working tree when the session resumed \u2014 both features had been applied to files. The session recovered cleanly by reading modified files from system-reminder notifications, identified remaining work (QA + push), and completed the loop. Pattern: after compaction or session resume, check git diff to discover what's already done before dispatching agents.",
+  "processed": true
 }

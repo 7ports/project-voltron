@@ -1,0 +1,36 @@
+{
+  "timestamp": "2026-04-27T21:00:53.329Z",
+  "project_name": "toronto-ferry-tracker-v2",
+  "project_type": "fullstack",
+  "session_summary": "Sprint: render altered ferry schedule during disruptions. Shipped end-to-end: backend parseTimesFromMessage() extracts HH:MM departure times from the City of Toronto's free-text disruption messages; hook separates City closed (→ 'suspended') from alert (→ 'disrupted'); frontend renders departure chips during disruptions instead of just the error message; Billy Bishop Airport added to sidebar schedule; 11 new unit tests. 5 beads closed (601, 46u, rth, 3ao, 8sz). PR #13 opened. bd stats: 40/40 closed, 0 open, 0 blocked.",
+  "agents_used": [
+    "fullstack-dev",
+    "ui-designer",
+    "qa-tester",
+    "type-definer",
+    "typecheck-runner",
+    "pr-opener"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "fullstack-dev",
+      "worked_well": "Reliable on Task 4a (5 min, 30 turns clean) when given precise pre-computed anchors and replacement code blocks.",
+      "needs_improvement": "Task 3 (hook + test fixtures) hit max_turns=20 with 4 residual TS errors because the test file had its own duplicate buildRouteStatuses + multiple fixture literals to update.",
+      "suggested_change": "When dispatching tasks that touch both production code AND parallel test fixtures, surface the test file as a separately-budgeted concern in the task description, or split production+test edits across two tasks."
+    },
+    {
+      "agent": "qa-tester",
+      "worked_well": "Wrote tests, ran all gates, made the commit, and named the branch correctly — the productive part of the task ran clean.",
+      "needs_improvement": "Hit max_turns=35 at the final 'open PR' step. Producing the gh pr create HEREDOC body from scratch was expensive in turns.",
+      "suggested_change": "Either bump default qa-tester max_turns to 45 when a PR step is included, or delegate the PR-open step to pr-opener as a follow-up. Consider giving qa-tester a built-in PR template helper."
+    },
+    {
+      "agent": "pr-opener",
+      "worked_well": "N/A — failed at max_turns=8 even for a trivial git push + gh pr create.",
+      "needs_improvement": "Cold-start cost + processing the HEREDOC PR body in the prompt consumed the entire budget before any tool call landed.",
+      "suggested_change": "Either raise pr-opener default max_turns to 12 OR change its template to expect the PR title/body to be pre-rendered into a file the agent just reads + passes through. Right now any task with a non-trivial body is a coin flip."
+    }
+  ],
+  "overall_notes": "Voltron mid-session updates v3.2.0 → v3.3.2 → v3.3.3 were seamless once stale containers (from before the update) were stopped. The new polling cadence in v3.3.x scrum-master template eliminated the wait-and-poll guesswork from earlier. Auto-updated agent .md files appeared as unstaged changes — was careful to exclude them from the feature commit. Tools touched: bd, gh, docker, npm, vitest. Pattern observed: orchestrator handling git push + gh pr create directly is consistently faster than dispatching a Docker agent for the same trivial operation (cold-start dominates).",
+  "processed": false
+}

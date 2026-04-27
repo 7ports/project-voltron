@@ -94,6 +94,49 @@ async function checkDockerAvailable() {
   return null;
 }
 
+// Build voltron-agent image only when stale or missing.
+// Compares image LastTagTime against Dockerfile mtime — skips rebuild
+// when the image is already current. Eliminates the 30-120s rebuild
+// overhead on every agent launch.
+async function ensureVoltronImage(cwd, dockerfilePath) {
+  try {
+    const imageTimeStr = execSync(
+      'docker image inspect voltron-agent --format "{{.Metadata.LastTagTime}}"',
+      { encoding: "utf-8", stdio: "pipe" }
+    ).trim();
+    const dockerfileStat = await fs.stat(dockerfilePath);
+    if (imageTimeStr && new Date(imageTimeStr) > dockerfileStat.mtime) {
+      return { ok: true, built: false };
+    }
+  } catch { /* image missing or inspect failed — fall through to build */ }
+
+  return new Promise((resolve) => {
+    let buildStderr = "";
+    const buildProc = spawn(
+      "docker",
+      ["build", "-t", "voltron-agent", "-f", dockerfilePath, cwd],
+      { stdio: ["ignore", "ignore", "pipe"], cwd }
+    );
+    buildProc.stderr?.on("data", (chunk) => { buildStderr += chunk.toString(); });
+    const timer = setTimeout(() => {
+      buildProc.kill();
+      resolve({ ok: false, error: `Error: Docker build timed out after 120s.\n\n${buildStderr.trim().slice(-2000)}` });
+    }, 120000);
+    buildProc.on("close", (code) => {
+      clearTimeout(timer);
+      if (code !== 0) {
+        resolve({ ok: false, error: `Error: Docker image build failed.\n\nBuild output:\n${buildStderr.trim().slice(-2000)}` });
+      } else {
+        resolve({ ok: true, built: true });
+      }
+    });
+    buildProc.on("error", (err) => {
+      clearTimeout(timer);
+      resolve({ ok: false, error: `Error: Docker build spawn failed: ${err.message}` });
+    });
+  });
+}
+
 function detectProjectRoot(rawRoot) {
   // 1. Explicit parameter always wins
   if (rawRoot) {
@@ -1752,54 +1795,20 @@ server.tool(
       return { content: [{ type: "text", text: `Error: ${dockerErr}` }] };
     }
 
-    // 6. Check Dockerfile.voltron exists
+    // 6. Ensure voltron-agent image is current (skips rebuild if Dockerfile unchanged)
     const dockerfilePath = path.join(cwd, "Dockerfile.voltron");
     try {
       await fs.access(dockerfilePath);
     } catch {
       await fs.unlink(tmpFile).catch(() => {});
       return {
-        content: [
-          {
-            type: "text",
-            text: "Error: Dockerfile.voltron not found in project root. Run scaffold_project first to generate it.",
-          },
-        ],
+        content: [{ type: "text", text: "Error: Dockerfile.voltron not found in project root. Run scaffold_project first to generate it." }],
       };
     }
-
-    // 7. Build image — async spawn so parallel agent invocations don't block each other
-    try {
-      await new Promise((resolve, reject) => {
-        let buildStderr = "";
-        const buildProc = spawn(
-          "docker",
-          ["build", "-t", "voltron-agent", "-f", dockerfilePath, cwd],
-          { stdio: ["ignore", "ignore", "pipe"], cwd }
-        );
-        buildProc.stderr?.on("data", (chunk) => { buildStderr += chunk.toString(); });
-        const timer = setTimeout(() => {
-          buildProc.kill();
-          reject(Object.assign(new Error("Docker build timed out"), { stderr: buildStderr }));
-        }, 120000);
-        buildProc.on("close", (code) => {
-          clearTimeout(timer);
-          if (code !== 0) reject(Object.assign(new Error("Build failed"), { stderr: buildStderr }));
-          else resolve();
-        });
-        buildProc.on("error", (err) => { clearTimeout(timer); reject(err); });
-      });
-    } catch (err) {
+    const imageResult = await ensureVoltronImage(cwd, dockerfilePath);
+    if (!imageResult.ok) {
       await fs.unlink(tmpFile).catch(() => {});
-      const buildStderr = err.stderr ? `\n\nBuild output:\n${err.stderr.trim().slice(-2000)}` : "";
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Error: Docker image build failed.${buildStderr}`,
-          },
-        ],
-      };
+      return { content: [{ type: "text", text: imageResult.error }] };
     }
 
     // 8. Regenerate dashboard to show this agent as active
@@ -1953,27 +1962,16 @@ server.tool(
       return { content: [{ type: "text", text: `Error: ${dockerErr2}` }] };
     }
 
-    // Check Dockerfile.voltron exists
+    // Ensure voltron-agent image is current (skips rebuild if Dockerfile unchanged)
     const dockerfilePath = path.join(cwd, "Dockerfile.voltron");
     try { await fs.access(dockerfilePath); } catch {
       await fs.unlink(tmpFile).catch(() => {});
       return { content: [{ type: "text", text: "Error: Dockerfile.voltron not found. Run scaffold_project first." }] };
     }
-
-    // Build image
-    try {
-      await new Promise((resolve, reject) => {
-        let buildStderr = "";
-        const buildProc = spawn("docker", ["build", "-t", "voltron-agent", "-f", dockerfilePath, cwd], { stdio: ["ignore", "ignore", "pipe"], cwd });
-        buildProc.stderr?.on("data", (chunk) => { buildStderr += chunk.toString(); });
-        const timer = setTimeout(() => { buildProc.kill(); reject(Object.assign(new Error("Docker build timed out"), { stderr: buildStderr })); }, 120000);
-        buildProc.on("close", (code) => { clearTimeout(timer); if (code !== 0) reject(Object.assign(new Error("Build failed"), { stderr: buildStderr })); else resolve(); });
-        buildProc.on("error", (err) => { clearTimeout(timer); reject(err); });
-      });
-    } catch (err) {
+    const imageResult2 = await ensureVoltronImage(cwd, dockerfilePath);
+    if (!imageResult2.ok) {
       await fs.unlink(tmpFile).catch(() => {});
-      const buildStderr = err.stderr ? `\n\nBuild output:\n${err.stderr.trim().slice(-2000)}` : "";
-      return { content: [{ type: "text", text: `Error: Docker image build failed.${buildStderr}` }] };
+      return { content: [{ type: "text", text: imageResult2.error }] };
     }
 
     // Set up log infrastructure
@@ -1984,8 +1982,9 @@ server.tool(
     const logsDir = path.join(cwd, ".voltron", "logs");
     await fs.mkdir(logsDir, { recursive: true });
     const logPath = path.join(logsDir, logFilename);
-    // Create empty log file so get_agent_output can read it immediately
+    // Create empty log file + .started timestamp so get_agent_output tracks elapsed time
     await fs.writeFile(logPath, "");
+    await fs.writeFile(logPath + ".started", new Date().toISOString(), "utf-8");
 
     // Mount auth and gitconfig
     const homeDir = process.env.HOME || process.env.USERPROFILE || os.homedir();
@@ -2021,6 +2020,7 @@ server.tool(
 
     await regenerateDashboard();
 
+    const startedAt = new Date().toISOString();
     return {
       content: [{
         type: "text",
@@ -2029,13 +2029,20 @@ server.tool(
           ``,
           `**Container:** \`${containerName}\``,
           `**Log:** \`${logPath}\``,
+          `**Started at:** ${startedAt}`,
+          `**Image build:** ${imageResult2.built ? "rebuilt (Dockerfile changed)" : "skipped (image current)"}`,
           ``,
-          `The agent is now running in the background. Use \`get_agent_output\` to poll for progress:`,
+          `Poll progress with:`,
           `\`\`\``,
           `get_agent_output({ container_name: "${containerName}", log_path: "${logPath}" })`,
           `\`\`\``,
           ``,
-          `You can also tail the log in a terminal: \`tail -f "${logPath}"\``,
+          `**Polling cadence (don't wait arbitrary amounts):**`,
+          `- Spin-up (0 lines, <45s elapsed): poll every 10s`,
+          `- Active (lines growing): poll every 30s, pass \`since_line: <next_line>\` for incremental output`,
+          `- Stalled (no new lines for 3 polls): kill with \`docker kill ${containerName}\``,
+          ``,
+          `Live tail in a terminal: \`tail -f "${logPath}"\``,
         ].join("\n"),
       }],
     };
@@ -2044,13 +2051,14 @@ server.tool(
 
 server.tool(
   "get_agent_output",
-  "Poll a running agent container for its latest output. Returns the last N lines of the agent's log and whether it is still running. Call this repeatedly to show real-time progress in the chat window.",
+  "Poll a running agent for its latest output. Returns log lines, status, elapsed time, and a next_line cursor for incremental polling. Pass since_line: <prev next_line> to get only new output. Includes phase hints (spin-up / stalled / long-running) so scrum-master knows whether to keep waiting or surface a warning to the user.",
   {
     container_name: z.string().describe("Container name returned by start_agent_in_docker"),
     log_path: z.string().describe("Absolute log file path returned by start_agent_in_docker"),
-    tail_lines: z.number().optional().describe("Number of log lines to return (default: 40)"),
+    tail_lines: z.number().optional().describe("Max lines to return (default: 40). Used as a cap when since_line is set, or as the tail size when it is not."),
+    since_line: z.number().optional().describe("Return lines starting from this 0-based index. Pass the next_line value from the previous response to receive only new output. Omit on the first poll to get the last tail_lines lines."),
   },
-  async ({ container_name, log_path, tail_lines = 40 }) => {
+  async ({ container_name, log_path, tail_lines = 40, since_line }) => {
     // Check if container is still running
     let isRunning = false;
     try {
@@ -2069,25 +2077,75 @@ server.tool(
       exitCode = parseInt(exitStr.trim(), 10);
     } catch { /* not written yet */ }
 
-    // Read log file
+    // Race fix: container stopped but .exit not yet flushed — wait 600ms and retry once
+    if (!isRunning && exitCode === null) {
+      await new Promise(r => setTimeout(r, 600));
+      try {
+        const exitStr = await fs.readFile(exitCodePath, "utf-8");
+        exitCode = parseInt(exitStr.trim(), 10);
+      } catch { /* still not written — true transient state */ }
+    }
+
+    // Compute elapsed time from .started file (written by start_agent_in_docker)
+    let elapsedSeconds = null;
+    try {
+      const startedStr = await fs.readFile(log_path + ".started", "utf-8");
+      elapsedSeconds = Math.round((Date.now() - new Date(startedStr.trim()).getTime()) / 1000);
+    } catch { /* no .started — pre-v3.3.1 container, elapsed unknown */ }
+
+    // Read log
     let logContent = "";
-    try { logContent = await fs.readFile(log_path, "utf-8"); } catch { logContent = "(log file not yet available)"; }
+    try { logContent = await fs.readFile(log_path, "utf-8"); } catch { logContent = ""; }
     const allLines = logContent.split("\n").filter(line => line.length > 0);
     const totalLines = allLines.length;
-    const tailLines = allLines.slice(-tail_lines).join("\n");
 
-    // Determine status
-    let status;
-    if (isRunning) {
-      status = "running";
-    } else if (exitCode === 0) {
-      status = "completed";
-    } else if (exitCode !== null) {
-      status = "failed";
+    // Slice — incremental (since_line) vs tail
+    let outputLines;
+    let lineRangeDesc;
+    let nextLine;
+    if (since_line !== undefined && since_line >= 0) {
+      const start = Math.min(since_line, totalLines);
+      const end = Math.min(start + tail_lines, totalLines);
+      outputLines = allLines.slice(start, end);
+      nextLine = end;
+      lineRangeDesc = outputLines.length > 0
+        ? `Lines ${start + 1}–${end} of ${totalLines}`
+        : `No new lines since index ${since_line} (total: ${totalLines})`;
     } else {
-      // Container stopped but .exit not written yet — transient state
-      status = "unknown (container stopped, exit code pending — retry in a moment)";
+      outputLines = allLines.slice(-tail_lines);
+      nextLine = totalLines;
+      lineRangeDesc = `Last ${Math.min(tail_lines, totalLines)} of ${totalLines} lines`;
     }
+
+    // Status
+    let status;
+    if (isRunning) status = "running";
+    else if (exitCode === 0) status = "completed";
+    else if (exitCode !== null) status = "failed";
+    else status = "unknown";
+
+    // Format elapsed
+    const elapsedStr = elapsedSeconds !== null
+      ? `  |  **Elapsed:** ${Math.floor(elapsedSeconds / 60)}m${String(elapsedSeconds % 60).padStart(2, "0")}s`
+      : "";
+
+    // Phase hint — tells scrum-master what to do next
+    let phaseHint = "";
+    if (status === "running" && totalLines === 0) {
+      if (elapsedSeconds === null || elapsedSeconds < 45) {
+        phaseHint = `\n⏳ **Spin-up phase** — container initializing (normal for first 10–30s). Poll again in ~10s.`;
+      } else {
+        phaseHint = `\n⚠ **No output after ${elapsedSeconds}s** — container may be waiting for auth or hung. Verify CLAUDE_CODE_OAUTH_TOKEN is set. Kill: \`docker kill ${container_name}\``;
+      }
+    } else if (status === "running" && elapsedSeconds !== null && elapsedSeconds > 600) {
+      phaseHint = `\n⚠ **Running ${Math.floor(elapsedSeconds / 60)}m** — if no new output for several polls, agent may be stalled. Kill: \`docker kill ${container_name}\``;
+    } else if (status === "unknown") {
+      phaseHint = `\nℹ Container stopped but exit code not yet written. Poll again in 1–2s to resolve.`;
+    }
+
+    const nextHint = status === "running"
+      ? `\n💡 Next poll: \`get_agent_output({ container_name: "${container_name}", log_path: "${log_path}", since_line: ${nextLine} })\``
+      : `\nAgent finished. Close the bead, update progress, dispatch the next task.`;
 
     return {
       content: [{
@@ -2095,14 +2153,15 @@ server.tool(
         text: [
           `## Agent output — \`${container_name}\``,
           ``,
-          `**Status:** ${status}${exitCode !== null ? `  |  **Exit code:** ${exitCode}` : ""}`,
-          `**Lines so far:** ${totalLines}  |  **Showing last ${Math.min(tail_lines, totalLines)}**`,
+          `**Status:** ${status}${exitCode !== null ? `  |  **Exit code:** ${exitCode}` : ""}${elapsedStr}`,
+          `**${lineRangeDesc}**  |  **next_line:** ${nextLine}`,
+          phaseHint,
           ``,
           `\`\`\``,
-          tailLines || "(no output yet)",
+          outputLines.length > 0 ? outputLines.join("\n") : "(no output yet)",
           `\`\`\``,
-          status === "running" ? `\nCall \`get_agent_output\` again to see newer output.` : `\nAgent has finished. Review the output above.`,
-        ].join("\n"),
+          nextHint,
+        ].filter(s => s !== "").join("\n"),
       }],
     };
   }

@@ -78,8 +78,36 @@ Launch specialist agents using `mcp__project-voltron__run_agent_in_docker` (bloc
 
 **Live visibility pattern** (preferred for complex sessions):
 1. Call `start_agent_in_docker` for each ready task (same message = parallel start)
-2. Poll with `get_agent_output` repeatedly — show log output verbatim to the user
+2. Poll with `get_agent_output` following the **Polling Cadence** below — never wait arbitrary amounts of time
 3. On `status: completed/failed` → `bd close` / `update_progress` → loop back to `bd ready`
+
+### Polling Cadence
+
+Always poll on a schedule. The `get_agent_output` response includes `Elapsed`, `next_line`, and a phase hint — use them to decide when to poll next.
+
+| Phase | Signal | Next poll | Action |
+|---|---|---|---|
+| Spin-up | 0 lines, elapsed <45s | ~10s | Normal — Docker initializing. Show "⏳ Initializing..." to user. |
+| Spin-up stall | 0 lines, elapsed >45s | — | Auth or env issue. Surface warning to user; offer `docker kill <container>`. |
+| Early execution | Lines appearing, status: running | ~20s | Show output to user. Record `next_line` from the response. |
+| Active execution | Lines growing, status: running | ~30s | Pass `since_line: <next_line>` to receive only new lines. |
+| Long-running | elapsed >10m, line count not growing for 3 polls | — | Stall suspected. Ask user: retry / kill / wait. |
+| Done | status: completed or failed | — | Close bead, update progress, dispatch next task. |
+
+**Incremental polling (preferred):** Each `get_agent_output` response returns a `next_line` integer. Pass it as `since_line` in the next call to receive only new output. Avoids re-reading the same lines on every poll.
+
+**Stall kill:** `Bash("docker kill <container_name>")` — the container exits non-zero, the `.exit` file is written, and the next poll resolves to `failed`.
+
+**Spin-up speedup (v3.3.1):** Docker image rebuilds are now skipped when the image is current (Dockerfile unchanged since last build). First agent of the session: ~30–60s build. Every agent after: ~3s spin-up. The `start_agent_in_docker` response now reports `Image build: skipped` or `rebuilt` so you can see which path you took.
+
+**Expected duration by max_turns:**
+
+| max_turns | Typical wall time | Suggested poll count |
+|---|---|---|
+| 10 (read + single edit) | 1–3 min | 3–6 polls at 20–30s |
+| 20 (small feature) | 3–8 min | 6–12 polls at 30s |
+| 30 (medium feature) | 8–15 min | 10–20 polls at 30–60s |
+| 45–60 (large) | 15–30 min | 15–30 polls at 60s |
 
 ### Task Sizing and max_turns
 
@@ -286,7 +314,7 @@ Refresh the dashboard after: initial registration, every phase boundary, every a
 **Each iteration:**
 1. `bd ready --json` — get IDs of runnable tasks
 2. For each ready task (same message = parallel): `update_progress(in_progress)` + `start_agent_in_docker(agent, task)`
-3. Poll with `get_agent_output` until complete — show log output verbatim to the user
+3. Poll with `get_agent_output` following the **Polling Cadence** above — pass `since_line: <next_line>` from each response into the next call for incremental output
 4. On completion: **success** → `bd close bd-XXXX` + `update_progress(completed)`; **failure** → `bd update --status blocked` + `update_progress(failed)` + `bd dep tree <id>` to show cascade impact
 5. Refresh dashboard tab, return to step 1
 

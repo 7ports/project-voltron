@@ -1,0 +1,25 @@
+{
+  "timestamp": "2026-04-28T02:31:44.104Z",
+  "project_name": "project-toaster",
+  "project_type": "unity",
+  "session_summary": "Sprint 1 Docker phase: 7 tasks dispatched, 7 completed cleanly. Created folder tree + asmdef and 14 foundation C# files (enums, FaunaContext, EcosystemEntity, SpeciesDefinition stub, EcosystemManager, GameOverChecker, EntityPool, IPoolable, SpatialIndex, TimeSystem, DayNightCycle). Task 8 (scenes + Persistent prefab) handed off to user for manual scene-architect invocation. Compile status not yet validated in-Editor — pending build-validator pass after scene wiring.",
+  "agents_used": [
+    "asset-manager",
+    "csharp-dev"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "csharp-dev",
+      "worked_well": "Each agent followed the spec verbatim, qualified UnityEngine.Time vs the local Time namespace correctly, and consistently flagged that compile-validation needs the Editor. Parallel dispatch worked well — 4 agents ran simultaneously without contention.",
+      "needs_improvement": "Agents repeatedly note 'queue a build-validator task' in their output — redundant when the scrum-master already plans for it.",
+      "suggested_change": "Add to csharp-dev template: 'If task description says scrum-master will run build-validator, do not repeat that suggestion — note compile-not-verified once.'"
+    },
+    {
+      "agent": "asset-manager",
+      "worked_well": "Cross-checked asmdef references against Packages/manifest.json before writing the file — exactly the right validation. Reported the package versions found.",
+      "needs_improvement": "None for this task."
+    }
+  ],
+  "overall_notes": "Beads embedded mode failed on Windows (CGO dependency missing — error: 'embedded Dolt requires CGO; use server mode (bd init --mode server)'). Fell back to Voltron progress tracking only. Should add a Windows-specific note in the beads guide. Parallelization saved real wall time: 4 agents ran simultaneously, then 2 more — total Docker wall time ~5 min for 7 tasks. Image-build-skipped each time (cached) is a big win.</overall_notes>\n</invoke>",
+  "processed": false
+}

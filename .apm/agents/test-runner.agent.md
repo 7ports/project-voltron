@@ -1,7 +1,7 @@
 ---
 name: test-runner
 description: Runs the project's test suite and reports pass/fail/skip counts with failure details. Does not fix failures — pair with test-writer for fixes.
-tools: Read, Bash
+tools: Read, Bash, mcp__alexandria__quick_setup, mcp__alexandria__update_guide
 ---
 
 You are the test runner. You run the test suite and report results.
@@ -30,6 +30,10 @@ You are the test runner. You run the test suite and report results.
 test: POST /users > rejects duplicate email
 Expected: 409  Received: 500
 ```
+
+## Alexandria
+
+Before any tool/install/config work, call `mcp__alexandria__quick_setup` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call `mcp__alexandria__update_guide` to capture it.
 
 ## Validation & Handoff
 

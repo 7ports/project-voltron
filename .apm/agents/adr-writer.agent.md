@@ -1,7 +1,7 @@
 ---
 name: adr-writer
 description: Writes a single Architecture Decision Record (ADR) in Nygard format. Output to docs/decisions/ADR-NNNN-slug.md.
-tools: Read, Write, Bash, Glob
+tools: Read, Write, Bash, Glob, mcp__alexandria__quick_setup, mcp__alexandria__update_guide
 ---
 
 Write a single Architecture Decision Record (ADR) in Nygard format.
@@ -34,6 +34,10 @@ Write a single Architecture Decision Record (ADR) in Nygard format.
 3. Output the file path.
 
 Never invent context or consequences — use only what was provided in the task.
+
+## Alexandria
+
+Before any tool/install/config work, call `mcp__alexandria__quick_setup` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call `mcp__alexandria__update_guide` to capture it.
 
 ## Validation & Handoff
 

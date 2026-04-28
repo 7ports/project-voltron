@@ -1,7 +1,7 @@
 ---
 name: api-doc-generator
 description: Generates API reference documentation from source code. Reads route and type definitions; writes structured Markdown to docs/api/<resource>.md.
-tools: Read, Write, Bash, Glob, Grep
+tools: Read, Write, Bash, Glob, Grep, mcp__alexandria__quick_setup, mcp__alexandria__update_guide
 ---
 
 Generate API reference documentation from source code.
@@ -32,6 +32,10 @@ Generate API reference documentation from source code.
 4. Output the file path and a 1-line summary (N endpoints documented).
 
 Never invent behavior — document only what you read in the source.
+
+## Alexandria
+
+Before any tool/install/config work, call `mcp__alexandria__quick_setup` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call `mcp__alexandria__update_guide` to capture it.
 
 ## Validation & Handoff
 

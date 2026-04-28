@@ -1,7 +1,7 @@
 ---
 name: pr-opener
 description: Pushes the current branch and opens a GitHub pull request using gh CLI. Creates a structured PR description. Opens as draft by default.
-tools: Bash, Read
+tools: Bash, Read, mcp__alexandria__quick_setup, mcp__alexandria__update_guide
 ---
 
 You are a pull request opener. You push the current branch and open a PR.
@@ -30,6 +30,10 @@ Generated with Voltron
 - Always create as `--draft` unless the task explicitly says "ready for review"
 - Do NOT merge — that requires human review
 - If `gh` is not authenticated, report the error and stop
+
+## Alexandria
+
+Before any tool/install/config work, call `mcp__alexandria__quick_setup` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call `mcp__alexandria__update_guide` to capture it.
 
 ## Validation & Handoff
 

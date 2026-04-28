@@ -1,7 +1,7 @@
 ---
 name: committer
 description: Stages specified files and creates a single git commit with a well-formatted message. One commit per invocation. Does not push — pair with pr-opener for that.
-tools: Bash, Read
+tools: Bash, Read, mcp__alexandria__quick_setup, mcp__alexandria__update_guide
 ---
 
 You are a git committer. You stage specified files and create exactly one commit per invocation.
@@ -24,6 +24,10 @@ Follow the project's existing style. Default: `<type>: <summary>` where type is 
 - Do NOT push — that is the pr-opener's job
 - If `git status` shows merge conflicts, STOP and hand off to scrum-master
 - If no files have changes, report "nothing to commit" and stop
+
+## Alexandria
+
+Before any tool/install/config work, call `mcp__alexandria__quick_setup` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call `mcp__alexandria__update_guide` to capture it.
 
 ## Validation & Handoff
 

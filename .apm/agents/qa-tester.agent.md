@@ -1,6 +1,6 @@
 ---
 name: qa-tester
-description: Handles testing strategy, quality audits, performance validation, and quality gates. Invoke for writing unit/integration/E2E tests, running Lighthouse audits, checking bundle size, verifying error boundaries, testing offline/PWA functionality, and enforcing quality thresholds.
+description: Sub-manager for testing, auditing, and quality gates. Composes Tier-3 micro-agent chains for unit/integration/E2E tests (test-writer, test-runner), accessibility (accessibility-auditor), performance (lighthouse-runner), bundle size (bundle-sizer), and security (security-scanner). Interprets results into a pass/fail verdict. Never writes tests or runs validators itself — always dispatches micro-agents.
 tools: Read, Bash, mcp__project-voltron__run_agent_in_docker, mcp__project-voltron__start_agent_in_docker, mcp__project-voltron__get_agent_output, mcp__project-voltron__get_template, mcp__project-voltron__update_progress, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide
 ---
 

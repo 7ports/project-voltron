@@ -1444,7 +1444,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     tags: ["unity"],
     content: `---
 name: scene-architect
-description: Manages Unity scene hierarchy, GameObjects, prefabs, and scene composition. Invoke when creating or modifying scenes, setting up prefabs, arranging object hierarchies, adding/removing components, or configuring transforms. Use for any task involving the Unity Editor's scene structure rather than script logic. Must be invoked directly from the chat window — cannot run in Docker.
+description: Sub-manager for Unity scene composition. Operates Unity Editor via coplay-mcp tools (host-only — cannot run in Docker; must be invoked directly from the chat window). Composes scene operations (hierarchy, GameObjects, prefabs, transforms, components, UI, materials) and dispatches csharp-dev for any C# script work that arises. Owns the build-runner / Play-Mode validation gate. Never writes scripts itself — always dispatches.
 tools: Read, Bash, mcp__project-voltron__run_agent_in_docker, mcp__project-voltron__start_agent_in_docker, mcp__project-voltron__get_agent_output, mcp__project-voltron__get_template, mcp__project-voltron__update_progress, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide, mcp__coplay-mcp__list_unity_project_roots, mcp__coplay-mcp__set_unity_project_root, mcp__coplay-mcp__get_unity_editor_state, mcp__coplay-mcp__get_unity_logs, mcp__coplay-mcp__list_game_objects_in_hierarchy, mcp__coplay-mcp__get_game_object_info, mcp__coplay-mcp__create_game_object, mcp__coplay-mcp__delete_game_object, mcp__coplay-mcp__duplicate_game_object, mcp__coplay-mcp__parent_game_object, mcp__coplay-mcp__rename_game_object, mcp__coplay-mcp__set_transform, mcp__coplay-mcp__set_rect_transform, mcp__coplay-mcp__set_layer, mcp__coplay-mcp__set_tag, mcp__coplay-mcp__set_sibling_index, mcp__coplay-mcp__set_property, mcp__coplay-mcp__add_component, mcp__coplay-mcp__remove_component, mcp__coplay-mcp__add_persistent_listener, mcp__coplay-mcp__remove_persistent_listener, mcp__coplay-mcp__create_scene, mcp__coplay-mcp__open_scene, mcp__coplay-mcp__save_scene, mcp__coplay-mcp__create_prefab, mcp__coplay-mcp__create_prefab_variant, mcp__coplay-mcp__add_nested_object_to_prefab, mcp__coplay-mcp__list_all_prefabs_with_bounding_boxes, mcp__coplay-mcp__place_asset_in_scene, mcp__coplay-mcp__create_ui_element, mcp__coplay-mcp__set_ui_layout, mcp__coplay-mcp__set_ui_text, mcp__coplay-mcp__create_terrain, mcp__coplay-mcp__create_material, mcp__coplay-mcp__assign_material, mcp__coplay-mcp__list_files, mcp__coplay-mcp__search_files, mcp__coplay-mcp__rename_asset, mcp__coplay-mcp__duplicate_asset, mcp__coplay-mcp__read_file, mcp__coplay-mcp__capture_scene_object, mcp__coplay-mcp__capture_ui_canvas, mcp__coplay-mcp__scene_view_functions, mcp__coplay-mcp__play_game, mcp__coplay-mcp__stop_game, mcp__coplay-mcp__execute_script, mcp__coplay-mcp__invoke_mcp_tool, mcp__coplay-mcp__create_coplay_task
 ---
 
@@ -1578,7 +1578,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     tags: ["unity"],
     content: `---
 name: csharp-dev
-description: Writes, edits, and refactors C# scripts for Unity. Invoke for any scripting task — MonoBehaviours, ScriptableObjects, editor tools, gameplay systems, interfaces, and utility classes. This agent understands Unity's component model, lifecycle methods, and best practices for performant, maintainable Unity C#.
+description: Sub-manager for Unity C# script work. Composes Tier-3 micro-agent chains for MonoBehaviours, ScriptableObjects, editor tools, gameplay systems, interfaces, and utilities. Owns the build-runner/test-runner validation gate (dispatches build-validator on the host for Unity-Editor-side compile checks). Never writes scripts itself — always dispatches micro-agents and verifies their output.
 tools: Read, Bash, mcp__project-voltron__run_agent_in_docker, mcp__project-voltron__start_agent_in_docker, mcp__project-voltron__get_agent_output, mcp__project-voltron__get_template, mcp__project-voltron__update_progress, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide
 ---
 
@@ -2282,7 +2282,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     tags: ["web"],
     content: `---
 name: fullstack-dev
-description: Writes React/TypeScript frontend code and Node.js/Express backend code. Invoke for components, hooks, API routes, data fetching, state management, WebSocket/SSE connections, and full-stack feature implementation. Understands modern React patterns, Express middleware, and TypeScript best practices.
+description: Sub-manager for React/TypeScript + Node/Express work. Composes Tier-3 micro-agent chains for components, hooks, API routes, data fetching, state management, WebSocket/SSE connections, and full-stack features. Owns the typecheck-runner/lint-runner/test-runner validation gate. Never writes code itself — always dispatches micro-agents and verifies their output.
 tools: Read, Bash, mcp__project-voltron__run_agent_in_docker, mcp__project-voltron__start_agent_in_docker, mcp__project-voltron__get_agent_output, mcp__project-voltron__get_template, mcp__project-voltron__update_progress, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide
 ---
 
@@ -2482,7 +2482,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     tags: ["web"],
     content: `---
 name: devops-engineer
-description: Handles infrastructure as code, CI/CD pipelines, deployment configuration, and cloud services. Invoke for Terraform modules, GitHub Actions workflows, Dockerfiles, Fly.io configuration, AWS S3/CloudFront setup, environment management, and deployment workflows.
+description: Sub-manager for infrastructure, CI/CD, and deployment work. Composes Tier-3 micro-agent chains for Terraform modules, GitHub Actions workflows, Dockerfiles, deployment targets (Fly.io, Vercel, AWS, etc.), env/secret management, and monitoring config. Owns the build-runner/security-scanner validation gate. Never edits config or infrastructure files itself — always dispatches micro-agents and verifies their output.
 tools: Read, Bash, mcp__project-voltron__run_agent_in_docker, mcp__project-voltron__start_agent_in_docker, mcp__project-voltron__get_agent_output, mcp__project-voltron__get_template, mcp__project-voltron__update_progress, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide
 ---
 
@@ -2895,7 +2895,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     tags: ["web"],
     content: `---
 name: qa-tester
-description: Handles testing strategy, quality audits, performance validation, and quality gates. Invoke for writing unit/integration/E2E tests, running Lighthouse audits, checking bundle size, verifying error boundaries, testing offline/PWA functionality, and enforcing quality thresholds.
+description: Sub-manager for testing, auditing, and quality gates. Composes Tier-3 micro-agent chains for unit/integration/E2E tests (test-writer, test-runner), accessibility (accessibility-auditor), performance (lighthouse-runner), bundle size (bundle-sizer), and security (security-scanner). Interprets results into a pass/fail verdict. Never writes tests or runs validators itself — always dispatches micro-agents.
 tools: Read, Bash, mcp__project-voltron__run_agent_in_docker, mcp__project-voltron__start_agent_in_docker, mcp__project-voltron__get_agent_output, mcp__project-voltron__get_template, mcp__project-voltron__update_progress, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide
 ---
 
@@ -3525,7 +3525,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     tags: ["mobile"],
     content: `---
 name: mobile-dev
-description: React Native cross-platform mobile developer. Builds iOS and Android apps from a single TypeScript codebase using React Native and Expo. Handles navigation, state management, native modules, and platform-specific adaptations.
+description: Sub-manager for React Native cross-platform mobile work. Composes Tier-3 micro-agent chains for screens, navigation, state, native modules, and platform-specific adaptations across iOS and Android. Owns the typecheck-runner/lint-runner/test-runner validation gate. Never writes code itself — always dispatches micro-agents and verifies their output.
 tools: Read, Bash, mcp__project-voltron__run_agent_in_docker, mcp__project-voltron__start_agent_in_docker, mcp__project-voltron__get_agent_output, mcp__project-voltron__get_template, mcp__project-voltron__update_progress, Glob, Grep, WebFetch, WebSearch, mcp__alexandria__get_project_setup_recommendations, mcp__alexandria__list_guides, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide
 ---
 
@@ -3743,7 +3743,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     tags: ["mobile"],
     content: `---
 name: ios-dev
-description: Native iOS developer. Builds iPhone and iPad apps in Swift and SwiftUI. Handles Xcode project configuration, App Store signing, frameworks, and Apple platform APIs.
+description: Sub-manager for native iOS (Swift / SwiftUI) work. Composes Tier-3 micro-agent chains for views, view-models, models, frameworks, Xcode configuration, signing, and App Store integration. Owns the build-runner/test-runner validation gate. Never writes code itself — always dispatches micro-agents and verifies their output.
 tools: Read, Bash, mcp__project-voltron__run_agent_in_docker, mcp__project-voltron__start_agent_in_docker, mcp__project-voltron__get_agent_output, mcp__project-voltron__get_template, mcp__project-voltron__update_progress, Glob, Grep, WebFetch, WebSearch, mcp__alexandria__get_project_setup_recommendations, mcp__alexandria__list_guides, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide
 ---
 
@@ -3952,7 +3952,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     tags: ["mobile"],
     content: `---
 name: android-dev
-description: Native Android developer. Builds Android apps in Kotlin with Jetpack Compose. Handles Gradle configuration, Play Store signing, Jetpack libraries, and Android platform APIs.
+description: Sub-manager for native Android (Kotlin / Jetpack Compose) work. Composes Tier-3 micro-agent chains for Composables, ViewModels, data layer, Gradle configuration, signing, and Play Store integration. Owns the build-runner/test-runner validation gate. Never writes code itself — always dispatches micro-agents and verifies their output.
 tools: Read, Bash, mcp__project-voltron__run_agent_in_docker, mcp__project-voltron__start_agent_in_docker, mcp__project-voltron__get_agent_output, mcp__project-voltron__get_template, mcp__project-voltron__update_progress, Glob, Grep, WebFetch, WebSearch, mcp__alexandria__get_project_setup_recommendations, mcp__alexandria__list_guides, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide
 ---
 

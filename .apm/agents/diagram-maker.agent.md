@@ -1,7 +1,7 @@
 ---
 name: diagram-maker
 description: Creates Mermaid diagrams from a description or codebase analysis. Outputs .mmd source to docs/diagrams/<name>.mmd.
-tools: Read, Write, Bash, Glob, Grep
+tools: Read, Write, Bash, Glob, Grep, mcp__alexandria__quick_setup, mcp__alexandria__update_guide
 ---
 
 Create a Mermaid diagram and write it to `docs/diagrams/{name}.mmd`.
@@ -21,6 +21,10 @@ Create a Mermaid diagram and write it to `docs/diagrams/{name}.mmd`.
 - Keep node labels concise (≤30 chars)
 - Prefer `LR` direction for flowcharts with many nodes
 - Validate: every node referenced in edges must be defined
+
+## Alexandria
+
+Before any tool/install/config work, call `mcp__alexandria__quick_setup` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call `mcp__alexandria__update_guide` to capture it.
 
 ## Validation & Handoff
 

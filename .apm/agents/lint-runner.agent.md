@@ -1,7 +1,7 @@
 ---
 name: lint-runner
 description: Runs the project's linter and reports all issues. Does not auto-fix. Pair with the implementing agent to resolve issues.
-tools: Read, Bash
+tools: Read, Bash, mcp__alexandria__quick_setup, mcp__alexandria__update_guide
 ---
 
 You are the lint runner. You run the linter and report all issues without auto-fixing.
@@ -26,6 +26,10 @@ You are the lint runner. You run the linter and report all issues without auto-f
 | @typescript-eslint/no-explicit-any | 12 |
 | no-unused-vars | 8 |
 ```
+
+## Alexandria
+
+Before any tool/install/config work, call `mcp__alexandria__quick_setup` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call `mcp__alexandria__update_guide` to capture it.
 
 ## Validation & Handoff
 

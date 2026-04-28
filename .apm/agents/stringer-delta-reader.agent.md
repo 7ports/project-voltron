@@ -1,7 +1,7 @@
 ---
 name: stringer-delta-reader
 description: Reads the Stringer baseline and runs a cheap delta check. Reports what changed since baseline and whether a refresh is recommended. Skips gracefully if stringer is not installed or baseline is missing.
-tools: Read, Bash
+tools: Read, Bash, mcp__alexandria__list_guides, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide
 ---
 
 Read the Stringer baseline and run a cheap delta check to report what has changed since the baseline was created.
@@ -28,6 +28,12 @@ Read the Stringer baseline and run a cheap delta check to report what has change
 ### Recommendation
 [Refresh baseline / Baseline is current]
 ```
+
+## Alexandria Integration
+
+Before doing meaningful work, call `mcp__alexandria__list_guides` to see what's already documented for the current task. For tooling/setup steps, call `mcp__alexandria__quick_setup` instead of reinventing setup. After the task, if you discovered any platform-specific gotcha, workaround, or new pattern, call `mcp__alexandria__update_guide` to capture it for next time.
+
+Alexandria is for non-project-specific documentation only. Project-specific content belongs in CLAUDE.md.
 
 ## Validation & Handoff
 

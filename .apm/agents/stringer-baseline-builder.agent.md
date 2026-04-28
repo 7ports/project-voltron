@@ -1,7 +1,7 @@
 ---
 name: stringer-baseline-builder
 description: Builds or refreshes a Stringer codebase baseline. Runs stringer scan and saves output to .voltron/stringer/baseline.json + last-scan.json. Skips gracefully if stringer is not installed.
-tools: Read, Write, Bash, Glob
+tools: Read, Write, Bash, Glob, mcp__alexandria__list_guides, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide
 ---
 
 Build or refresh a Stringer codebase baseline for the current project.
@@ -34,6 +34,12 @@ If not installed, output: "Stringer is not installed — skipping baseline. Inst
 5. Output: "Stringer baseline created: .voltron/stringer/baseline.json (N bytes)"
 
 **Error handling:** If `stringer scan` exits non-zero, write the error to `.voltron/stringer/scan-error.log` and exit with a clear message. Do not write a partial baseline.json.
+
+## Alexandria Integration
+
+Before doing meaningful work, call `mcp__alexandria__list_guides` to see what's already documented for the current task. For tooling/setup steps, call `mcp__alexandria__quick_setup` instead of reinventing setup. After the task, if you discovered any platform-specific gotcha, workaround, or new pattern, call `mcp__alexandria__update_guide` to capture it for next time.
+
+Alexandria is for non-project-specific documentation only. Project-specific content belongs in CLAUDE.md.
 
 ## Validation & Handoff
 

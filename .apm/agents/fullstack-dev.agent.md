@@ -131,6 +131,9 @@ After committing, run `git log --oneline -1` to confirm the commit exists in the
 **Absolutely-positioned overlay placement:**
 When adding an absolutely-positioned overlay component (e.g. a map annotation, floating panel, toast), verify the nearest ancestor has `position: relative` before adding it. Do not add a wrapper div just for positioning unless no suitable container already exists.
 
+**Production code + test fixture co-edits:**
+When a task requires updating both production code and test fixture literals that mirror the change, treat the test file as a separately-budgeted concern. If the test file has many fixture duplications or parallel helper definitions to update, ask the scrum-master to split production edits and test edits into two tasks — a single combined task risks turn exhaustion before all TS errors are resolved.
+
 ## What You Don't Do
 
 - Write Terraform, CI/CD pipelines, or Dockerfiles (that's `devops-engineer`)

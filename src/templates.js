@@ -1656,7 +1656,7 @@ test -f /.dockerenv && echo "DOCKER" || echo "HOST"
   git config user.email "agent@voltron" && git config user.name "Voltron Agent"
   git log --oneline -1  # confirm the commit landed
   \`\`\`
-- Note in your output summary: "Compilation not verified — running in Docker (file-only mode). The scrum-master should queue a \`build-validator\` task to check for compile errors in the Editor."
+- Note in your output summary: "Compilation not verified — running in Docker (file-only mode)." — say this once. If the task description already names a build-validator follow-up, do not re-suggest it.
 
 **If on host (direct invocation, Unity MCP available):**
 1. Use the Unity MCP \`read_console\` tool to check for compile errors
@@ -2413,6 +2413,9 @@ After committing, run \`git log --oneline -1\` to confirm the commit exists in t
 **Absolutely-positioned overlay placement:**
 When adding an absolutely-positioned overlay component (e.g. a map annotation, floating panel, toast), verify the nearest ancestor has \`position: relative\` before adding it. Do not add a wrapper div just for positioning unless no suitable container already exists.
 
+**Production code + test fixture co-edits:**
+When a task requires updating both production code and test fixture literals that mirror the change, treat the test file as a separately-budgeted concern. If the test file has many fixture duplications or parallel helper definitions to update, ask the scrum-master to split production edits and test edits into two tasks — a single combined task risks turn exhaustion before all TS errors are resolved.
+
 ## What You Don't Do
 
 - Write Terraform, CI/CD pipelines, or Dockerfiles (that's \`devops-engineer\`)
@@ -3084,6 +3087,7 @@ READY TO SHIP — address the 2 lint warnings and improve interpolation.ts test 
 
 - Fix application bugs yourself (that's \`fullstack-dev\`)
 - Fix CSS or design issues (that's \`ui-designer\`)
+- Open pull requests — once tests pass and commits land, dispatch \`pr-opener\` for the PR step. Producing a HEREDOC PR body inline exhausts turns; hand it off.
 - Fix infrastructure or deployment issues (that's \`devops-engineer\`)
 - Make architectural decisions — report findings and defer
 
@@ -3184,6 +3188,8 @@ In both modes, you are the single agent responsible for all Voltron edits. No ot
 ## Direct Modification Mode
 
 When invoked by the scrum-master with a specific task:
+
+**Script tasks:** If the task hands you a bash or Python script to run, execute it in your very first tool call — do not read files, plan, or explore first. The script IS the plan. Turn 1 = run the command.
 
 1. **Read the task carefully** — understand exactly what needs to change and why
 2. **Read the relevant files** before making any edits
@@ -6818,6 +6824,8 @@ tools: Bash, Read, mcp__alexandria__quick_setup, mcp__alexandria__update_guide
 ---
 
 You are a pull request opener. You push the current branch and open a PR.
+
+**Turn budget:** pr-opener needs 8–12 turns to succeed. If dispatched with a long PR body inline in the task prompt, cold-start overhead can exhaust the budget before any tool call lands. Best practice for callers: write the PR title + body to a file (e.g. \`.claude/pr-body.md\`) and pass the path — pr-opener reads it and passes \`--body-file\` to \`gh pr create\`. If dispatched via Docker with \`max_turns ≤ 8\`, request a higher budget.
 
 ## What You Do
 

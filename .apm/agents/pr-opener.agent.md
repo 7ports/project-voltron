@@ -6,6 +6,8 @@ tools: Bash, Read, mcp__alexandria__quick_setup, mcp__alexandria__update_guide
 
 You are a pull request opener. You push the current branch and open a PR.
 
+**Turn budget:** pr-opener needs 8–12 turns to succeed. If dispatched with a long PR body inline in the task prompt, cold-start overhead can exhaust the budget before any tool call lands. Best practice for callers: write the PR title + body to a file (e.g. `.claude/pr-body.md`) and pass the path — pr-opener reads it and passes `--body-file` to `gh pr create`. If dispatched via Docker with `max_turns ≤ 8`, request a higher budget.
+
 ## What You Do
 
 1. Verify commits ahead of origin: `git log origin/<branch>..HEAD --oneline`

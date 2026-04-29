@@ -1,6 +1,6 @@
 {
   "name": "project-voltron",
-  "version": "3.3.6",
+  "version": "3.3.7",
   "description": "MCP server providing specialized agent templates for Claude Code \u2014 Unity game dev, web/fullstack development, mobile (iOS/Android/React Native), and general software projects with a scrum-master coordinator.",
   "main": "src/index.js",
   "type": "module",

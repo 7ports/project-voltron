@@ -1615,7 +1615,31 @@ server.tool(
     }
 
 
-    // Check Stringer (optional — codebase baseline analysis)
+    // v3.4.0: hard-mandatory dependency checks for beads, stringer, alexandria.
+    // Each missing dep is a blocking failure surfaced prominently in the report.
+    const blockingFailures = [];
+
+    // ─── beads ─── dependency-aware task tracking (required by scrum-master)
+    let beadsStatus = "";
+    let beadsInstalled = false;
+    try {
+      execSync("bd --version", { stdio: "ignore", timeout: 5000 });
+      beadsInstalled = true;
+    } catch { /* not installed */ }
+
+    if (beadsInstalled) {
+      beadsStatus = "✓ Installed";
+    } else {
+      beadsStatus = "❌ NOT INSTALLED — mandatory. Run: `npm install -g @beads/bd` (or `brew install beads`)";
+      blockingFailures.push({
+        name: "beads",
+        why: "scrum-master requires beads for dependency-aware task tracking; without it, the bead graph cannot enforce task dependencies and the work plan reverts to manual sequencing.",
+        install: "npm install -g @beads/bd",
+        alt: "brew install beads (macOS / Linux)",
+      });
+    }
+
+    // ─── stringer ─── codebase baseline analysis (required by code-analyst)
     let stringerStatus = "";
     let stringerInstalled = false;
     try {
@@ -1658,7 +1682,41 @@ server.tool(
         } catch { /* non-fatal */ }
       }
     } else {
-      stringerStatus = "not installed (optional) — install stringer for codebase baseline analysis";
+      stringerStatus = "❌ NOT INSTALLED — mandatory. Run: `go install github.com/davetashner/stringer/cmd/stringer@latest` (requires Go) or download a release binary";
+      blockingFailures.push({
+        name: "stringer",
+        why: "code-analyst depends on stringer for the codebase baseline scan; the v3.2 stringer-baseline-builder and stringer-delta-reader micro-agents will refuse to run without it.",
+        install: "go install github.com/davetashner/stringer/cmd/stringer@latest",
+        alt: "brew install davetashner/tap/stringer (macOS) — or download a pre-built binary from https://github.com/davetashner/stringer/releases/latest",
+      });
+    }
+
+    // ─── alexandria ─── tooling/setup guides (required by every agent that touches tools)
+    let alexandriaStatus = "";
+    const alexandriaRegistered = !!claudeJson?.mcpServers?.["alexandria"];
+    if (alexandriaRegistered) {
+      const cfg = claudeJson.mcpServers["alexandria"];
+      const cmdPath = Array.isArray(cfg.args) && cfg.args.length > 0 ? cfg.args[0] : "(unknown)";
+      // Verify the path actually exists (catches stale registrations)
+      if (existsSync(cmdPath)) {
+        alexandriaStatus = `✓ Registered (${cmdPath})`;
+      } else {
+        alexandriaStatus = `❌ MCP registered but path missing: ${cmdPath}. Re-clone project-alexandria and update ~/.claude.json`;
+        blockingFailures.push({
+          name: "alexandria",
+          why: "Alexandria is registered as an MCP server but the path it points to no longer exists.",
+          install: `Re-clone https://github.com/7ports/project-alexandria, run \`npm install\` in mcp-server/, then update ~/.claude.json mcpServers.alexandria.args[0] to the new path`,
+          alt: "",
+        });
+      }
+    } else {
+      alexandriaStatus = "❌ NOT REGISTERED — mandatory. Clone project-alexandria and register the MCP";
+      blockingFailures.push({
+        name: "alexandria",
+        why: "Every Voltron agent that touches tools/setup is required to consult Alexandria first (search_guides → quick_setup) and update_guide after. Without the MCP registered, the agents can call the tool but the tool won't respond.",
+        install: "git clone https://github.com/7ports/project-alexandria ~/Documents/project-alexandria && cd ~/Documents/project-alexandria/mcp-server && npm install",
+        alt: "Then add to ~/.claude.json:\n```json\n\"alexandria\": { \"command\": \"node\", \"args\": [\"<absolute path to project-alexandria>/mcp-server/index.js\"] }\n```",
+      });
     }
 
 
@@ -1684,23 +1742,50 @@ server.tool(
         ? `⚠ ${missingDeny.length} rules missing`
         : `✓ Added ${missingDeny.length} missing rules`;
 
+    // Build blocking-failure section if any mandatory deps are missing
+    const blockingSection = blockingFailures.length === 0 ? "" : [
+      "",
+      "---",
+      "",
+      "## ❌ MANDATORY DEPENDENCIES MISSING",
+      "",
+      "Voltron will not function correctly until these are installed. Each is required (not optional):",
+      "",
+      ...blockingFailures.flatMap(f => [
+        `### ${f.name}`,
+        "",
+        `**Why required:** ${f.why}`,
+        "",
+        `**Install:** \`${f.install}\``,
+        ...(f.alt ? ["", `**Alternative:** ${f.alt}`] : []),
+        "",
+      ]),
+      "After installing, run `setup_voltron` again to verify.",
+      "",
+    ].join("\n");
+
     const report = [
       "## Project Voltron Health Check",
       "",
       `- **MCP Server:** ${mcpStatus}`,
       `- **Allowlist:** ${allowStatus}`,
       `- **Deny rules:** ${denyStatus}`,
+      `- **beads (mandatory):** ${beadsStatus}`,
+      `- **Stringer (mandatory):** ${stringerStatus}`,
+      `- **Alexandria (mandatory):** ${alexandriaStatus}`,
       `- **Trello MCP:** ${trelloStatus}`,
-      `- **Stringer:** ${stringerStatus}`,
       `- **APM:** ${apmStatus}`,
       `- **Docker:** ${dockerStatus === "available" ? "✓ available (daemon running)" : dockerStatus === "daemon not running" ? "⚠ Docker installed but daemon not running — start Docker Desktop" : "⚠ Docker not found — install Docker Desktop"}`,
       `- **Claude Code:** ${versionStatus}`,
       "",
-      dry_run
-        ? "_Dry run — no changes were made. Call again without dry_run to apply fixes._"
-        : missingAllow.length === 0 && missingDeny.length === 0
-          ? "_Nothing to update — installation is fully configured._"
-          : "**Allowlist updated.** Restart Claude Code to apply the new permissions.",
+      blockingFailures.length > 0
+        ? `**${blockingFailures.length} mandatory dependency check(s) failed — see below.**`
+        : (dry_run
+          ? "_Dry run — no changes were made. Call again without dry_run to apply fixes._"
+          : missingAllow.length === 0 && missingDeny.length === 0
+            ? "_Nothing to update — installation is fully configured._"
+            : "**Allowlist updated.** Restart Claude Code to apply the new permissions."),
+      blockingSection,
     ].join("\n");
 
     return { content: [{ type: "text", text: report }] };

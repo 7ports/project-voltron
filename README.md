@@ -68,9 +68,9 @@ The setup script:
 
 **Restart Claude Code** after running setup to load the new MCP server and allowlist.
 
-### Optional: beads dependency tracker
+### Required: beads dependency tracker
 
-The scrum-master uses [beads](https://github.com/gastownhall/beads) for dependency-aware task orchestration:
+The scrum-master uses [beads](https://github.com/gastownhall/beads) for dependency-aware task orchestration. **This is mandatory** as of v3.4.0 — agents will refuse to dispatch work plans without a working `bd` CLI:
 
 ```bash
 npm install -g @beads/bd

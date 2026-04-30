@@ -15,5 +15,5 @@
     }
   ],
   "overall_notes": "Critical pattern established: pre-compute all file edits as a Python script in the main session, give the agent a single 'run this script and commit' task. Agents that explore before acting exhaust turns; agents given a ready-to-run script succeed in 5-8 turns. The 'Anchor Pre-computation' rule added to scrum-master template captures this. Max turns bridge bug still present — keep max_turns at 15-20 for script-run tasks, never 30. Docker agents cannot push to GitHub (no SSH/token) — always push from host after commit.",
-  "processed": false
+  "processed": true
 }

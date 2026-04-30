@@ -21,5 +21,5 @@
     }
   ],
   "overall_notes": "Beads embedded mode failed on Windows (CGO dependency missing — error: 'embedded Dolt requires CGO; use server mode (bd init --mode server)'). Fell back to Voltron progress tracking only. Should add a Windows-specific note in the beads guide. Parallelization saved real wall time: 4 agents ran simultaneously, then 2 more — total Docker wall time ~5 min for 7 tasks. Image-build-skipped each time (cached) is a big win.</overall_notes>\n</invoke>",
-  "processed": false
+  "processed": true
 }

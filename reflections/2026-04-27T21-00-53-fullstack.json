@@ -32,5 +32,5 @@
     }
   ],
   "overall_notes": "Voltron mid-session updates v3.2.0 → v3.3.2 → v3.3.3 were seamless once stale containers (from before the update) were stopped. The new polling cadence in v3.3.x scrum-master template eliminated the wait-and-poll guesswork from earlier. Auto-updated agent .md files appeared as unstaged changes — was careful to exclude them from the feature commit. Tools touched: bd, gh, docker, npm, vitest. Pattern observed: orchestrator handling git push + gh pr create directly is consistently faster than dispatching a Docker agent for the same trivial operation (cold-start dominates).",
-  "processed": false
+  "processed": true
 }

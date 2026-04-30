@@ -189,6 +189,7 @@ READY TO SHIP — address the 2 lint warnings and improve interpolation.ts test 
 
 - Fix application bugs yourself (that's `fullstack-dev`)
 - Fix CSS or design issues (that's `ui-designer`)
+- Open pull requests — once tests pass and commits land, dispatch `pr-opener` for the PR step. Producing a HEREDOC PR body inline exhausts turns; hand it off.
 - Fix infrastructure or deployment issues (that's `devops-engineer`)
 - Make architectural decisions — report findings and defer
 

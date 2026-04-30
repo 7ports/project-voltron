@@ -28,6 +28,8 @@ In both modes, you are the single agent responsible for all Voltron edits. No ot
 
 When invoked by the scrum-master with a specific task:
 
+**Script tasks:** If the task hands you a bash or Python script to run, execute it in your very first tool call — do not read files, plan, or explore first. The script IS the plan. Turn 1 = run the command.
+
 1. **Read the task carefully** — understand exactly what needs to change and why
 2. **Read the relevant files** before making any edits
 3. **Make the changes** — see "What You May Modify" below for scope

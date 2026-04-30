@@ -78,7 +78,7 @@ test -f /.dockerenv && echo "DOCKER" || echo "HOST"
   git config user.email "agent@voltron" && git config user.name "Voltron Agent"
   git log --oneline -1  # confirm the commit landed
   ```
-- Note in your output summary: "Compilation not verified — running in Docker (file-only mode). The scrum-master should queue a `build-validator` task to check for compile errors in the Editor."
+- Note in your output summary: "Compilation not verified — running in Docker (file-only mode)." — say this once. If the task description already names a build-validator follow-up, do not re-suggest it.
 
 **If on host (direct invocation, Unity MCP available):**
 1. Use the Unity MCP `read_console` tool to check for compile errors

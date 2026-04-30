@@ -1923,20 +1923,38 @@ server.tool(
       // No ~/.gitconfig — agents must set git identity manually if they need to commit
     }
 
-    // v3.3.2: auth comes purely from CLAUDE_CODE_OAUTH_TOKEN env var.
-    // We deliberately do NOT mount ~/.claude or ~/.claude.json. Smoke testing on 2026-04-27
-    // showed ~/.claude.json was the silent-hang root cause: it contains host-specific MCP
-    // server registrations (e.g. `node "C:\\Users\\..."`) that claude tries to spawn at
-    // startup and stalls for 60-90s waiting for. Container is headless (`-p`) with the full
-    // task in /tmp/task.md, so no MCP config is needed. Same 5-line prompt:
-    //   with ~/.claude.json:ro mounted -> ~90s (often hangs)
-    //   without that mount             -> ~4s consistently
+    // v3.4.1: Auth path = narrow OAuth credentials mount + env-var passthrough.
+    // History:
+    //   v2.x   mounted full ~/.claude + ~/.claude.json  (Max-plan OAuth worked)
+    //   v3.3.2 dropped BOTH mounts to fix a 60-90s hang caused by ~/.claude.json
+    //          containing Windows-pathed MCP server registrations the Linux container
+    //          tried to spawn. That fix was correct — but it also killed Max-plan auth
+    //          for users without CLAUDE_CODE_OAUTH_TOKEN set, making Voltron unusable.
+    //   v3.4.1 restores Option-2 auth narrowly: mount only ~/.claude/.credentials.json
+    //          (the OAuth token file), keep ~/.claude.json mount DROPPED.
+    // On Windows the credentials file only exists if the user has run `claude setup-token`
+    // (Windows otherwise stores OAuth in the Credential Manager, which the Linux container
+    // can't reach). Mount is conditional on file existence; falls back to env-var auth.
+    const credsPath = path.join(homeDir, ".claude", ".credentials.json");
+    let credsMount = [];
+    try {
+      await fs.access(credsPath);
+      credsMount = ["-v", `${credsPath}:/home/voltron/.claude/.credentials.json:ro`];
+    } catch {
+      // No ~/.claude/.credentials.json — auth must come from env vars
+    }
+
     const authEnvArgs = [];
     if (process.env.CLAUDE_CODE_OAUTH_TOKEN) {
       authEnvArgs.push("-e", `CLAUDE_CODE_OAUTH_TOKEN=${process.env.CLAUDE_CODE_OAUTH_TOKEN}`);
     }
     if (process.env.ANTHROPIC_API_KEY) {
       authEnvArgs.push("-e", `ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY}`);
+    }
+
+    if (credsMount.length === 0 && authEnvArgs.length === 0) {
+      await fs.unlink(tmpFile).catch(() => {});
+      return { content: [{ type: "text", text: "Error: No auth available for Docker agent. Either run `claude setup-token` (creates ~/.claude/.credentials.json which will be mounted), or set CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY in your environment." }] };
     }
 
     // Named container enables `docker logs <name> -f` from a second terminal while running.
@@ -1949,6 +1967,7 @@ server.tool(
       ...authEnvArgs,
       "-v", `${cwd}:/workspace`,
       ...gitConfigMount,        // mount ~/.gitconfig if present so git commits work
+      ...credsMount,            // mount ~/.claude/.credentials.json:ro for Max-plan OAuth
       "-v", `${tmpFile}:/tmp/task.md:ro`,
       "voltron-agent",
       "-c",
@@ -2083,17 +2102,26 @@ server.tool(
     const gitConfigPath = path.join(homeDir, ".gitconfig");
     let gitConfigMount = [];
     try { await fs.access(gitConfigPath); gitConfigMount = ["-v", `${gitConfigPath}:/home/voltron/.gitconfig:ro`]; } catch { /* no gitconfig */ }
-    // v3.3.2: auth comes purely from CLAUDE_CODE_OAUTH_TOKEN env var.
-    // We deliberately do NOT mount ~/.claude or ~/.claude.json. Smoke testing on 2026-04-27
-    // showed ~/.claude.json was the silent-hang root cause: it contains host-specific MCP
-    // server registrations (e.g. `node "C:\\Users\\..."`) that claude tries to spawn at
-    // startup and stalls for 60-90s waiting for. Container is headless (`-p`) with the full
-    // task in /tmp/task.md, so no MCP config is needed. Same 5-line prompt:
-    //   with ~/.claude.json:ro mounted -> ~90s (often hangs)
-    //   without that mount             -> ~4s consistently
+    // v3.4.1: Auth path = narrow OAuth credentials mount + env-var passthrough.
+    // See run_agent_in_docker for full rationale. Mount ~/.claude/.credentials.json:ro
+    // (the Max-plan OAuth token), keep ~/.claude.json mount DROPPED (its Windows-pathed
+    // MCP entries caused the v3.3.2 hang). Conditional on file existence — falls back
+    // to env-var auth on Windows where credentials live in the Credential Manager.
+    const credsPath = path.join(homeDir, ".claude", ".credentials.json");
+    let credsMount = [];
+    try {
+      await fs.access(credsPath);
+      credsMount = ["-v", `${credsPath}:/home/voltron/.claude/.credentials.json:ro`];
+    } catch { /* no credentials file — use env vars */ }
+
     const authEnvArgs = [];
     if (process.env.CLAUDE_CODE_OAUTH_TOKEN) authEnvArgs.push("-e", `CLAUDE_CODE_OAUTH_TOKEN=${process.env.CLAUDE_CODE_OAUTH_TOKEN}`);
     if (process.env.ANTHROPIC_API_KEY) authEnvArgs.push("-e", `ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY}`);
+
+    if (credsMount.length === 0 && authEnvArgs.length === 0) {
+      await fs.unlink(tmpFile).catch(() => {});
+      return { content: [{ type: "text", text: "Error: No auth available for Docker agent. Either run `claude setup-token` (creates ~/.claude/.credentials.json which will be mounted), or set CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY in your environment." }] };
+    }
 
     const dockerArgs = [
       "run", "--rm",
@@ -2102,6 +2130,7 @@ server.tool(
       ...authEnvArgs,
       "-v", `${cwd}:/workspace`,
       ...gitConfigMount,
+      ...credsMount,
       "-v", `${tmpFile}:/tmp/task.md:ro`,
       "voltron-agent",
       "-c",
@@ -2234,7 +2263,7 @@ server.tool(
       if (elapsedSeconds === null || elapsedSeconds < 45) {
         phaseHint = `\n⏳ **Spin-up phase** — container initializing (normal for first 10–30s). Poll again in ~10s.`;
       } else {
-        phaseHint = `\n⚠ **No output after ${elapsedSeconds}s** — container may be waiting for auth or hung. Verify CLAUDE_CODE_OAUTH_TOKEN is set. Kill: \`docker kill ${container_name}\``;
+        phaseHint = `\n⚠ **No output after ${elapsedSeconds}s** — container may be waiting for auth or hung. Verify ~/.claude/.credentials.json exists (run \`claude setup-token\`) or CLAUDE_CODE_OAUTH_TOKEN is set. Kill: \`docker kill ${container_name}\``;
       }
     } else if (status === "running" && elapsedSeconds !== null && elapsedSeconds > 600) {
       phaseHint = `\n⚠ **Running ${Math.floor(elapsedSeconds / 60)}m** — if no new output for several polls, agent may be stalled. Kill: \`docker kill ${container_name}\``;

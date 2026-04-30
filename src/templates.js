@@ -7752,16 +7752,32 @@ export const VOLTRON_RUN_SCRIPT =
   "\n" +
   "docker build -t voltron-agent -f Dockerfile.voltron . 2>/dev/null\n" +
   "\n" +
-  "# Build env passthrough for auth (OAuth token or API key)\n" +
+  "# v3.4.1: Auth path = narrow OAuth credentials mount + env-var passthrough.\n" +
+  "# DO NOT mount full ~/.claude or ~/.claude.json — the latter contains host-pathed\n" +
+  "# MCP server registrations that hang the Linux container at startup (60-90s+).\n" +
+  "# Mount ONLY ~/.claude/.credentials.json (the OAuth token file) when present.\n" +
+  "# On Windows, run `claude setup-token` once to materialize this file (otherwise\n" +
+  "# auth lives in Windows Credential Manager and the Linux container can't reach it).\n" +
   "AUTH_ARGS=()\n" +
   '[ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] && AUTH_ARGS+=(-e "CLAUDE_CODE_OAUTH_TOKEN=$CLAUDE_CODE_OAUTH_TOKEN")\n' +
   '[ -n "$ANTHROPIC_API_KEY" ] && AUTH_ARGS+=(-e "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY")\n' +
   "\n" +
+  "CREDS_MOUNT=()\n" +
+  '[ -f "$HOME/.claude/.credentials.json" ] && CREDS_MOUNT+=(-v "$HOME/.claude/.credentials.json:/home/voltron/.claude/.credentials.json:ro")\n' +
+  "\n" +
+  "if [ ${#AUTH_ARGS[@]} -eq 0 ] && [ ${#CREDS_MOUNT[@]} -eq 0 ]; then\n" +
+  "  echo \"Error: No auth available. Run 'claude setup-token' (creates ~/.claude/.credentials.json) or set CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY.\" >&2\n" +
+  "  exit 1\n" +
+  "fi\n" +
+  "\n" +
+  "GIT_MOUNT=()\n" +
+  '[ -f "$HOME/.gitconfig" ] && GIT_MOUNT+=(-v "$HOME/.gitconfig:/home/voltron/.gitconfig:ro")\n' +
+  "\n" +
   "docker run --rm -it \\\n" +
   '  "${AUTH_ARGS[@]}" \\\n' +
   '  -v "$(pwd):/workspace" \\\n' +
-  '  -v "$HOME/.claude:/home/voltron/.claude" \\\n' +
-  '  -v "$HOME/.claude.json:/home/voltron/.claude.json:ro" \\\n' +
+  '  "${CREDS_MOUNT[@]}" \\\n' +
+  '  "${GIT_MOUNT[@]}" \\\n' +
   "  voltron-agent \\\n" +
   "  --dangerously-skip-permissions \\\n" +
   '  "$@"';

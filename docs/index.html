@@ -296,7 +296,7 @@
       <h1>Project Voltron</h1>
       <p>Specialized agent teams for Claude Code, served via MCP. Scaffold Unity, web, mobile, or general projects with battle-tested subagent templates — Alexandria-aware, self-improving, and auto-updating.</p>
       <div class="badge-row">
-        <span class="badge">v3.4.1</span>
+        <span class="badge">v3.5.0</span>
         <span class="badge">MCP Server</span>
         <span class="badge">Unity</span>
         <span class="badge">Web / Fullstack</span>
@@ -558,6 +558,29 @@
           <p style="color:#8b949e;font-size:0.85rem">Owns all prose documentation — README, CHANGELOG, ADRs, API reference, Mermaid diagrams. Dispatches <code>adr-writer</code>, <code>api-doc-generator</code>, and <code>diagram-maker</code>. Writes end-of-session recaps.</p>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- Dynamic Model Selection -->
+  <section style="background:#161b22;padding:3rem 0;border-top:1px solid #21262d">
+    <div class="container">
+      <h2>Dynamic Model Selection <span class="badge" style="font-size:0.7rem;vertical-align:middle">v3.5 new</span></h2>
+      <p class="section-sub">Voltron assigns each agent a default model tier. Override per-invocation when higher quality or speed is needed.</p>
+      <div class="tier-grid">
+        <div class="tier-card" style="border-top:3px solid #a371f7">
+          <h3 style="color:#a371f7">Opus <span class="tier-badge">Coordinators &amp; Planners · 5 agents</span></h3>
+          <p style="color:#8b949e;font-size:0.85rem">Highest capability. Used by <code>scrum-master</code>, <code>project-planner</code>, <code>code-analyst</code>, <code>doc-writer</code>, and <code>reflection-processor</code>. Reserved for orchestration and complex reasoning.</p>
+        </div>
+        <div class="tier-card" style="border-top:3px solid #58a6ff">
+          <h3 style="color:#58a6ff">Sonnet <span class="tier-badge">Sub-managers &amp; Specialists · 22 agents</span></h3>
+          <p style="color:#8b949e;font-size:0.85rem">High capability at moderate cost. Used by domain sub-managers (<code>fullstack-dev</code>, <code>mobile-dev</code>, <code>devops-engineer</code>, etc.) and platform specialists (<code>ios-dev</code>, <code>android-dev</code>, etc.).</p>
+        </div>
+        <div class="tier-card" style="border-top:3px solid #3fb950">
+          <h3 style="color:#3fb950">Haiku <span class="tier-badge">Micro-agents · 39 agents</span></h3>
+          <p style="color:#8b949e;font-size:0.85rem">Fast and cost-efficient. Used for focused single-verb tasks: Inspect, Write, Validate, and Publish layer micro-agents that each do one thing on one file or API.</p>
+        </div>
+      </div>
+      <p style="color:#8b949e;font-size:0.85rem;margin-top:1.5rem"><strong style="color:#58a6ff">Override per-invocation:</strong> Pass <code>model: "sonnet"</code> or <code>model: "opus"</code> to <code>run_agent_in_docker</code> / <code>start_agent_in_docker</code> to retry a failed or low-quality micro-agent at a higher tier. Sub-managers are instructed to do this automatically when a micro-agent output is unsatisfactory. The <code>list_templates</code> tool shows each agent's default model tier.</p>
     </div>
   </section>
 
@@ -846,7 +869,7 @@ node scripts/setup.js</code></pre>
     <div class="container">
       <p>
         <a href="https://github.com/7ports/project-voltron">GitHub</a> &middot;
-        v3.4.1 &middot;
+        v3.5.0 &middot;
         MIT License &middot;
         Built by <a href="https://github.com/7ports">7ports</a>
       </p>

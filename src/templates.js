@@ -16,6 +16,7 @@ export const TEMPLATES = {
     category: "project-config",
     destination: "CLAUDE.md",
     tags: ["unity"],
+    model: "opus",
     content: `# CLAUDE.md — Unity Project Context
 
 > This file is automatically loaded by Claude Code at session start.
@@ -281,6 +282,7 @@ If the session included any tool setup, API integration, or platform-specific di
     category: "project-config",
     destination: "CLAUDE.md",
     tags: ["web"],
+    model: "opus",
     content: `# CLAUDE.md — Web Project Context
 
 > This file is automatically loaded by Claude Code at session start.
@@ -540,6 +542,7 @@ Credentials (\`TRELLO_API_KEY\`, \`TRELLO_TOKEN\`) live in your shell environmen
     category: "project-config",
     destination: "CLAUDE.md",
     tags: ["general"],
+    model: "opus",
     content: `# CLAUDE.md — Project Context
 
 > This file is automatically loaded by Claude Code at session start.
@@ -715,6 +718,7 @@ If the session included any tool setup, API integration, or platform-specific di
     category: "agent",
     destination: ".claude/agents/scrum-master.md",
     tags: ["core"],
+    model: "opus",
     content: `---
 name: scrum-master
 description: Project coordinator that reads backlogs and project plans, breaks work into agent-sized tasks, and assigns them to the appropriate specialist agents. Invoke to plan a sprint, decompose a feature, or triage a backlog. This agent never implements — it only plans and delegates.
@@ -1256,6 +1260,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/project-planner.md",
     tags: ["core"],
+    model: "opus",
     content: `---
 name: project-planner
 description: Researches tech stacks, designs architecture, defines data models and API contracts, and produces a comprehensive project plan document. Run before scrum-master to create the blueprint it decomposes into tasks. This agent never implements — it only researches and designs.
@@ -1489,6 +1494,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/scene-architect.md",
     tags: ["unity"],
+    model: "opus",
     content: `---
 name: scene-architect
 description: Sub-manager for Unity scene composition. Operates Unity Editor via coplay-mcp tools (host-only — cannot run in Docker; must be invoked directly from the chat window). Composes scene operations (hierarchy, GameObjects, prefabs, transforms, components, UI, materials) and dispatches csharp-dev for any C# script work that arises. Owns the build-runner / Play-Mode validation gate. Never writes scripts itself — always dispatches.
@@ -1593,6 +1599,11 @@ Always end your response with:
 - A summary of every GameObject/prefab touched
 - The current state of the hierarchy (relevant portion)
 - Any missing references or setup steps the user should handle manually
+
+## Model Tier Override
+
+This sub-manager runs as **Opus** by default for maximum orchestration quality. Micro-agents it dispatches default to **Haiku**. If a Haiku micro-agent fails or produces low-quality output, retry with a higher tier by passing \`model: "sonnet"\` or \`model: "opus"\` to \`run_agent_in_docker\` / \`start_agent_in_docker\`.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -1623,6 +1634,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/csharp-dev.md",
     tags: ["unity"],
+    model: "opus",
     content: `---
 name: csharp-dev
 description: Sub-manager for Unity C# script work. Composes Tier-3 micro-agent chains for MonoBehaviours, ScriptableObjects, editor tools, gameplay systems, interfaces, and utilities. Owns the build-runner/test-runner validation gate (dispatches build-validator on the host for Unity-Editor-side compile checks). Never writes scripts itself — always dispatches micro-agents and verifies their output.
@@ -1812,6 +1824,10 @@ public class EnemyConfig : ScriptableObject
 }
 \`\`\`
 
+## Model Tier Override
+
+This sub-manager runs as **Opus** by default for maximum orchestration quality. Micro-agents it dispatches default to **Haiku**. If a Haiku micro-agent fails or produces low-quality output, retry with a higher tier by passing \`model: "sonnet"\` or \`model: "opus"\` to \`run_agent_in_docker\` / \`start_agent_in_docker\`.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -1848,6 +1864,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/shader-artist.md",
     tags: ["unity"],
+    model: "sonnet",
     content: `---
 name: shader-artist
 description: Handles Unity materials, shaders, Shader Graph, VFX Graph, and render pipeline features. Invoke for visual tasks — creating or modifying materials, writing HLSL shaders, setting up post-processing, configuring render features, or troubleshooting visual artifacts. Knows URP, HDRP, and Built-in pipeline differences.
@@ -1989,6 +2006,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/build-validator.md",
     tags: ["unity"],
+    model: "sonnet",
     content: `---
 name: build-validator
 description: Monitors Unity console output, validates compile state, runs Play Mode smoke tests, and checks build health. Invoke after any code or scene changes to verify nothing is broken, or explicitly to run a validation pass before committing. This agent is read-only by default — it observes and reports rather than making changes. Must be invoked directly from the chat window — cannot run in Docker.
@@ -2165,6 +2183,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/asset-manager.md",
     tags: ["unity"],
+    model: "sonnet",
     content: `---
 name: asset-manager
 description: Manages Unity project organization — folder structure, asset import settings, naming conventions, and asset hygiene. Invoke when importing new assets, reorganizing folders, setting texture/audio/mesh import settings, cleaning up unused assets, or auditing project structure. Does not modify scene content or scripts.
@@ -2327,6 +2346,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/fullstack-dev.md",
     tags: ["web"],
+    model: "opus",
     content: `---
 name: fullstack-dev
 description: Sub-manager for React/TypeScript + Node/Express work. Composes Tier-3 micro-agent chains for components, hooks, API routes, data fetching, state management, WebSocket/SSE connections, and full-stack features. Owns the typecheck-runner/lint-runner/test-runner validation gate. Never writes code itself — always dispatches micro-agents and verifies their output.
@@ -2490,6 +2510,9 @@ Report:
 - How to test the changes locally
 - **If the change affects visible UI:** explicitly note "📸 Visual change — screenshot verification recommended" so the scrum-master knows to capture before/after screenshots
 
+## Model Tier Override
+
+This sub-manager runs as **Opus** by default for maximum orchestration quality. Micro-agents it dispatches default to **Haiku**. If a Haiku micro-agent fails or produces low-quality output, retry with a higher tier by passing \`model: "sonnet"\` or \`model: "opus"\` to \`run_agent_in_docker\` / \`start_agent_in_docker\`.
 
 ## Validation & Handoff
 
@@ -2527,6 +2550,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/devops-engineer.md",
     tags: ["web"],
+    model: "opus",
     content: `---
 name: devops-engineer
 description: Sub-manager for infrastructure, CI/CD, and deployment work. Composes Tier-3 micro-agent chains for Terraform modules, GitHub Actions workflows, Dockerfiles, deployment targets (Fly.io, Vercel, AWS, etc.), env/secret management, and monitoring config. Owns the build-runner/security-scanner validation gate. Never edits config or infrastructure files itself — always dispatches micro-agents and verifies their output.
@@ -2716,6 +2740,11 @@ Report:
 - Any manual steps required (DNS, API keys, secret provisioning)
 - How to verify the deployment works
 - Cost implications of infrastructure changes
+
+## Model Tier Override
+
+This sub-manager runs as **Opus** by default for maximum orchestration quality. Micro-agents it dispatches default to **Haiku**. If a Haiku micro-agent fails or produces low-quality output, retry with a higher tier by passing \`model: "sonnet"\` or \`model: "opus"\` to \`run_agent_in_docker\` / \`start_agent_in_docker\`.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -2746,6 +2775,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/ui-designer.md",
     tags: ["web"],
+    model: "sonnet",
     content: `---
 name: ui-designer
 description: Handles CSS architecture, responsive design, visual themes, animations, PWA configuration, and accessibility. Invoke for layout work, mobile-first responsive design, dark mode themes, glassmorphism effects, design token systems, PWA manifest setup, and WCAG 2.1 AA compliance.
@@ -2940,6 +2970,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/qa-tester.md",
     tags: ["web"],
+    model: "opus",
     content: `---
 name: qa-tester
 description: Sub-manager for testing, auditing, and quality gates. Composes Tier-3 micro-agent chains for unit/integration/E2E tests (test-writer, test-runner), accessibility (accessibility-auditor), performance (lighthouse-runner), bundle size (bundle-sizer), and security (security-scanner). Interprets results into a pass/fail verdict. Never writes tests or runs validators itself — always dispatches micro-agents.
@@ -3163,6 +3194,9 @@ Report:
 - Summary of blockers vs. warnings
 - Clear recommendation: READY TO SHIP or NOT READY (with reasons)
 
+## Model Tier Override
+
+This sub-manager runs as **Opus** by default for maximum orchestration quality. Micro-agents it dispatches default to **Haiku**. If a Haiku micro-agent fails or produces low-quality output, retry with a higher tier by passing \`model: "sonnet"\` or \`model: "opus"\` to \`run_agent_in_docker\` / \`start_agent_in_docker\`.
 
 ## Validation & Handoff
 
@@ -3202,6 +3236,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/reflection-processor.md",
     tags: ["internal"],
+    model: "opus",
     content: `---
 name: reflection-processor
 description: Voltron's self-modification agent. Handles all edits to Project Voltron — agent templates, Dockerfile, MCP server code, docs, and scripts. Invoked by scrum-master for any Voltron improvement, and by CI for reflection processing.
@@ -3360,6 +3395,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/researcher.md",
     tags: ["core"],
+    model: "opus",
     content: `---
 name: researcher
 description: Deep research specialist. Finds any information — technical docs, APIs, pricing, competitors, papers, legal text, community consensus — using web search, live page navigation, and structured extraction. Invoke when you need information gathered before implementation begins.
@@ -3570,6 +3606,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/mobile-dev.md",
     tags: ["mobile"],
+    model: "opus",
     content: `---
 name: mobile-dev
 description: Sub-manager for React Native cross-platform mobile work. Composes Tier-3 micro-agent chains for screens, navigation, state, native modules, and platform-specific adaptations across iOS and Android. Owns the typecheck-runner/lint-runner/test-runner validation gate. Never writes code itself — always dispatches micro-agents and verifies their output.
@@ -3749,6 +3786,9 @@ npx eas build --platform all --profile preview  # Test builds
 - **Don't use \`console.log\` in production** — strip with Babel plugin or use a proper logger
 - **Don't skip TypeScript types** — no \`any\`, use \`unknown\` + type guards at boundaries
 
+## Model Tier Override
+
+This sub-manager runs as **Opus** by default for maximum orchestration quality. Micro-agents it dispatches default to **Haiku**. If a Haiku micro-agent fails or produces low-quality output, retry with a higher tier by passing \`model: "sonnet"\` or \`model: "opus"\` to \`run_agent_in_docker\` / \`start_agent_in_docker\`.
 
 ## Validation & Handoff
 
@@ -3788,6 +3828,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/ios-dev.md",
     tags: ["mobile"],
+    model: "sonnet",
     content: `---
 name: ios-dev
 description: Sub-manager for native iOS (Swift / SwiftUI) work. Composes Tier-3 micro-agent chains for views, view-models, models, frameworks, Xcode configuration, signing, and App Store integration. Owns the build-runner/test-runner validation gate. Never writes code itself — always dispatches micro-agents and verifies their output.
@@ -3997,6 +4038,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/android-dev.md",
     tags: ["mobile"],
+    model: "sonnet",
     content: `---
 name: android-dev
 description: Sub-manager for native Android (Kotlin / Jetpack Compose) work. Composes Tier-3 micro-agent chains for Composables, ViewModels, data layer, Gradle configuration, signing, and Play Store integration. Owns the build-runner/test-runner validation gate. Never writes code itself — always dispatches micro-agents and verifies their output.
@@ -4257,6 +4299,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/mobile-ui-designer.md",
     tags: ["mobile"],
+    model: "sonnet",
     content: `---
 name: mobile-ui-designer
 description: Mobile UI/UX specialist. Designs and implements mobile interfaces that respect platform conventions — HIG for iOS, Material Design 3 for Android. Handles theming, accessibility, responsive layouts, and dark mode.
@@ -4441,6 +4484,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/mobile-qa-tester.md",
     tags: ["mobile"],
+    model: "sonnet",
     content: `---
 name: mobile-qa-tester
 description: Mobile QA specialist. Writes and runs automated tests for iOS and Android apps — unit tests, UI tests with XCUITest/Espresso/Detox, performance profiling, and accessibility audits.
@@ -4712,6 +4756,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/app-store-publisher.md",
     tags: ["mobile"],
+    model: "sonnet",
     content: `---
 name: app-store-publisher
 description: App store release specialist. Automates iOS App Store and Google Play Store deployments using Fastlane. Handles signing, build numbers, metadata, screenshots, and release pipelines.
@@ -5001,6 +5046,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/dep-reader.md",
     tags: ["micro", "inspect", "core"],
+    model: "haiku",
     content: `---
 name: dep-reader
 description: Read-only dependency inspector. Reads package.json, Cargo.toml, go.mod, requirements.txt, and other manifests to report current dependencies and versions. Never modifies files.
@@ -5064,6 +5110,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/route-lister.md",
     tags: ["micro", "inspect", "web"],
+    model: "haiku",
     content: `---
 name: route-lister
 description: Read-only API route inspector. Scans the codebase for all registered HTTP routes and outputs a structured route table with method, path, handler, and file location. Never modifies files.
@@ -5121,6 +5168,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/schema-inspector.md",
     tags: ["micro", "inspect", "core"],
+    model: "haiku",
     content: `---
 name: schema-inspector
 description: Read-only schema inspector. Reads Prisma schemas, SQL migrations, TypeScript interfaces, and Zod schemas to produce a structured data model summary. Never modifies files.
@@ -5181,6 +5229,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/log-tailer.md",
     tags: ["micro", "inspect", "core"],
+    model: "haiku",
     content: `---
 name: log-tailer
 description: Read-only log reader. Reads recent log output from .voltron/logs/, application log files, and stderr captures. Summarizes errors, warnings, and key events. Never modifies files.
@@ -5243,6 +5292,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/test-lister.md",
     tags: ["micro", "inspect", "core"],
+    model: "haiku",
     content: `---
 name: test-lister
 description: Read-only test inventory agent. Scans the codebase for all test files and extracts test suite and case names. Reports coverage gaps. Never modifies files.
@@ -5303,6 +5353,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/lint-reader.md",
     tags: ["micro", "inspect", "core"],
+    model: "haiku",
     content: `---
 name: lint-reader
 description: Read-only lint reporter. Runs the project linter in check-only mode and reports all issues without making any fixes. Never modifies files.
@@ -5366,6 +5417,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/type-error-reader.md",
     tags: ["micro", "inspect", "web"],
+    model: "haiku",
     content: `---
 name: type-error-reader
 description: Read-only TypeScript type-check reporter. Runs tsc --noEmit and summarizes all type errors grouped by file. Never modifies files.
@@ -5428,6 +5480,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/git-state-reader.md",
     tags: ["micro", "inspect", "core"],
+    model: "haiku",
     content: `---
 name: git-state-reader
 description: Read-only git state reporter. Reads git log, status, and diff to produce a concise branch state summary including uncommitted changes and commits ahead/behind origin. Never modifies the repo.
@@ -5489,6 +5542,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/api-shape-probe.md",
     tags: ["micro", "inspect", "web"],
+    model: "haiku",
     content: `---
 name: api-shape-probe
 description: Read-only API endpoint inspector. Fetches a live endpoint and documents its response shape, status codes, and headers. Infers TypeScript types. Never modifies files.
@@ -5558,6 +5612,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/bundle-sizer.md",
     tags: ["micro", "inspect", "web"],
+    model: "haiku",
     content: `---
 name: bundle-sizer
 description: Read-only bundle size reporter. Analyzes build output to report chunk sizes, entry points, and large dependencies. Flags files exceeding size thresholds. Never modifies files.
@@ -5621,6 +5676,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/dead-code-finder.md",
     tags: ["micro", "inspect", "core"],
+    model: "haiku",
     content: `---
 name: dead-code-finder
 description: Read-only dead code detector. Finds unused exports, unimported files, and unreachable code paths. Reports candidates for removal — never deletes anything.
@@ -5685,6 +5741,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/route-adder.md",
     tags: ["micro", "write", "web"],
+    model: "haiku",
     content: `---
 name: route-adder
 description: Adds a single new API route handler to an existing router file. One route per invocation. Writes handler, validates it compiles, and reports the file path and line number.
@@ -5736,6 +5793,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/component-scaffolder.md",
     tags: ["micro", "write", "web"],
+    model: "haiku",
     content: `---
 name: component-scaffolder
 description: Scaffolds a single new UI component file with a test stub. Follows the project's existing component patterns exactly. One component per invocation.
@@ -5786,6 +5844,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/test-writer.md",
     tags: ["micro", "write", "core"],
+    model: "haiku",
     content: `---
 name: test-writer
 description: Writes unit or integration tests for a specified source file or function. Follows the project's existing test framework and patterns. Does not run tests — pair with test-runner.
@@ -5837,6 +5896,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/migration-writer.md",
     tags: ["micro", "write", "web"],
+    model: "haiku",
     content: `---
 name: migration-writer
 description: Writes a single database migration file with both up and down operations. Supports Prisma, Knex, Alembic, EF Core, and raw SQL. Does not run the migration.
@@ -5892,6 +5952,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/config-editor.md",
     tags: ["micro", "write", "core"],
+    model: "haiku",
     content: `---
 name: config-editor
 description: Makes targeted edits to a single configuration file (JSON, YAML, TOML, .env). Surgical changes only — does not reformat or rewrite unrelated sections.
@@ -5946,6 +6007,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/fixture-writer.md",
     tags: ["micro", "write", "core"],
+    model: "haiku",
     content: `---
 name: fixture-writer
 description: Writes test fixture files (JSON, TypeScript objects, mock data) for one domain entity per invocation. Creates minimal, fully-populated, and edge-case variants.
@@ -5995,6 +6057,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/type-definer.md",
     tags: ["micro", "write", "web"],
+    model: "haiku",
     content: `---
 name: type-definer
 description: Adds TypeScript type definitions for a single entity or API response shape. Writes interfaces, types, or Zod schemas following the project's existing type conventions.
@@ -6044,6 +6107,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/env-var-setter.md",
     tags: ["micro", "write", "core"],
+    model: "haiku",
     content: `---
 name: env-var-setter
 description: Adds a new environment variable to .env.example, .env.local, and env validation code. Adds documentation. Never writes real secret values.
@@ -6097,6 +6161,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/dockerfile-editor.md",
     tags: ["micro", "write", "core"],
+    model: "haiku",
     content: `---
 name: dockerfile-editor
 description: Makes a single targeted edit to a Dockerfile or docker-compose.yml. Adds a layer, updates a base image, adds a service, or edits environment configuration. One change per invocation.
@@ -6151,6 +6216,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/yaml-patcher.md",
     tags: ["micro", "write", "core"],
+    model: "haiku",
     content: `---
 name: yaml-patcher
 description: Patches a YAML configuration file with a surgical, targeted change. Supports GitHub Actions workflows, Kubernetes manifests, Helm values, and any YAML config. One change per invocation.
@@ -6201,6 +6267,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/readme-section-writer.md",
     tags: ["micro", "write", "core"],
+    model: "haiku",
     content: `---
 name: readme-section-writer
 description: Writes or updates a single named section in README.md. Follows the existing document tone and formatting. Does not touch other sections.
@@ -6258,6 +6325,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/typecheck-runner.md",
     tags: ["micro", "validate", "web"],
+    model: "haiku",
     content: `---
 name: typecheck-runner
 description: Runs tsc --noEmit and reports pass/fail with full error output. The authoritative TypeScript validation step — always pair with any write-layer agent that touches .ts files.
@@ -6311,6 +6379,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/test-runner.md",
     tags: ["micro", "validate", "core"],
+    model: "haiku",
     content: `---
 name: test-runner
 description: Runs the project's test suite and reports pass/fail/skip counts with failure details. Does not fix failures — pair with test-writer for fixes.
@@ -6376,6 +6445,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/lint-runner.md",
     tags: ["micro", "validate", "core"],
+    model: "haiku",
     content: `---
 name: lint-runner
 description: Runs the project's linter and reports all issues. Does not auto-fix. Pair with the implementing agent to resolve issues.
@@ -6437,6 +6507,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/build-runner.md",
     tags: ["micro", "validate", "core"],
+    model: "haiku",
     content: `---
 name: build-runner
 description: Runs the project's build command and reports success or failure with full output. Does not fix build errors — pair with the appropriate write-layer agent.
@@ -6497,6 +6568,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/schema-validator.md",
     tags: ["micro", "validate", "web"],
+    model: "haiku",
     content: `---
 name: schema-validator
 description: Validates a data payload against a JSON Schema, Zod schema, or Prisma model. Reports which fields fail and why. Does not modify schemas or data.
@@ -6554,6 +6626,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/url-route-matcher.md",
     tags: ["micro", "validate", "web"],
+    model: "haiku",
     content: `---
 name: url-route-matcher
 description: Verifies that every frontend fetch/axios URL matches a registered backend route. Reports mismatches and parameter name differences. Does not modify files.
@@ -6616,6 +6689,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/accessibility-auditor.md",
     tags: ["micro", "validate", "web"],
+    model: "haiku",
     content: `---
 name: accessibility-auditor
 description: Runs an accessibility audit on a running web app using axe-cli or pa11y. Reports WCAG violations by severity with element selectors. Does not modify files.
@@ -6673,6 +6747,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/lighthouse-runner.md",
     tags: ["micro", "validate", "web"],
+    model: "haiku",
     content: `---
 name: lighthouse-runner
 description: Runs a Lighthouse audit on a running web app. Reports performance, accessibility, best-practices, and SEO scores with top improvement opportunities. Does not modify files.
@@ -6735,6 +6810,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/security-scanner.md",
     tags: ["micro", "validate", "core"],
+    model: "haiku",
     content: `---
 name: security-scanner
 description: Runs npm audit, cargo audit, or pip-audit to find dependency vulnerabilities. Reports by severity with CVE IDs. Does not apply fixes.
@@ -6799,6 +6875,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/committer.md",
     tags: ["micro", "publish", "core"],
+    model: "haiku",
     content: `---
 name: committer
 description: Stages specified files and creates a single git commit with a well-formatted message. One commit per invocation. Does not push — pair with pr-opener for that.
@@ -6858,6 +6935,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/pr-opener.md",
     tags: ["micro", "publish", "core"],
+    model: "haiku",
     content: `---
 name: pr-opener
 description: Pushes the current branch and opens a GitHub pull request using gh CLI. Creates a structured PR description. Opens as draft by default.
@@ -6923,6 +7001,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/branch-manager.md",
     tags: ["micro", "publish", "core"],
+    model: "haiku",
     content: `---
 name: branch-manager
 description: Creates, switches to, or deletes a git branch. One branch operation per invocation. Never force-deletes branches with unmerged commits without explicit instruction.
@@ -6972,6 +7051,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/deploy-trigger.md",
     tags: ["micro", "publish", "core"],
+    model: "haiku",
     content: `---
 name: deploy-trigger
 description: Triggers a deployment by pushing to a deploy branch, calling a webhook, or running a deploy script. Reports the trigger result and pipeline URL if available.
@@ -7029,6 +7109,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/app-store-uploader.md",
     tags: ["micro", "publish", "mobile"],
+    model: "haiku",
     content: `---
 name: app-store-uploader
 description: Uploads a pre-built mobile app artifact to App Store Connect or Google Play using Fastlane. Requires a built IPA/AAB and configured Fastlane lanes. Never rebuilds or re-signs.
@@ -7087,6 +7168,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/changelog-updater.md",
     tags: ["micro", "publish", "core"],
+    model: "haiku",
     content: `---
 name: changelog-updater
 description: Adds a new release entry to CHANGELOG.md following Keep a Changelog format. One release entry per invocation. Never modifies existing entries.
@@ -7150,6 +7232,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/code-analyst.md",
     tags: ["core"],
+    model: "opus",
     content: `---
 name: code-analyst
 description: Codebase analysis coordinator (Tier 1). Directs Inspect-layer micro-agents to build a structured understanding of a codebase; produces persisted reports in .voltron/analyses/. Called before non-trivial implementation work.
@@ -7251,6 +7334,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/doc-writer.md",
     tags: ["core"],
+    model: "sonnet",
     content: `---
 name: doc-writer
 description: Documentation coordinator (Tier 1 specialist). Owns all prose docs — README, CHANGELOG, ADRs, API reference, diagrams. Dispatches doc micro-agents; enforces the documentation rule; writes session recaps.
@@ -7332,6 +7416,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/adr-writer.md",
     tags: ["micro", "write", "core"],
+    model: "haiku",
     content: `---
 name: adr-writer
 description: Writes a single Architecture Decision Record (ADR) in Nygard format. Output to docs/decisions/ADR-NNNN-slug.md.
@@ -7403,6 +7488,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/api-doc-generator.md",
     tags: ["micro", "write", "core"],
+    model: "haiku",
     content: `---
 name: api-doc-generator
 description: Generates API reference documentation from source code. Reads route and type definitions; writes structured Markdown to docs/api/<resource>.md.
@@ -7472,6 +7558,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/diagram-maker.md",
     tags: ["micro", "write", "core"],
+    model: "haiku",
     content: `---
 name: diagram-maker
 description: Creates Mermaid diagrams from a description or codebase analysis. Outputs .mmd source to docs/diagrams/<name>.mmd.
@@ -7530,6 +7617,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/stringer-baseline-builder.md",
     tags: ["micro", "inspect", "core"],
+    model: "haiku",
     content: `---
 name: stringer-baseline-builder
 description: Builds or refreshes a Stringer codebase baseline. Runs stringer scan and saves output to .voltron/stringer/baseline.json + last-scan.json. Skips gracefully if stringer is not installed.
@@ -7603,6 +7691,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/stringer-delta-reader.md",
     tags: ["micro", "inspect", "core"],
+    model: "haiku",
     content: `---
 name: stringer-delta-reader
 description: Reads the Stringer baseline and runs a cheap delta check. Reports what changed since baseline and whether a refresh is recommended. Skips gracefully if stringer is not installed or baseline is missing.

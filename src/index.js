@@ -1615,7 +1615,31 @@ server.tool(
     }
 
 
-    // Check Stringer (optional — codebase baseline analysis)
+    // v3.4.0: hard-mandatory dependency checks for beads, stringer, alexandria.
+    // Each missing dep is a blocking failure surfaced prominently in the report.
+    const blockingFailures = [];
+
+    // ─── beads ─── dependency-aware task tracking (required by scrum-master)
+    let beadsStatus = "";
+    let beadsInstalled = false;
+    try {
+      execSync("bd --version", { stdio: "ignore", timeout: 5000 });
+      beadsInstalled = true;
+    } catch { /* not installed */ }
+
+    if (beadsInstalled) {
+      beadsStatus = "✓ Installed";
+    } else {
+      beadsStatus = "❌ NOT INSTALLED — mandatory. Run: `npm install -g @beads/bd` (or `brew install beads`)";
+      blockingFailures.push({
+        name: "beads",
+        why: "scrum-master requires beads for dependency-aware task tracking; without it, the bead graph cannot enforce task dependencies and the work plan reverts to manual sequencing.",
+        install: "npm install -g @beads/bd",
+        alt: "brew install beads (macOS / Linux)",
+      });
+    }
+
+    // ─── stringer ─── codebase baseline analysis (required by code-analyst)
     let stringerStatus = "";
     let stringerInstalled = false;
     try {
@@ -1658,7 +1682,41 @@ server.tool(
         } catch { /* non-fatal */ }
       }
     } else {
-      stringerStatus = "not installed (optional) — install stringer for codebase baseline analysis";
+      stringerStatus = "❌ NOT INSTALLED — mandatory. Run: `go install github.com/davetashner/stringer/cmd/stringer@latest` (requires Go) or download a release binary";
+      blockingFailures.push({
+        name: "stringer",
+        why: "code-analyst depends on stringer for the codebase baseline scan; the v3.2 stringer-baseline-builder and stringer-delta-reader micro-agents will refuse to run without it.",
+        install: "go install github.com/davetashner/stringer/cmd/stringer@latest",
+        alt: "brew install davetashner/tap/stringer (macOS) — or download a pre-built binary from https://github.com/davetashner/stringer/releases/latest",
+      });
+    }
+
+    // ─── alexandria ─── tooling/setup guides (required by every agent that touches tools)
+    let alexandriaStatus = "";
+    const alexandriaRegistered = !!claudeJson?.mcpServers?.["alexandria"];
+    if (alexandriaRegistered) {
+      const cfg = claudeJson.mcpServers["alexandria"];
+      const cmdPath = Array.isArray(cfg.args) && cfg.args.length > 0 ? cfg.args[0] : "(unknown)";
+      // Verify the path actually exists (catches stale registrations)
+      if (existsSync(cmdPath)) {
+        alexandriaStatus = `✓ Registered (${cmdPath})`;
+      } else {
+        alexandriaStatus = `❌ MCP registered but path missing: ${cmdPath}. Re-clone project-alexandria and update ~/.claude.json`;
+        blockingFailures.push({
+          name: "alexandria",
+          why: "Alexandria is registered as an MCP server but the path it points to no longer exists.",
+          install: `Re-clone https://github.com/7ports/project-alexandria, run \`npm install\` in mcp-server/, then update ~/.claude.json mcpServers.alexandria.args[0] to the new path`,
+          alt: "",
+        });
+      }
+    } else {
+      alexandriaStatus = "❌ NOT REGISTERED — mandatory. Clone project-alexandria and register the MCP";
+      blockingFailures.push({
+        name: "alexandria",
+        why: "Every Voltron agent that touches tools/setup is required to consult Alexandria first (search_guides → quick_setup) and update_guide after. Without the MCP registered, the agents can call the tool but the tool won't respond.",
+        install: "git clone https://github.com/7ports/project-alexandria ~/Documents/project-alexandria && cd ~/Documents/project-alexandria/mcp-server && npm install",
+        alt: "Then add to ~/.claude.json:\n```json\n\"alexandria\": { \"command\": \"node\", \"args\": [\"<absolute path to project-alexandria>/mcp-server/index.js\"] }\n```",
+      });
     }
 
 
@@ -1684,23 +1742,50 @@ server.tool(
         ? `⚠ ${missingDeny.length} rules missing`
         : `✓ Added ${missingDeny.length} missing rules`;
 
+    // Build blocking-failure section if any mandatory deps are missing
+    const blockingSection = blockingFailures.length === 0 ? "" : [
+      "",
+      "---",
+      "",
+      "## ❌ MANDATORY DEPENDENCIES MISSING",
+      "",
+      "Voltron will not function correctly until these are installed. Each is required (not optional):",
+      "",
+      ...blockingFailures.flatMap(f => [
+        `### ${f.name}`,
+        "",
+        `**Why required:** ${f.why}`,
+        "",
+        `**Install:** \`${f.install}\``,
+        ...(f.alt ? ["", `**Alternative:** ${f.alt}`] : []),
+        "",
+      ]),
+      "After installing, run `setup_voltron` again to verify.",
+      "",
+    ].join("\n");
+
     const report = [
       "## Project Voltron Health Check",
       "",
       `- **MCP Server:** ${mcpStatus}`,
       `- **Allowlist:** ${allowStatus}`,
       `- **Deny rules:** ${denyStatus}`,
+      `- **beads (mandatory):** ${beadsStatus}`,
+      `- **Stringer (mandatory):** ${stringerStatus}`,
+      `- **Alexandria (mandatory):** ${alexandriaStatus}`,
       `- **Trello MCP:** ${trelloStatus}`,
-      `- **Stringer:** ${stringerStatus}`,
       `- **APM:** ${apmStatus}`,
       `- **Docker:** ${dockerStatus === "available" ? "✓ available (daemon running)" : dockerStatus === "daemon not running" ? "⚠ Docker installed but daemon not running — start Docker Desktop" : "⚠ Docker not found — install Docker Desktop"}`,
       `- **Claude Code:** ${versionStatus}`,
       "",
-      dry_run
-        ? "_Dry run — no changes were made. Call again without dry_run to apply fixes._"
-        : missingAllow.length === 0 && missingDeny.length === 0
-          ? "_Nothing to update — installation is fully configured._"
-          : "**Allowlist updated.** Restart Claude Code to apply the new permissions.",
+      blockingFailures.length > 0
+        ? `**${blockingFailures.length} mandatory dependency check(s) failed — see below.**`
+        : (dry_run
+          ? "_Dry run — no changes were made. Call again without dry_run to apply fixes._"
+          : missingAllow.length === 0 && missingDeny.length === 0
+            ? "_Nothing to update — installation is fully configured._"
+            : "**Allowlist updated.** Restart Claude Code to apply the new permissions."),
+      blockingSection,
     ].join("\n");
 
     return { content: [{ type: "text", text: report }] };
@@ -1838,20 +1923,38 @@ server.tool(
       // No ~/.gitconfig — agents must set git identity manually if they need to commit
     }
 
-    // v3.3.2: auth comes purely from CLAUDE_CODE_OAUTH_TOKEN env var.
-    // We deliberately do NOT mount ~/.claude or ~/.claude.json. Smoke testing on 2026-04-27
-    // showed ~/.claude.json was the silent-hang root cause: it contains host-specific MCP
-    // server registrations (e.g. `node "C:\\Users\\..."`) that claude tries to spawn at
-    // startup and stalls for 60-90s waiting for. Container is headless (`-p`) with the full
-    // task in /tmp/task.md, so no MCP config is needed. Same 5-line prompt:
-    //   with ~/.claude.json:ro mounted -> ~90s (often hangs)
-    //   without that mount             -> ~4s consistently
+    // v3.4.1: Auth path = narrow OAuth credentials mount + env-var passthrough.
+    // History:
+    //   v2.x   mounted full ~/.claude + ~/.claude.json  (Max-plan OAuth worked)
+    //   v3.3.2 dropped BOTH mounts to fix a 60-90s hang caused by ~/.claude.json
+    //          containing Windows-pathed MCP server registrations the Linux container
+    //          tried to spawn. That fix was correct — but it also killed Max-plan auth
+    //          for users without CLAUDE_CODE_OAUTH_TOKEN set, making Voltron unusable.
+    //   v3.4.1 restores Option-2 auth narrowly: mount only ~/.claude/.credentials.json
+    //          (the OAuth token file), keep ~/.claude.json mount DROPPED.
+    // On Windows the credentials file only exists if the user has run `claude setup-token`
+    // (Windows otherwise stores OAuth in the Credential Manager, which the Linux container
+    // can't reach). Mount is conditional on file existence; falls back to env-var auth.
+    const credsPath = path.join(homeDir, ".claude", ".credentials.json");
+    let credsMount = [];
+    try {
+      await fs.access(credsPath);
+      credsMount = ["-v", `${credsPath}:/home/voltron/.claude/.credentials.json:ro`];
+    } catch {
+      // No ~/.claude/.credentials.json — auth must come from env vars
+    }
+
     const authEnvArgs = [];
     if (process.env.CLAUDE_CODE_OAUTH_TOKEN) {
       authEnvArgs.push("-e", `CLAUDE_CODE_OAUTH_TOKEN=${process.env.CLAUDE_CODE_OAUTH_TOKEN}`);
     }
     if (process.env.ANTHROPIC_API_KEY) {
       authEnvArgs.push("-e", `ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY}`);
+    }
+
+    if (credsMount.length === 0 && authEnvArgs.length === 0) {
+      await fs.unlink(tmpFile).catch(() => {});
+      return { content: [{ type: "text", text: "Error: No auth available for Docker agent. Either run `claude setup-token` (creates ~/.claude/.credentials.json which will be mounted), or set CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY in your environment." }] };
     }
 
     // Named container enables `docker logs <name> -f` from a second terminal while running.
@@ -1864,6 +1967,7 @@ server.tool(
       ...authEnvArgs,
       "-v", `${cwd}:/workspace`,
       ...gitConfigMount,        // mount ~/.gitconfig if present so git commits work
+      ...credsMount,            // mount ~/.claude/.credentials.json:ro for Max-plan OAuth
       "-v", `${tmpFile}:/tmp/task.md:ro`,
       "voltron-agent",
       "-c",
@@ -1998,17 +2102,26 @@ server.tool(
     const gitConfigPath = path.join(homeDir, ".gitconfig");
     let gitConfigMount = [];
     try { await fs.access(gitConfigPath); gitConfigMount = ["-v", `${gitConfigPath}:/home/voltron/.gitconfig:ro`]; } catch { /* no gitconfig */ }
-    // v3.3.2: auth comes purely from CLAUDE_CODE_OAUTH_TOKEN env var.
-    // We deliberately do NOT mount ~/.claude or ~/.claude.json. Smoke testing on 2026-04-27
-    // showed ~/.claude.json was the silent-hang root cause: it contains host-specific MCP
-    // server registrations (e.g. `node "C:\\Users\\..."`) that claude tries to spawn at
-    // startup and stalls for 60-90s waiting for. Container is headless (`-p`) with the full
-    // task in /tmp/task.md, so no MCP config is needed. Same 5-line prompt:
-    //   with ~/.claude.json:ro mounted -> ~90s (often hangs)
-    //   without that mount             -> ~4s consistently
+    // v3.4.1: Auth path = narrow OAuth credentials mount + env-var passthrough.
+    // See run_agent_in_docker for full rationale. Mount ~/.claude/.credentials.json:ro
+    // (the Max-plan OAuth token), keep ~/.claude.json mount DROPPED (its Windows-pathed
+    // MCP entries caused the v3.3.2 hang). Conditional on file existence — falls back
+    // to env-var auth on Windows where credentials live in the Credential Manager.
+    const credsPath = path.join(homeDir, ".claude", ".credentials.json");
+    let credsMount = [];
+    try {
+      await fs.access(credsPath);
+      credsMount = ["-v", `${credsPath}:/home/voltron/.claude/.credentials.json:ro`];
+    } catch { /* no credentials file — use env vars */ }
+
     const authEnvArgs = [];
     if (process.env.CLAUDE_CODE_OAUTH_TOKEN) authEnvArgs.push("-e", `CLAUDE_CODE_OAUTH_TOKEN=${process.env.CLAUDE_CODE_OAUTH_TOKEN}`);
     if (process.env.ANTHROPIC_API_KEY) authEnvArgs.push("-e", `ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY}`);
+
+    if (credsMount.length === 0 && authEnvArgs.length === 0) {
+      await fs.unlink(tmpFile).catch(() => {});
+      return { content: [{ type: "text", text: "Error: No auth available for Docker agent. Either run `claude setup-token` (creates ~/.claude/.credentials.json which will be mounted), or set CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY in your environment." }] };
+    }
 
     const dockerArgs = [
       "run", "--rm",
@@ -2017,6 +2130,7 @@ server.tool(
       ...authEnvArgs,
       "-v", `${cwd}:/workspace`,
       ...gitConfigMount,
+      ...credsMount,
       "-v", `${tmpFile}:/tmp/task.md:ro`,
       "voltron-agent",
       "-c",
@@ -2149,7 +2263,7 @@ server.tool(
       if (elapsedSeconds === null || elapsedSeconds < 45) {
         phaseHint = `\n⏳ **Spin-up phase** — container initializing (normal for first 10–30s). Poll again in ~10s.`;
       } else {
-        phaseHint = `\n⚠ **No output after ${elapsedSeconds}s** — container may be waiting for auth or hung. Verify CLAUDE_CODE_OAUTH_TOKEN is set. Kill: \`docker kill ${container_name}\``;
+        phaseHint = `\n⚠ **No output after ${elapsedSeconds}s** — container may be waiting for auth or hung. Verify ~/.claude/.credentials.json exists (run \`claude setup-token\`) or CLAUDE_CODE_OAUTH_TOKEN is set. Kill: \`docker kill ${container_name}\``;
       }
     } else if (status === "running" && elapsedSeconds !== null && elapsedSeconds > 600) {
       phaseHint = `\n⚠ **Running ${Math.floor(elapsedSeconds / 60)}m** — if no new output for several polls, agent may be stalled. Kill: \`docker kill ${container_name}\``;

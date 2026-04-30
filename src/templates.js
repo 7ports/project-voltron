@@ -21,6 +21,20 @@ export const TEMPLATES = {
 > This file is automatically loaded by Claude Code at session start.
 > Keep it up to date as your project evolves. Agents read this before acting.
 
+## Mandatory Dependencies
+
+Voltron's three-tier agent model relies on three external tools. Setup/scaffold accounts for all of them; if any is missing, run the install command before invoking agents.
+
+| Tool | Purpose | Install (cross-platform) | Alternative |
+|---|---|---|---|
+| **beads** ([gastownhall/beads](https://github.com/gastownhall/beads)) | Dependency-aware task tracking — drives the bead graph that scrum-master uses to enforce task ordering. | \`npm install -g @beads/bd\` | \`brew install beads\` (macOS / Linux) |
+| **stringer** ([davetashner/stringer](https://github.com/davetashner/stringer)) | Codebase baseline analysis — read by code-analyst before every audit. | \`go install github.com/davetashner/stringer/cmd/stringer@latest\` (needs Go) | Pre-built binary from [releases](https://github.com/davetashner/stringer/releases/latest), or \`brew install davetashner/tap/stringer\` (macOS) |
+| **alexandria** ([7ports/project-alexandria](https://github.com/7ports/project-alexandria)) | Tooling/setup guides — every agent calls \`mcp__alexandria__quick_setup\` before installing any tool, and \`update_guide\` after. | \`git clone\` + \`npm install\` in \`mcp-server/\` + register MCP server in \`~/.claude.json\` | (none — required setup) |
+
+Verify all three by running \`mcp__project-voltron__setup_voltron\` — it hard-fails with install commands if any are missing.
+
+---
+
 ---
 
 ## Project Identity
@@ -272,6 +286,20 @@ If the session included any tool setup, API integration, or platform-specific di
 > This file is automatically loaded by Claude Code at session start.
 > Keep it up to date as your project evolves. Agents read this before acting.
 
+## Mandatory Dependencies
+
+Voltron's three-tier agent model relies on three external tools. Setup/scaffold accounts for all of them; if any is missing, run the install command before invoking agents.
+
+| Tool | Purpose | Install (cross-platform) | Alternative |
+|---|---|---|---|
+| **beads** ([gastownhall/beads](https://github.com/gastownhall/beads)) | Dependency-aware task tracking — drives the bead graph that scrum-master uses to enforce task ordering. | \`npm install -g @beads/bd\` | \`brew install beads\` (macOS / Linux) |
+| **stringer** ([davetashner/stringer](https://github.com/davetashner/stringer)) | Codebase baseline analysis — read by code-analyst before every audit. | \`go install github.com/davetashner/stringer/cmd/stringer@latest\` (needs Go) | Pre-built binary from [releases](https://github.com/davetashner/stringer/releases/latest), or \`brew install davetashner/tap/stringer\` (macOS) |
+| **alexandria** ([7ports/project-alexandria](https://github.com/7ports/project-alexandria)) | Tooling/setup guides — every agent calls \`mcp__alexandria__quick_setup\` before installing any tool, and \`update_guide\` after. | \`git clone\` + \`npm install\` in \`mcp-server/\` + register MCP server in \`~/.claude.json\` | (none — required setup) |
+
+Verify all three by running \`mcp__project-voltron__setup_voltron\` — it hard-fails with install commands if any are missing.
+
+---
+
 ---
 
 ## Project Identity
@@ -516,6 +544,20 @@ Credentials (\`TRELLO_API_KEY\`, \`TRELLO_TOKEN\`) live in your shell environmen
 
 > This file is automatically loaded by Claude Code at session start.
 > Keep it up to date as your project evolves. Agents read this before acting.
+
+## Mandatory Dependencies
+
+Voltron's three-tier agent model relies on three external tools. Setup/scaffold accounts for all of them; if any is missing, run the install command before invoking agents.
+
+| Tool | Purpose | Install (cross-platform) | Alternative |
+|---|---|---|---|
+| **beads** ([gastownhall/beads](https://github.com/gastownhall/beads)) | Dependency-aware task tracking — drives the bead graph that scrum-master uses to enforce task ordering. | \`npm install -g @beads/bd\` | \`brew install beads\` (macOS / Linux) |
+| **stringer** ([davetashner/stringer](https://github.com/davetashner/stringer)) | Codebase baseline analysis — read by code-analyst before every audit. | \`go install github.com/davetashner/stringer/cmd/stringer@latest\` (needs Go) | Pre-built binary from [releases](https://github.com/davetashner/stringer/releases/latest), or \`brew install davetashner/tap/stringer\` (macOS) |
+| **alexandria** ([7ports/project-alexandria](https://github.com/7ports/project-alexandria)) | Tooling/setup guides — every agent calls \`mcp__alexandria__quick_setup\` before installing any tool, and \`update_guide\` after. | \`git clone\` + \`npm install\` in \`mcp-server/\` + register MCP server in \`~/.claude.json\` | (none — required setup) |
+
+Verify all three by running \`mcp__project-voltron__setup_voltron\` — it hard-fails with install commands if any are missing.
+
+---
 
 ---
 
@@ -954,18 +996,23 @@ Show the \`bd dep tree\` output to the user — let them verify the dependency g
 
 Run before creating any work plan:
 \`\`\`bash
-docker --version                                                   # Docker available?
-test -f Dockerfile.voltron && echo "OK" || echo "MISSING"         # Dockerfile present?
-echo "Token: $(test -n "$CLAUDE_CODE_OAUTH_TOKEN" && echo YES || echo NO)"  # OAuth token?
-bd --version 2>/dev/null && echo "beads OK" || echo "beads missing"          # beads CLI?
+docker --version                                                                        # Docker available?
+test -f Dockerfile.voltron && echo "OK" || echo "MISSING"                              # Dockerfile present?
+echo "Token: $(test -n "$CLAUDE_CODE_OAUTH_TOKEN" && echo YES || echo NO)"             # OAuth token?
+bd --version 2>/dev/null && echo "beads OK" || echo "BEADS MISSING"                    # beads CLI (mandatory)?
+stringer --version 2>/dev/null && echo "stringer OK" || echo "STRINGER MISSING"        # stringer CLI (mandatory)?
+node -e "process.exit(JSON.parse(require('fs').readFileSync(require('os').homedir()+'/.claude.json')).mcpServers?.alexandria ? 0 : 1)" 2>/dev/null && echo "alexandria OK" || echo "ALEXANDRIA MISSING"  # Alexandria MCP (mandatory)?
 \`\`\`
+
+**Mandatory dependencies — STOP and install if any are missing.** Voltron will not function correctly without all three (beads, stringer, alexandria); these are not optional, and the user expectation is that scaffolding/setup accounts for them.
 
 - **Docker missing** → "Docker is not installed or not running. Install Docker Desktop, then retry."
 - **Dockerfile missing** → "Run \`mcp__project-voltron__scaffold_project\` first."
 - **Token missing** → Agents fail silently with "Not logged in". Check Alexandria guide \`project-voltron-docker\` before proceeding.
-- **beads missing** → warn, fall back to manual dependency tracking. Install: \`npm install -g @beads/bd\`
+- **beads MISSING (mandatory)** → STOP. Tell the user: "beads is mandatory and not installed. Run \`npm install -g @beads/bd\` (or \`brew install beads\`) and retry. Do not proceed without it."
+- **stringer MISSING (mandatory)** → STOP. Tell the user: "stringer is mandatory and not installed. Run \`go install github.com/davetashner/stringer/cmd/stringer@latest\` (or download a release binary from https://github.com/davetashner/stringer/releases/latest, or \`brew install davetashner/tap/stringer\` on macOS) and retry. Do not proceed without it."
+- **alexandria MISSING (mandatory)** → STOP. Tell the user: "Alexandria MCP is mandatory and not registered. Clone https://github.com/7ports/project-alexandria, run \`npm install\` in mcp-server/, then add it to \`~/.claude.json\` mcpServers as \`{ \"command\": \"node\", \"args\": [\"<path>/mcp-server/index.js\"] }\` and restart Claude Code. Do not proceed without it."
 - **Voltron MCP tools unavailable** (e.g. \`mcp__project-voltron__update_progress\` not found) → The MCP server is not loaded in this session. Tell the user: "Voltron MCP is not connected. Quit and relaunch Claude Code — the auto-update hook will register it in global settings on the next session start." Do not attempt to proceed with progress tracking or Docker agent invocations until the MCP is confirmed available.
-- **Stringer not installed** (optional) → codebase analysis works without it; install stringer and run \`@agent-stringer-baseline-builder\` to enable baseline analysis and delta checks.
 - **Stringer baseline stale** (>14 days or >50 commits since last scan) → surface a refresh suggestion: \"Run @agent-stringer-baseline-builder to refresh the codebase baseline.\"
 
 ## Progress Tracking
@@ -7686,6 +7733,19 @@ export const DOCKERFILE_CONTENT =
   "# Install Claude Code globally\n" +
   "RUN npm install -g @anthropic-ai/claude-code\n" +
   "\n" +
+  "# v3.4.0: mandatory voltron dependencies\n" +
+  "# beads (gastownhall/beads) — dependency-aware task tracking; required by scrum-master\n" +
+  "RUN npm install -g @beads/bd\n" +
+  "\n" +
+  "# stringer (davetashner/stringer v1.7.0) — codebase baseline analysis; required by code-analyst\n" +
+  "RUN STRINGER_VERSION=1.7.0 && \\\n" +
+  "    curl -fsSL https://github.com/davetashner/stringer/releases/download/v${STRINGER_VERSION}/stringer_${STRINGER_VERSION}_linux_amd64.tar.gz -o /tmp/stringer.tgz && \\\n" +
+  "    mkdir -p /tmp/stringer-extract && \\\n" +
+  "    tar -xzf /tmp/stringer.tgz -C /tmp/stringer-extract && \\\n" +
+  "    find /tmp/stringer-extract -name stringer -type f -executable -exec mv {} /usr/local/bin/ \\; && \\\n" +
+  "    chmod +x /usr/local/bin/stringer && \\\n" +
+  "    rm -rf /tmp/stringer.tgz /tmp/stringer-extract\n" +
+  "\n" +
   "# Non-root user for security\n" +
   "RUN useradd -m -s /bin/bash voltron\n" +
   "USER voltron\n" +
@@ -7700,16 +7760,32 @@ export const VOLTRON_RUN_SCRIPT =
   "\n" +
   "docker build -t voltron-agent -f Dockerfile.voltron . 2>/dev/null\n" +
   "\n" +
-  "# Build env passthrough for auth (OAuth token or API key)\n" +
+  "# v3.4.1: Auth path = narrow OAuth credentials mount + env-var passthrough.\n" +
+  "# DO NOT mount full ~/.claude or ~/.claude.json — the latter contains host-pathed\n" +
+  "# MCP server registrations that hang the Linux container at startup (60-90s+).\n" +
+  "# Mount ONLY ~/.claude/.credentials.json (the OAuth token file) when present.\n" +
+  "# On Windows, run `claude setup-token` once to materialize this file (otherwise\n" +
+  "# auth lives in Windows Credential Manager and the Linux container can't reach it).\n" +
   "AUTH_ARGS=()\n" +
   '[ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] && AUTH_ARGS+=(-e "CLAUDE_CODE_OAUTH_TOKEN=$CLAUDE_CODE_OAUTH_TOKEN")\n' +
   '[ -n "$ANTHROPIC_API_KEY" ] && AUTH_ARGS+=(-e "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY")\n' +
   "\n" +
+  "CREDS_MOUNT=()\n" +
+  '[ -f "$HOME/.claude/.credentials.json" ] && CREDS_MOUNT+=(-v "$HOME/.claude/.credentials.json:/home/voltron/.claude/.credentials.json:ro")\n' +
+  "\n" +
+  "if [ ${#AUTH_ARGS[@]} -eq 0 ] && [ ${#CREDS_MOUNT[@]} -eq 0 ]; then\n" +
+  "  echo \"Error: No auth available. Run 'claude setup-token' (creates ~/.claude/.credentials.json) or set CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY.\" >&2\n" +
+  "  exit 1\n" +
+  "fi\n" +
+  "\n" +
+  "GIT_MOUNT=()\n" +
+  '[ -f "$HOME/.gitconfig" ] && GIT_MOUNT+=(-v "$HOME/.gitconfig:/home/voltron/.gitconfig:ro")\n' +
+  "\n" +
   "docker run --rm -it \\\n" +
   '  "${AUTH_ARGS[@]}" \\\n' +
   '  -v "$(pwd):/workspace" \\\n' +
-  '  -v "$HOME/.claude:/home/voltron/.claude" \\\n' +
-  '  -v "$HOME/.claude.json:/home/voltron/.claude.json:ro" \\\n' +
+  '  "${CREDS_MOUNT[@]}" \\\n' +
+  '  "${GIT_MOUNT[@]}" \\\n' +
   "  voltron-agent \\\n" +
   "  --dangerously-skip-permissions \\\n" +
   '  "$@"';

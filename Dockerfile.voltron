@@ -20,6 +20,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install Claude Code globally
 RUN npm install -g @anthropic-ai/claude-code
 
+# v3.4.0: mandatory voltron dependencies
+# beads (gastownhall/beads) — dependency-aware task tracking; required by scrum-master
+RUN npm install -g @beads/bd
+
+# stringer (davetashner/stringer v1.7.0) — codebase baseline analysis; required by code-analyst
+RUN STRINGER_VERSION=1.7.0 && \
+    curl -fsSL https://github.com/davetashner/stringer/releases/download/v${STRINGER_VERSION}/stringer_${STRINGER_VERSION}_linux_amd64.tar.gz -o /tmp/stringer.tgz && \
+    mkdir -p /tmp/stringer-extract && \
+    tar -xzf /tmp/stringer.tgz -C /tmp/stringer-extract && \
+    find /tmp/stringer-extract -name stringer -type f -executable -exec mv {} /usr/local/bin/ \; && \
+    chmod +x /usr/local/bin/stringer && \
+    rm -rf /tmp/stringer.tgz /tmp/stringer-extract
+
 # Non-root user for security
 RUN useradd -m -s /bin/bash voltron
 USER voltron

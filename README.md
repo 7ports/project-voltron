@@ -193,6 +193,18 @@ On Windows, OAuth is stored in the Credential Manager by default and `~/.claude/
 
 > **Future enhancement:** Separate per-agent containers for blast-radius isolation between specialist agents.
 
+## Dynamic Model Selection
+
+Voltron assigns each agent a default model tier based on its role. Sub-managers and coordinators can override this per-invocation when a micro-agent fails or produces low-quality output.
+
+| Tier | Model | Agents | Role |
+|---|---|---|---|
+| Opus | `claude-opus-4-*` | 5 | Coordinators & planners (scrum-master, project-planner, code-analyst, doc-writer, reflection-processor) |
+| Sonnet | `claude-sonnet-4-*` | 22 | Sub-managers & domain specialists (fullstack-dev, mobile-dev, devops-engineer, ios-dev, android-dev, etc.) |
+| Haiku | `claude-haiku-4-*` | 39 | Micro-agents — Inspect, Write, Validate, Publish layer workers |
+
+**Override:** Pass `model: "sonnet"` or `model: "opus"` to `run_agent_in_docker` / `start_agent_in_docker` to retry a micro-agent at a higher tier. Sub-managers are instructed to do this automatically when output is unsatisfactory. The `list_templates` tool shows each agent's default model tier.
+
 ## Progress Visualization
 
 The scrum-master tracks agent task progress using built-in MCP tools. When a work plan is created, the scrum-master immediately registers all tasks as "queued" — this triggers the **live dashboard** to auto-open in the user's browser.

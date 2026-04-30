@@ -36,6 +36,28 @@ const pkg = JSON.parse(
 );
 const VERSION = pkg.version;
 
+// ─── Progress reporting directive (injected into every Docker agent prompt) ──
+
+const PROGRESS_REPORTING_DIRECTIVE = `## Progress Reporting (mandatory)
+
+Output a brief status line after completing each distinct step (file read, edit, command, decision). Format:
+
+\`[STEP N] <verb> <target> — <result or next action>\`
+
+Examples:
+- \`[STEP 1] read src/index.js — found 3 route definitions\`
+- \`[STEP 2] edit src/routes.ts:45 — added GET /health endpoint\`
+- \`[STEP 3] run tsc — 0 errors\`
+- \`[STEP 4] edit src/routes.ts:52 — added response schema validation\`
+
+Rules:
+- One line per step, no extra commentary between steps
+- Use present-tense verbs: read, edit, create, delete, run, skip
+- Include file path and line number when applicable
+- On failure: \`[STEP N] run tests — FAIL: 2 errors in auth.test.ts (retrying)\`
+- Keep total status output under 15 words per step
+- Do NOT skip steps or batch multiple actions into one line`;
+
 // ─── Claude Code version utilities ──────────────────────────────────────────
 
 const CLAUDE_MIN_VERSION = { major: 1, minor: 8, patch: 0 }; // minimum for .claude/agents/ support
@@ -283,6 +305,7 @@ server.tool(
         description: t.description,
         category: t.category,
         tags: t.tags,
+        model: t.model,
         filename: t.filename,
         destination: t.destination,
       };
@@ -291,7 +314,7 @@ server.tool(
     const text = listing
       .map(
         (t) =>
-          `**${t.name}** (${t.category}) [${t.tags.join(", ")}]\n  ${t.description}\n  Destination: \`${t.destination}\``
+          `**${t.name}** (${t.category}) [${t.tags.join(", ")}] model: ${t.model || "default"}\n  ${t.description}\n  Destination: \`${t.destination}\``
       )
       .join("\n\n");
 
@@ -1812,8 +1835,12 @@ server.tool(
       .number()
       .optional()
       .describe("Maximum agent turns (default: 30)"),
+    model: z
+      .enum(["opus", "sonnet", "haiku"])
+      .optional()
+      .describe("Model tier override. If omitted, uses the template's default model. Priority: explicit parameter > template.model > session default."),
   },
-  async ({ agent_name, task, max_turns = 30 }) => {
+  async ({ agent_name, task, max_turns = 30, model }) => {
     const { root: cwd } = detectProjectRoot(undefined);
 
     // 1. Look up the template
@@ -1839,6 +1866,11 @@ server.tool(
       };
     }
 
+    // Resolve model tier: explicit parameter > template default > omit (session default)
+    const resolvedModel = model || template.model;
+    const MODEL_IDS = { opus: "claude-opus-4", sonnet: "claude-sonnet-4", haiku: "claude-haiku-3-5" };
+    const modelFlag = resolvedModel && MODEL_IDS[resolvedModel] ? `--model ${MODEL_IDS[resolvedModel]}` : "";
+
     // 2. Read CLAUDE.md for project context
     let claudeMd = "";
     try {
@@ -1856,6 +1888,8 @@ server.tool(
 
     const prompt = [
       agentInstructions,
+      "",
+      PROGRESS_REPORTING_DIRECTIVE,
       "",
       "## Project Context (from CLAUDE.md)",
       "",
@@ -1973,7 +2007,7 @@ server.tool(
       "-c",
       // v3.3.2: breadcrumb-wrapped — surfaces stalls before claude produces its first byte.
       // [entry]/[claude-version]/[exec]/[exit] echoes localize hangs to mount, auth, parse, or run.
-      `{ echo "[entry] $(date -Is) host=$(hostname) user=$(whoami)"; echo "[claude-version] $(claude --version 2>&1)"; echo "[exec] $(date -Is) starting prompt"; claude --dangerously-skip-permissions --max-turns ${max_turns} -p "$(cat /tmp/task.md)" 2>&1; CLAUDE_EXIT=\$?; echo "[exit] $(date -Is) code=\$CLAUDE_EXIT"; exit \$CLAUDE_EXIT; } | tee /workspace/.voltron/logs/${logFilename}; exit \${PIPESTATUS[0]}`,
+      `{ echo "[entry] $(date -Is) host=$(hostname) user=$(whoami)"; echo "[claude-version] $(claude --version 2>&1)"; echo "[exec] $(date -Is) starting prompt"; claude --dangerously-skip-permissions ${modelFlag} --max-turns ${max_turns} -p "$(cat /tmp/task.md)" 2>&1; CLAUDE_EXIT=\$?; echo "[exit] $(date -Is) code=\$CLAUDE_EXIT"; exit \$CLAUDE_EXIT; } | tee /workspace/.voltron/logs/${logFilename}; exit \${PIPESTATUS[0]}`,
     ];
 
     // Async spawn — allows multiple agents to run in parallel Docker containers
@@ -2041,8 +2075,9 @@ server.tool(
     agent_name: z.string().describe("The agent template name (e.g., 'fullstack-dev', 'qa-tester')"),
     task: z.string().describe("Complete task description including context, file paths, acceptance criteria"),
     max_turns: z.number().optional().describe("Maximum agent turns (default: 30)"),
+    model: z.enum(["opus", "sonnet", "haiku"]).optional().describe("Model tier override. If omitted, uses the template's default model."),
   },
-  async ({ agent_name, task, max_turns = 30 }) => {
+  async ({ agent_name, task, max_turns = 30, model }) => {
     const { root: cwd } = detectProjectRoot(undefined);
 
     // Guard: scrum-master must run in main session
@@ -2054,13 +2089,18 @@ server.tool(
       return { content: [{ type: "text", text: "\u274C The scrum-master is a dedicated orchestrator that runs in the main Claude Code session, not in Docker. Invoke it via @agent-scrum-master from the Claude Code chat window instead." }] };
     }
 
+    // Resolve model tier: explicit parameter > template default > omit (session default)
+    const resolvedModel = model || template.model;
+    const MODEL_IDS = { opus: "claude-opus-4", sonnet: "claude-sonnet-4", haiku: "claude-haiku-3-5" };
+    const modelFlag = resolvedModel && MODEL_IDS[resolvedModel] ? `--model ${MODEL_IDS[resolvedModel]}` : "";
+
     // Read CLAUDE.md for project context
     let claudeMd = "";
     try { claudeMd = await fs.readFile(path.join(cwd, "CLAUDE.md"), "utf-8"); } catch { /* proceed without */ }
 
     // Compose prompt (strip YAML frontmatter — it's for agent discovery, not runtime)
     const agentInstructions = template.content.replace(/^---\n[\s\S]*?\n---\n*/, "");
-    const prompt = [agentInstructions, "", "## Project Context (from CLAUDE.md)", "", claudeMd || "(No CLAUDE.md found)", "", "## Your Task", "", task].join("\n");
+    const prompt = [agentInstructions, "", PROGRESS_REPORTING_DIRECTIVE, "", "## Project Context (from CLAUDE.md)", "", claudeMd || "(No CLAUDE.md found)", "", "## Your Task", "", task].join("\n");
 
     // Write prompt to temp file
     const tmpFile = path.join(os.tmpdir(), `voltron-${agent_name}-${Date.now()}.md`);
@@ -2136,7 +2176,7 @@ server.tool(
       "-c",
       // v3.3.2: breadcrumb-wrapped + .exit file write. Brace group emits localizing markers,
       // tee captures everything, PIPESTATUS[0] preserves claude's real exit code.
-      `{ echo "[entry] $(date -Is) host=$(hostname) user=$(whoami)"; echo "[claude-version] $(claude --version 2>&1)"; echo "[exec] $(date -Is) starting prompt"; claude --dangerously-skip-permissions --max-turns ${max_turns} -p "$(cat /tmp/task.md)" 2>&1; CLAUDE_EXIT=\$?; echo "[exit] $(date -Is) code=\$CLAUDE_EXIT"; exit \$CLAUDE_EXIT; } | tee /workspace/.voltron/logs/${logFilename}; EXIT=\${PIPESTATUS[0]}; echo "\$EXIT" > /workspace/.voltron/logs/${logFilename}.exit; exit \$EXIT`,
+      `{ echo "[entry] $(date -Is) host=$(hostname) user=$(whoami)"; echo "[claude-version] $(claude --version 2>&1)"; echo "[exec] $(date -Is) starting prompt"; claude --dangerously-skip-permissions ${modelFlag} --max-turns ${max_turns} -p "$(cat /tmp/task.md)" 2>&1; CLAUDE_EXIT=\$?; echo "[exit] $(date -Is) code=\$CLAUDE_EXIT"; exit \$CLAUDE_EXIT; } | tee /workspace/.voltron/logs/${logFilename}; EXIT=\${PIPESTATUS[0]}; echo "\$EXIT" > /workspace/.voltron/logs/${logFilename}.exit; exit \$EXIT`,
     ];
 
     // Detached spawn — returns immediately, container runs in background

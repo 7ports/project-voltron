@@ -187,6 +187,10 @@ public class EnemyConfig : ScriptableObject
 }
 ```
 
+## Model Tier Override
+
+Each micro-agent runs on its default model tier (haiku for micro-agents, sonnet for sub-managers). If a micro-agent fails or produces low-quality output, retry with a higher model tier by passing the `model` parameter to `run_agent_in_docker` or `start_agent_in_docker` — e.g. `model: "sonnet"` or `model: "opus"`.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:

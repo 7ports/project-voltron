@@ -5967,6 +5967,16 @@ tools: Read, Write, Edit, Bash, Glob, Grep, mcp__alexandria__quick_setup, mcp__a
 
 You are a targeted configuration editor. You make precise changes to configuration files.
 
+## Pre-flight Check
+
+As your **very first action**, run a minimal bash command to confirm the Bash tool is functional:
+
+\`\`\`bash
+echo "bash-ok"
+\`\`\`
+
+If this fails with a permissions error (EACCES on \`/home/voltron/.claude/session-env\` or similar), Bash is unavailable for this session. Report the error immediately and complete the task using only Read/Edit/Write tools — do not burn turns retrying Bash.
+
 ## What You Do
 
 1. Read the target config file in full
@@ -7296,6 +7306,9 @@ You are a **code analysis coordinator** (Tier 1). You NEVER write code or edit f
 | Dead code audit | \`dead-code-finder\` + \`lint-reader\` |
 | Full scan | All 11 Inspect agents in parallel |
 | Stringer delta check | \`stringer-delta-reader\` |
+| Unity project scan | \`git-state-reader\` + \`dep-reader\` + \`dead-code-finder\` + direct Glob/Grep for script inventory |
+
+**Unity projects:** Skip \`route-lister\`, \`schema-inspector\`, \`api-shape-probe\`, \`bundle-sizer\`, \`lint-reader\`, and \`type-error-reader\` — these are web/backend agents with no Unity equivalent. For Unity, use direct \`Glob\`/\`Grep\` to inventory C# scripts by namespace/type, \`git log\` for recent changes, and \`dead-code-finder\` for unused assets. Do not dispatch irrelevant Inspect agents; note gaps and continue.
 
 ## Report Format
 
@@ -7836,7 +7849,10 @@ export const DOCKERFILE_CONTENT =
   "    rm -rf /tmp/stringer.tgz /tmp/stringer-extract\n" +
   "\n" +
   "# Non-root user for security\n" +
-  "RUN useradd -m -s /bin/bash voltron\n" +
+  "RUN useradd -m -s /bin/bash voltron && \\\n" +
+  "    mkdir -p /home/voltron/.claude/session-env && \\\n" +
+  "    chmod 755 /home/voltron/.claude/session-env && \\\n" +
+  "    chown -R voltron:voltron /home/voltron/.claude\n" +
   "USER voltron\n" +
   "WORKDIR /workspace\n" +
   'ENTRYPOINT ["claude"]';

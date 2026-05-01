@@ -22,5 +22,5 @@
     }
   ],
   "overall_notes": "Docker Bash tool permissions issue on /home/voltron/.claude/session-env affected file-copy operations. The Edit/Write tools worked fine inside Docker — only Bash was broken. The scrum-master had to perform a trivial file copy from the main session. For future sessions, file-copy tasks should either use a Bash command from the main session directly (since the scrum-master has Bash access) or ensure Docker container permissions are fixed.",
-  "processed": false
+  "processed": true
 }

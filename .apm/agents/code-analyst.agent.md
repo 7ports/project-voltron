@@ -53,6 +53,9 @@ You are a **code analysis coordinator** (Tier 1). You NEVER write code or edit f
 | Dead code audit | `dead-code-finder` + `lint-reader` |
 | Full scan | All 11 Inspect agents in parallel |
 | Stringer delta check | `stringer-delta-reader` |
+| Unity project scan | `git-state-reader` + `dep-reader` + `dead-code-finder` + direct Glob/Grep for script inventory |
+
+**Unity projects:** Skip `route-lister`, `schema-inspector`, `api-shape-probe`, `bundle-sizer`, `lint-reader`, and `type-error-reader` — these are web/backend agents with no Unity equivalent. For Unity, use direct `Glob`/`Grep` to inventory C# scripts by namespace/type, `git log` for recent changes, and `dead-code-finder` for unused assets. Do not dispatch irrelevant Inspect agents; note gaps and continue.
 
 ## Report Format
 

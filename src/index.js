@@ -1868,7 +1868,7 @@ server.tool(
 
     // Resolve model tier: explicit parameter > template default > omit (session default)
     const resolvedModel = model || template.model;
-    const MODEL_IDS = { opus: "claude-opus-4", sonnet: "claude-sonnet-4", haiku: "claude-haiku-3-5" };
+    const MODEL_IDS = { opus: "claude-opus-4-7", sonnet: "claude-sonnet-4-6", haiku: "claude-haiku-4-5-20251001" };
     const modelFlag = resolvedModel && MODEL_IDS[resolvedModel] ? `--model ${MODEL_IDS[resolvedModel]}` : "";
 
     // 2. Read CLAUDE.md for project context
@@ -2091,7 +2091,7 @@ server.tool(
 
     // Resolve model tier: explicit parameter > template default > omit (session default)
     const resolvedModel = model || template.model;
-    const MODEL_IDS = { opus: "claude-opus-4", sonnet: "claude-sonnet-4", haiku: "claude-haiku-3-5" };
+    const MODEL_IDS = { opus: "claude-opus-4-7", sonnet: "claude-sonnet-4-6", haiku: "claude-haiku-4-5-20251001" };
     const modelFlag = resolvedModel && MODEL_IDS[resolvedModel] ? `--model ${MODEL_IDS[resolvedModel]}` : "";
 
     // Read CLAUDE.md for project context

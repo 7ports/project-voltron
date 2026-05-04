@@ -5967,6 +5967,10 @@ tools: Read, Write, Edit, Bash, Glob, Grep, mcp__alexandria__quick_setup, mcp__a
 
 You are a targeted configuration editor. You make precise changes to configuration files.
 
+## Pre-Flight Check
+
+**First action:** Run \`echo "bash ok"\` to verify Bash is functional. If Bash fails (EACCES or permission error), note it explicitly — you can still complete the task using Read/Edit/Write tools, but cannot run validation commands. Report the Bash failure in your output so the caller can investigate.
+
 ## What You Do
 
 1. Read the target config file in full
@@ -7296,6 +7300,9 @@ You are a **code analysis coordinator** (Tier 1). You NEVER write code or edit f
 | Dead code audit | \`dead-code-finder\` + \`lint-reader\` |
 | Full scan | All 11 Inspect agents in parallel |
 | Stringer delta check | \`stringer-delta-reader\` |
+| Unity project analysis | \`git-state-reader\` + \`dep-reader\` + \`test-lister\` + direct file reads for C# script inventory |
+
+**Unity projects:** Skip \`route-lister\`, \`schema-inspector\`, \`api-shape-probe\`, \`bundle-sizer\`, \`lint-reader\`, and \`type-error-reader\` — they have no meaning in a Unity codebase. Use direct file reads for C# script inventory, \`grep\` for patterns, and \`git-state-reader\` for recent changes.
 
 ## Report Format
 
@@ -7838,6 +7845,8 @@ export const DOCKERFILE_CONTENT =
   "# Non-root user for security\n" +
   "RUN useradd -m -s /bin/bash voltron\n" +
   "USER voltron\n" +
+  "# Ensure Claude Code session env directory exists with correct permissions\n" +
+  "RUN mkdir -p /home/voltron/.claude/session-env && chmod 755 /home/voltron/.claude/session-env\n" +
   "WORKDIR /workspace\n" +
   'ENTRYPOINT ["claude"]';
 

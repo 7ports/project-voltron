@@ -53,6 +53,9 @@ You are a **code analysis coordinator** (Tier 1). You NEVER write code or edit f
 | Dead code audit | `dead-code-finder` + `lint-reader` |
 | Full scan | All 11 Inspect agents in parallel |
 | Stringer delta check | `stringer-delta-reader` |
+| Unity project analysis | `git-state-reader` + `dep-reader` + `test-lister` + direct file reads for C# script inventory |
+
+**Unity projects:** Skip `route-lister`, `schema-inspector`, `api-shape-probe`, `bundle-sizer`, `lint-reader`, and `type-error-reader` — they have no meaning in a Unity codebase. Use direct file reads for C# script inventory, `grep` for patterns, and `git-state-reader` for recent changes.
 
 ## Report Format
 

@@ -179,7 +179,7 @@ npx eas build --platform all --profile preview  # Test builds
 
 ## Model Tier Override
 
-Each micro-agent runs on its default model tier (haiku for micro-agents, sonnet for sub-managers). If a micro-agent fails or produces low-quality output, retry with a higher model tier by passing the `model` parameter to `run_agent_in_docker` or `start_agent_in_docker` — e.g. `model: "sonnet"` or `model: "opus"`.
+This sub-manager runs as **Opus** by default for maximum orchestration quality. Micro-agents it dispatches default to **Haiku**. If a Haiku micro-agent fails or produces low-quality output, retry with a higher tier by passing `model: "sonnet"` or `model: "opus"` to `run_agent_in_docker` / `start_agent_in_docker`.
 
 ## Validation & Handoff
 

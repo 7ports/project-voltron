@@ -294,9 +294,9 @@
   <section class="hero">
     <div class="container">
       <h1>Project Voltron</h1>
-      <p>Specialized agent teams for Claude Code, served via MCP. Scaffold Unity, web, mobile, or general projects with battle-tested subagent templates — Alexandria-aware, self-improving, and auto-updating.</p>
+      <p>Specialized agent teams for Claude Code, served via MCP. Scaffold Unity, web, or general projects with battle-tested subagent templates — 51 micro-agents, Alexandria-aware, self-improving, and auto-updating.</p>
       <div class="badge-row">
-        <span class="badge">v3.5.5</span>
+        <span class="badge">v3.6.0</span>
         <span class="badge">MCP Server</span>
         <span class="badge">Unity</span>
         <span class="badge">Web / Fullstack</span>
@@ -491,35 +491,6 @@
         </div>
       </div>
 
-      <div class="agent-group">
-        <div class="agent-group-label">Mobile (iOS / Android / React Native)</div>
-        <div class="agent-grid">
-          <div class="agent-card">
-            <h3>Mobile Dev <span class="invoke">@agent-mobile-dev</span></h3>
-            <p>React Native + Expo cross-platform developer. TypeScript, React Navigation, Zustand, React Query, and native module bridging.</p>
-          </div>
-          <div class="agent-card">
-            <h3>iOS Dev <span class="invoke">@agent-ios-dev</span></h3>
-            <p>Native Swift/SwiftUI specialist. <code>@Observable</code>, async/await, <code>@MainActor</code>, SwiftData, and App Store submission.</p>
-          </div>
-          <div class="agent-card">
-            <h3>Android Dev <span class="invoke">@agent-android-dev</span></h3>
-            <p>Kotlin + Jetpack Compose specialist. MVVM + UDF, Hilt, StateFlow, Material Design 3, and Play Store publishing.</p>
-          </div>
-          <div class="agent-card">
-            <h3>Mobile UI Designer <span class="invoke">@agent-mobile-ui-designer</span></h3>
-            <p>Platform-native UX for iOS (HIG) and Android (Material Design 3). Animations, dark mode, accessibility, and responsive layouts.</p>
-          </div>
-          <div class="agent-card">
-            <h3>Mobile QA Tester <span class="invoke">@agent-mobile-qa-tester</span></h3>
-            <p>Detox, XCUITest, and Espresso E2E tests. Simulator/emulator runs, performance profiling, and crash triage.</p>
-          </div>
-          <div class="agent-card">
-            <h3>App Store Publisher <span class="invoke">@agent-app-store-publisher</span></h3>
-            <p>Fastlane + Match automation for App Store Connect and Google Play. Release builds, signing, changelogs, and staged rollouts.</p>
-          </div>
-        </div>
-      </div>
     </div>
   </section>
 
@@ -527,19 +498,23 @@
   <section class="micro-catalog">
     <div class="container">
       <h2>Micro-Agent Catalog <span class="badge" style="font-size:0.7rem;vertical-align:middle">v3.0 new</span></h2>
-      <p class="section-sub">37 focused workers across four layers — each does one verb on one noun. Composed by sub-managers or dispatched directly by scrum-master for trivial tasks.</p>
+      <p class="section-sub">51 focused workers across four layers — each does one verb on one noun. Composed by sub-managers or dispatched directly by scrum-master for trivial tasks.</p>
       <div class="tier-grid">
         <div class="tier-card tier-inspect">
           <h3>Inspect <span class="tier-badge">Read-only · 11 agents</span></h3>
           <code>dep-reader</code> <code>route-lister</code> <code>schema-inspector</code> <code>log-tailer</code> <code>test-lister</code> <code>lint-reader</code> <code>type-error-reader</code> <code>git-state-reader</code> <code>api-shape-probe</code> <code>bundle-sizer</code> <code>dead-code-finder</code>
         </div>
         <div class="tier-card tier-write">
-          <h3>Write <span class="tier-badge">Code-producing · 11 agents</span></h3>
+          <h3>Write <span class="tier-badge">Code-producing · 24 agents</span></h3>
           <code>route-adder</code> <code>component-scaffolder</code> <code>test-writer</code> <code>migration-writer</code> <code>config-editor</code> <code>fixture-writer</code> <code>type-definer</code> <code>env-var-setter</code> <code>dockerfile-editor</code> <code>yaml-patcher</code> <code>readme-section-writer</code>
+          <code>function-writer</code> <code>middleware-writer</code> <code>store-slice-writer</code> <code>css-writer</code> <code>design-token-writer</code>
+          <code>csharp-script-writer</code> <code>csharp-member-adder</code> <code>unity-manifest-editor</code>
+          <code>ci-workflow-writer</code> <code>docker-compose-editor</code>
+          <code>test-config-writer</code> <code>mock-writer</code> <code>file-patch-runner</code>
         </div>
         <div class="tier-card tier-validate">
-          <h3>Validate <span class="tier-badge">Check-only · 9 agents</span></h3>
-          <code>typecheck-runner</code> <code>test-runner</code> <code>lint-runner</code> <code>build-runner</code> <code>schema-validator</code> <code>url-route-matcher</code> <code>accessibility-auditor</code> <code>lighthouse-runner</code> <code>security-scanner</code>
+          <h3>Validate <span class="tier-badge">Check-only · 10 agents</span></h3>
+          <code>typecheck-runner</code> <code>test-runner</code> <code>lint-runner</code> <code>build-runner</code> <code>schema-validator</code> <code>url-route-matcher</code> <code>accessibility-auditor</code> <code>lighthouse-runner</code> <code>security-scanner</code> <code>coverage-runner</code>
         </div>
         <div class="tier-card tier-publish">
           <h3>Publish <span class="tier-badge">Side-effects · 6 agents</span></h3>
@@ -572,11 +547,11 @@
           <p style="color:#8b949e;font-size:0.85rem">Highest capability. Used by <code>scrum-master</code>, <code>project-planner</code>, <code>code-analyst</code>, <code>doc-writer</code>, and <code>reflection-processor</code>. Reserved for orchestration and complex reasoning.</p>
         </div>
         <div class="tier-card" style="border-top:3px solid #58a6ff">
-          <h3 style="color:#58a6ff">Sonnet <span class="tier-badge">Sub-managers &amp; Specialists · 22 agents</span></h3>
-          <p style="color:#8b949e;font-size:0.85rem">High capability at moderate cost. Used by domain sub-managers (<code>fullstack-dev</code>, <code>mobile-dev</code>, <code>devops-engineer</code>, etc.) and platform specialists (<code>ios-dev</code>, <code>android-dev</code>, etc.).</p>
+          <h3 style="color:#58a6ff">Sonnet <span class="tier-badge">Sub-managers &amp; Specialists · 16 agents</span></h3>
+          <p style="color:#8b949e;font-size:0.85rem">High capability at moderate cost. Used by domain sub-managers (<code>fullstack-dev</code>, <code>devops-engineer</code>, <code>csharp-dev</code>, etc.) and specialist coordinators.</p>
         </div>
         <div class="tier-card" style="border-top:3px solid #3fb950">
-          <h3 style="color:#3fb950">Haiku <span class="tier-badge">Micro-agents · 39 agents</span></h3>
+          <h3 style="color:#3fb950">Haiku <span class="tier-badge">Micro-agents · 53 agents</span></h3>
           <p style="color:#8b949e;font-size:0.85rem">Fast and cost-efficient. Used for focused single-verb tasks: Inspect, Write, Validate, and Publish layer micro-agents that each do one thing on one file or API.</p>
         </div>
       </div>
@@ -639,11 +614,9 @@ node scripts/setup.js</code></pre>
           <div class="step-num">2</div>
           <h3>Scaffold</h3>
           <p>In any project, ask Claude Code:</p>
-          <pre><code>"Scaffold this as a mobile project with Voltron agents"
-
-# or for other project types:
-"Scaffold this Unity project with Voltron agents"
-"Scaffold this web project with Voltron agents"</code></pre>
+          <pre><code>"Scaffold this Unity project with Voltron agents"
+"Scaffold this web project with Voltron agents"
+"Scaffold this project with Voltron agents"</code></pre>
           <p style="margin-top:10px; font-size:0.85rem; color:var(--text-muted)">Agent files are written directly to disk — no manual copy-paste required.</p>
         </div>
         <div class="step">
@@ -651,10 +624,9 @@ node scripts/setup.js</code></pre>
           <h3>Develop</h3>
           <p>Fill in CLAUDE.md, then invoke agents:</p>
           <pre><code>@agent-scrum-master      ← plan your sprint
-@agent-mobile-dev        ← React Native + Expo
-@agent-ios-dev           ← native Swift/SwiftUI
-@agent-android-dev       ← Kotlin + Jetpack Compose
-@agent-app-store-publisher ← Fastlane + store release</code></pre>
+@agent-fullstack-dev     ← React/TypeScript + Node.js
+@agent-csharp-dev        ← Unity C# scripts
+@agent-devops-engineer   ← CI/CD, Docker, infrastructure</code></pre>
         </div>
       </div>
     </div>
@@ -680,7 +652,7 @@ node scripts/setup.js</code></pre>
           </tr>
           <tr>
             <td><code>scaffold_project</code></td>
-            <td>Writes agent templates and Dockerfile directly to disk for unity, web, fullstack, mobile, or general projects. Uses smart merge: skips existing agent files (auto-update maintains them), appends Voltron sections to existing CLAUDE.md, preserves custom Dockerfiles. Auto-detects project root via filesystem walk when project_root not specified (looks for .git, CLAUDE.md, .mcp.json, etc.); restart Claude Code required after scaffolding.</td>
+            <td>Writes agent templates and Dockerfile directly to disk for unity, web, fullstack, or general projects. Uses smart merge: skips existing agent files (auto-update maintains them), appends Voltron sections to existing CLAUDE.md, preserves custom Dockerfiles. Auto-detects project root via filesystem walk when project_root not specified (looks for .git, CLAUDE.md, .mcp.json, etc.); restart Claude Code required after scaffolding.</td>
           </tr>
           <tr>
             <td><code>setup_voltron</code></td>
@@ -869,7 +841,7 @@ node scripts/setup.js</code></pre>
     <div class="container">
       <p>
         <a href="https://github.com/7ports/project-voltron">GitHub</a> &middot;
-        v3.5.5 &middot;
+        v3.6.0 &middot;
         MIT License &middot;
         Built by <a href="https://github.com/7ports">7ports</a>
       </p>

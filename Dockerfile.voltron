@@ -34,7 +34,12 @@ RUN STRINGER_VERSION=1.7.0 && \
     rm -rf /tmp/stringer.tgz /tmp/stringer-extract
 
 # Non-root user for security
-RUN useradd -m -s /bin/bash voltron
+# Create .claude dir as voltron owner BEFORE any bind-mount lands on it.
+# Without this, Docker creates the dir as root when mounting credentials.json,
+# blocking Claude Code from writing session-env/ inside it (EACCES).
+RUN useradd -m -s /bin/bash voltron && \
+    mkdir -p /home/voltron/.claude && \
+    chown -R voltron:voltron /home/voltron/.claude
 USER voltron
 WORKDIR /workspace
 ENTRYPOINT ["claude"]

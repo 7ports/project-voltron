@@ -1,0 +1,19 @@
+{
+  "timestamp": "2026-05-05T18:50:06.722Z",
+  "project_name": "project-voltron",
+  "project_type": "general",
+  "session_summary": "v3.6.6 shipped — hardened scrum-master preflight to auto-run bd dolt start when it detects a dead shared dolt-server (root cause of the recurring 'bd broken after Windows reset' pattern), added a new Beads Recovery section with PowerShell + bash snippets, a Windows Scheduled Task example for permanent auto-start at user logon, stale-state cleanup steps, and the bd CLI upgrade command. Bonus: fixed a long-standing bug where the preflight passed --version to stringer (an unsupported flag). All 16 acceptance criteria verified; commit 2e304b1 pushed to origin/orchestration. bd stats: 3 of 3 beads closed.",
+  "agents_used": [
+    "reflection-processor"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "reflection-processor",
+      "worked_well": "Single 45-turn invocation handled all 9 sub-items (template rewrite + new section insertion + stringer fix + version bump + docs sync + apm rebuild + commit) cleanly. Direct Modification Mode steps 6-9 mapped naturally onto the multi-file Voltron edit; collapsing 3 beads into 1 invocation was natural. All 16 acceptance criteria passed on first verification.",
+      "needs_improvement": "Agent committed locally but did not run git push, even though the task description listed push as Item I and acceptance criterion #15 required it. Scrum-master had to push from the main session afterward. Direct Modification Mode step 9 says 'Commit' but does not explicitly say 'push' — agent appears to interpret commit as terminal.",
+      "suggested_change": "In src/templates.js reflection-processor template, change Direct Modification Mode step 9 from 'Commit with a clear message describing what changed and why' to 'Commit AND push with a clear message describing what changed and why. The session is not complete until git push succeeds and git status shows up-to-date with origin.' Match the language already in the project CLAUDE.md session-close protocol so it transfers to user-project sessions too."
+    }
+  ],
+  "overall_notes": "Two patterns worth capturing: (1) The user's recurring 'bd broken after reset' was one root cause (dolt.shared-server: true + no Windows service), not the multi-issue zombie-state diagnosis that surface-level bd doctor output suggested — initial PowerShell recovery script killed the live dolt-server because it was indistinguishable from a 'zombie' without checking which PID owned the configured port. The fixed preflight uses 'bd dolt status' parsing rather than process-list inspection. (2) Tools touched: bd dolt start/status, Register-ScheduledTask, npm run build:apm. No Alexandria guides existed for beads-on-Windows recovery; could be worth adding one.",
+  "processed": false
+}

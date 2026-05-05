@@ -56,7 +56,10 @@ Rules:
 - Include file path and line number when applicable
 - On failure: \`[STEP N] run tests — FAIL: 2 errors in auth.test.ts (retrying)\`
 - Keep total status output under 15 words per step
-- Do NOT skip steps or batch multiple actions into one line`;
+- Do NOT skip steps or batch multiple actions into one line
+- **Final line MUST be:** \`[DONE] <one-sentence summary of what was accomplished>\`
+
+These lines are forwarded to the orchestrator in real-time as MCP notifications — they are the only mid-task visibility it has, so emit them promptly after each action.`;
 
 // ─── Claude Code version utilities ──────────────────────────────────────────
 
@@ -2016,8 +2019,22 @@ server.tool(
       let stderr = "";
       const proc = spawn("docker", dockerArgs, { cwd });
 
+      // Forward [STEP N] / [DONE] / breadcrumb lines as MCP logging notifications
+      // so the orchestrator gets real-time progress visibility without --verbose.
+      let pendingLine = "";
       proc.stdout?.on("data", (chunk) => {
-        stdout += chunk.toString();
+        const chunkStr = chunk.toString();
+        stdout += chunkStr;
+
+        pendingLine += chunkStr;
+        const parts = pendingLine.split("\n");
+        pendingLine = parts.pop() ?? "";
+        for (const line of parts) {
+          if (/^\[(STEP \d+|DONE|entry|exec|exit)\]/.test(line.trim())) {
+            server.sendLoggingMessage({ level: "info", data: `[${agent_name}] ${line.trim()}` }).catch(() => {});
+          }
+        }
+
         if (stdout.length > 10 * 1024 * 1024) {
           proc.kill();
           resolve({ status: 1, stdout: stdout.slice(-10 * 1024 * 1024), stderr, error: new Error("Output exceeded 10MB limit") });
@@ -2045,12 +2062,29 @@ server.tool(
     const dashLine = dashboardUrl(dashPath) ? `\n\nDashboard: ${dashboardUrl(dashPath)}` : "";
     const logLine = `\n\nLog: \`.voltron/logs/${logFilename}\``;
 
+    // Extract progress breadcrumbs into a trail section so the orchestrator
+    // can scan what happened without reading the full output wall.
+    const allOutputLines = (result.stdout || "").split("\n");
+    const trailLines = allOutputLines.filter((l) =>
+      /^\[(STEP \d+|DONE|entry|exec|exit|claude-version)\]/.test(l.trim())
+    );
+    const trailSection = trailLines.length > 0
+      ? `### Progress Trail\n\`\`\`\n${trailLines.join("\n")}\n\`\`\``
+      : "";
+
     if (result.error || result.status !== 0) {
+      const tail = allOutputLines.slice(-80).join("\n");
       return {
         content: [
           {
             type: "text",
-            text: `## Agent ${agent_name} failed\n\n**Exit code:** ${result.status}\n\n**Output:**\n${result.stdout || ""}\n\n**Error:**\n${result.stderr || result.error?.message || "Unknown error"}${logLine}${dashLine}`,
+            text: [
+              `## Agent ${agent_name} FAILED (exit ${result.status})`,
+              trailSection,
+              `### Output Tail\n\`\`\`\n${tail}\n\`\`\``,
+              result.stderr ? `### Stderr\n\`\`\`\n${result.stderr}\n\`\`\`` : "",
+              result.error?.message ? `**Error:** ${result.error.message}` : "",
+            ].filter(Boolean).join("\n\n") + logLine + dashLine,
           },
         ],
       };
@@ -2060,7 +2094,11 @@ server.tool(
       content: [
         {
           type: "text",
-          text: `## Agent ${agent_name} completed\n\n${result.stdout}${logLine}${dashLine}`,
+          text: [
+            `## Agent ${agent_name} completed ✅`,
+            trailSection,
+            `### Full Output\n${result.stdout}`,
+          ].filter(Boolean).join("\n\n") + logLine + dashLine,
         },
       ],
     };

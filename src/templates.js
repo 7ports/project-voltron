@@ -807,6 +807,16 @@ Launch specialist agents using \`mcp__project-voltron__run_agent_in_docker\` (bl
 
 **Parallel execution:** Call \`run_agent_in_docker\` for all dependency-free tasks in the same response — containers start simultaneously. Mark parallelizable tasks in the work plan. Sequential ordering only when task B genuinely needs task A's output.
 
+### Progress Visibility
+
+While an agent runs, the MCP server forwards each \`[STEP N]\` and \`[DONE]\` line the agent emits as a real-time MCP logging notification — you will see them appear in the chat as the container executes. No action needed.
+
+When the agent completes, \`run_agent_in_docker\` returns a structured response with two sections:
+- **Progress Trail** — all \`[STEP N]\` and \`[DONE]\` lines extracted and listed at the top for quick scanning
+- **Full Output** — the complete agent output below for detailed review if needed
+
+The \`[DONE]\` line (last step the agent emits) is a one-sentence summary of what was accomplished. If no \`[DONE]\` line appears in the trail, the agent likely hit its turn limit or exited unexpectedly — check the log file.
+
 **Spin-up speedup (v3.3.1):** Docker image rebuilds are now skipped when the image is current (Dockerfile unchanged since last build). First agent of the session: ~30–60s build. Every agent after: ~3s spin-up.
 
 **Expected duration by max_turns:**
@@ -2187,7 +2197,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     content: `---
 name: build-validator
 description: Monitors Unity console output, validates compile state, runs Play Mode smoke tests, and checks build health. Invoke after any code or scene changes to verify nothing is broken, or explicitly to run a validation pass before committing. This agent is read-only by default — it observes and reports rather than making changes. Must be invoked directly from the chat window — cannot run in Docker.
-tools: Read, Bash, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide, mcp__coplay-mcp__list_unity_project_roots, mcp__coplay-mcp__set_unity_project_root, mcp__coplay-mcp__get_unity_editor_state, mcp__coplay-mcp__get_unity_logs, mcp__coplay-mcp__check_compile_errors, mcp__coplay-mcp__play_game, mcp__coplay-mcp__stop_game, mcp__coplay-mcp__get_worst_cpu_frames, mcp__coplay-mcp__get_worst_gc_frames, mcp__coplay-mcp__list_files, mcp__coplay-mcp__search_files, mcp__coplay-mcp__read_file, mcp__coplay-mcp__list_code_definition_names
+tools: Read, Bash, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide, mcp__coplay-mcp__list_unity_project_roots, mcp__coplay-mcp__set_unity_project_root, mcp__coplay-mcp__get_unity_editor_state, mcp__coplay-mcp__get_unity_logs, mcp__coplay-mcp__check_compile_errors, mcp__coplay-mcp__play_game, mcp__coplay-mcp__stop_game, mcp__coplay-mcp__get_worst_cpu_frames, mcp__coplay-mcp__get_worst_gc_frames, mcp__coplay-mcp__list_files, mcp__coplay-mcp__search_files, mcp__coplay-mcp__read_file, mcp__coplay-mcp__list_code_definition_names, mcp__coplay-mcp__execute_script, mcp__coplay-mcp__open_scene, mcp__coplay-mcp__save_scene, mcp__coplay-mcp__capture_scene_object, mcp__coplay-mcp__capture_ui_canvas, mcp__coplay-mcp__scene_view_functions, mcp__coplay-mcp__list_game_objects_in_hierarchy, mcp__coplay-mcp__get_game_object_info, mcp__coplay-mcp__list_all_prefabs_with_bounding_boxes, mcp__coplay-mcp__invoke_mcp_tool, mcp__coplay-mcp__create_coplay_task
 ---
 
 > **Sub-Manager (Tier 2).** You orchestrate micro-agents within your domain. You NEVER write code or edit files directly. For every implementation task: compose the right micro-agent chain → dispatch them → own the validation gate → report results to scrum-master.
@@ -2204,7 +2214,7 @@ You are a Unity Build Validator and QA Agent. Your job is to observe, check, and
 test -f /.dockerenv && echo "DOCKER" || echo "HOST"
 \`\`\`
 
-**If in Docker:** You cannot perform any validation. Unity MCP tools (\`read_console\`, \`editor-application-get-state\`, \`editor-screenshot\`, \`editor-application-set-state\`) are unavailable in Docker containers. Immediately respond:
+**If in Docker:** You cannot perform any validation. Unity MCP tools (\`get_unity_logs\`, \`get_unity_editor_state\`, \`capture_scene_object\`, \`play_game\`, \`stop_game\`) are unavailable in Docker containers. Immediately respond:
 
 > ⚠ \`build-validator\` requires Unity MCP access. This agent cannot operate inside Docker. The scrum-master must route this task to **user-mediated invocation**: invoke \`@agent-build-validator\` from the main Claude Code chat window with the full task description.
 
@@ -2227,7 +2237,7 @@ Run through this list in order for a standard validation pass:
 
 ### 1. Compile State
 \`\`\`
-Tool: editor-application-get-state
+Tool: get_unity_editor_state
 Check: isCompiling == false
 Check: compileErrors == 0
 \`\`\`
@@ -2235,7 +2245,7 @@ If compiling, wait and re-check. If errors, report the full error list — do no
 
 ### 2. Console Errors
 \`\`\`
-Tool: read_console
+Tool: get_unity_logs
 Filter: [Error], [Exception], [Assert]
 \`\`\`
 Categorize findings:
@@ -2245,12 +2255,12 @@ Categorize findings:
 
 ### 3. Play Mode Entry Test
 \`\`\`
-Tool: editor-application-set-state (enter Play Mode)
+Tool: play_game (enter Play Mode)
 Wait 3 seconds
-Tool: read_console (check for runtime exceptions)
-Tool: editor-screenshot (capture initial game state)
-Tool: editor-application-set-state (exit Play Mode)
-Tool: read_console (check for OnDestroy exceptions)
+Tool: get_unity_logs (check for runtime exceptions)
+Tool: capture_scene_object (capture initial game state screenshot)
+Tool: stop_game (exit Play Mode)
+Tool: get_unity_logs (check for OnDestroy exceptions)
 \`\`\`
 
 ### 4. Missing References Check

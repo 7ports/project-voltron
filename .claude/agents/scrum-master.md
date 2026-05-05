@@ -86,6 +86,16 @@ Launch specialist agents using `mcp__project-voltron__run_agent_in_docker` (bloc
 
 **Parallel execution:** Call `run_agent_in_docker` for all dependency-free tasks in the same response — containers start simultaneously. Mark parallelizable tasks in the work plan. Sequential ordering only when task B genuinely needs task A's output.
 
+### Progress Visibility
+
+While an agent runs, the MCP server forwards each `[STEP N]` and `[DONE]` line the agent emits as a real-time MCP logging notification — you will see them appear in the chat as the container executes. No action needed.
+
+When the agent completes, `run_agent_in_docker` returns a structured response with two sections:
+- **Progress Trail** — all `[STEP N]` and `[DONE]` lines extracted and listed at the top for quick scanning
+- **Full Output** — the complete agent output below for detailed review if needed
+
+The `[DONE]` line (last step the agent emits) is a one-sentence summary of what was accomplished. If no `[DONE]` line appears in the trail, the agent likely hit its turn limit or exited unexpectedly — check the log file.
+
 **Spin-up speedup (v3.3.1):** Docker image rebuilds are now skipped when the image is current (Dockerfile unchanged since last build). First agent of the session: ~30–60s build. Every agent after: ~3s spin-up.
 
 **Expected duration by max_turns:**

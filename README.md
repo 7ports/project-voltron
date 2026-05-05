@@ -1,6 +1,6 @@
 # Project Voltron
 
-An MCP server that provides teams of specialized agent templates for Claude Code. Scaffold any project with battle-tested subagent definitions for Unity game dev, web/fullstack development, mobile (iOS/Android/React Native), and general software projects — plus a scrum-master coordinator and a self-improvement loop.
+An MCP server that provides teams of specialized agent templates for Claude Code. Scaffold any project with battle-tested subagent definitions for Unity game dev, web/fullstack development, and general software projects — plus a scrum-master coordinator, 51 micro-agents, and a self-improvement loop.
 
 ## Agent Teams
 
@@ -33,16 +33,48 @@ Unity agents fall into two invocation modes. The scrum-master handles Docker age
 | **ui-designer** | CSS, responsive layout, theming, PWA, accessibility |
 | **qa-tester** | Testing (Vitest/Playwright), Lighthouse audits, bundle analysis |
 
-### Mobile (iOS / Android / React Native)
+### Micro-Agents (Haiku tier — 51 focused workers)
+
+Dispatched by sub-managers for single-verb, single-file tasks. Each does one thing.
+
+**Web**
 
 | Agent | Purpose |
 |---|---|
-| **mobile-dev** | React Native + Expo cross-platform developer. TypeScript, React Navigation, Zustand, React Query, native module bridging. |
-| **ios-dev** | Native Swift/SwiftUI specialist. `@Observable`, async/await, `@MainActor`, SwiftData, App Store submission. |
-| **android-dev** | Kotlin + Jetpack Compose specialist. MVVM + UDF, Hilt, StateFlow, Material Design 3, Play Store publishing. |
-| **mobile-ui-designer** | Platform-native UX for iOS (HIG) and Android (Material Design 3). Animations, dark mode, accessibility. |
-| **mobile-qa-tester** | Detox, XCUITest, and Espresso E2E tests. Simulator/emulator runs, performance profiling, crash triage. |
-| **app-store-publisher** | Fastlane + Match for App Store Connect and Google Play. Release builds, signing, changelogs, staged rollouts. |
+| **function-writer** | Write a single function or utility to a specified file |
+| **middleware-writer** | Add Express/Koa/Hono middleware to the server stack |
+| **store-slice-writer** | Write a Zustand/Redux slice or context module |
+| **css-writer** | Write scoped CSS, Tailwind utilities, or CSS-in-JS styles |
+| **design-token-writer** | Write design token files (colors, spacing, typography) |
+
+**Unity**
+
+| Agent | Purpose |
+|---|---|
+| **csharp-script-writer** | Write a new C# MonoBehaviour or ScriptableObject script |
+| **csharp-member-adder** | Add fields, properties, or methods to an existing C# class |
+| **unity-manifest-editor** | Edit `Packages/manifest.json` or `ProjectSettings` files |
+
+**DevOps**
+
+| Agent | Purpose |
+|---|---|
+| **ci-workflow-writer** | Write or update a GitHub Actions / GitLab CI workflow file |
+| **docker-compose-editor** | Add or modify services in `docker-compose.yml` |
+
+**QA**
+
+| Agent | Purpose |
+|---|---|
+| **coverage-runner** | Run the coverage reporter and surface uncovered lines |
+| **test-config-writer** | Write or update Vitest/Jest/Playwright config files |
+| **mock-writer** | Write mock modules or fixtures for unit tests |
+
+**Cross**
+
+| Agent | Purpose |
+|---|---|
+| **file-patch-runner** | Apply a targeted patch to any file when no specialist fits |
 
 ### Internal (not scaffolded into projects)
 
@@ -200,8 +232,8 @@ Voltron assigns each agent a default model tier based on its role. Sub-managers 
 | Tier | Model | Agents | Role |
 |---|---|---|---|
 | Opus | `claude-opus-4-*` | 5 | Coordinators & planners (scrum-master, project-planner, code-analyst, doc-writer, reflection-processor) |
-| Sonnet | `claude-sonnet-4-*` | 22 | Sub-managers & domain specialists (fullstack-dev, mobile-dev, devops-engineer, ios-dev, android-dev, etc.) |
-| Haiku | `claude-haiku-4-*` | 39 | Micro-agents — Inspect, Write, Validate, Publish layer workers |
+| Sonnet | `claude-sonnet-4-*` | 16 | Sub-managers & domain specialists (fullstack-dev, devops-engineer, csharp-dev, qa-tester, etc.) |
+| Haiku | `claude-haiku-4-*` | 53 | Micro-agents — Inspect, Write, Validate, Publish layer workers |
 
 **Override:** Pass `model: "sonnet"` or `model: "opus"` to `run_agent_in_docker` / `start_agent_in_docker` to retry a micro-agent at a higher tier. Sub-managers are instructed to do this automatically when output is unsatisfactory. The `list_templates` tool shows each agent's default model tier.
 

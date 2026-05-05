@@ -56,7 +56,10 @@ Rules:
 - Include file path and line number when applicable
 - On failure: \`[STEP N] run tests — FAIL: 2 errors in auth.test.ts (retrying)\`
 - Keep total status output under 15 words per step
-- Do NOT skip steps or batch multiple actions into one line`;
+- Do NOT skip steps or batch multiple actions into one line
+- **Final line MUST be:** \`[DONE] <one-sentence summary of what was accomplished>\`
+
+These lines are forwarded to the orchestrator in real-time as MCP notifications — they are the only mid-task visibility it has, so emit them promptly after each action.`;
 
 // ─── Claude Code version utilities ──────────────────────────────────────────
 
@@ -2007,7 +2010,10 @@ server.tool(
       "-c",
       // v3.3.2: breadcrumb-wrapped — surfaces stalls before claude produces its first byte.
       // [entry]/[claude-version]/[exec]/[exit] echoes localize hangs to mount, auth, parse, or run.
-      `{ echo "[entry] $(date -Is) host=$(hostname) user=$(whoami)"; echo "[claude-version] $(claude --version 2>&1)"; echo "[exec] $(date -Is) starting prompt"; claude --dangerously-skip-permissions ${modelFlag} --max-turns ${max_turns} -p "$(cat /tmp/task.md)" 2>&1; CLAUDE_EXIT=\$?; echo "[exit] $(date -Is) code=\$CLAUDE_EXIT"; exit \$CLAUDE_EXIT; } | tee /workspace/.voltron/logs/${logFilename}; exit \${PIPESTATUS[0]}`,
+      // v3.6.4: --output-format stream-json --verbose so intermediate assistant text
+      // (including [STEP N] progress lines emitted before each tool call) reaches stdout.
+      // Plain `-p` only prints the final assistant message and would suppress all [STEP N]s.
+      `{ echo "[entry] $(date -Is) host=$(hostname) user=$(whoami)"; echo "[claude-version] $(claude --version 2>&1)"; echo "[exec] $(date -Is) starting prompt"; claude --dangerously-skip-permissions ${modelFlag} --max-turns ${max_turns} --output-format stream-json --verbose -p "$(cat /tmp/task.md)" 2>&1; CLAUDE_EXIT=\$?; echo "[exit] $(date -Is) code=\$CLAUDE_EXIT"; exit \$CLAUDE_EXIT; } | tee /workspace/.voltron/logs/${logFilename}; exit \${PIPESTATUS[0]}`,
     ];
 
     // Async spawn — allows multiple agents to run in parallel Docker containers
@@ -2016,27 +2022,83 @@ server.tool(
       let stderr = "";
       const proc = spawn("docker", dockerArgs, { cwd });
 
+      // v3.6.4: claude is invoked with --output-format stream-json --verbose, so
+      // its stdout is a JSONL stream of events (system/assistant/user/result) interleaved
+      // with the bash-wrapper plain-text breadcrumbs ([entry]/[claude-version]/[exec]/[exit]).
+      // We forward wrapper breadcrumbs verbatim, parse JSON lines for assistant text content,
+      // and emit any [STEP N]/[DONE] markers found in that text as MCP logging notifications.
+      let pendingLine = "";
+      let extractedText = "";
       proc.stdout?.on("data", (chunk) => {
-        stdout += chunk.toString();
+        const chunkStr = chunk.toString();
+        stdout += chunkStr;
+
+        pendingLine += chunkStr;
+        const parts = pendingLine.split("\n");
+        pendingLine = parts.pop() ?? "";
+        for (const rawLine of parts) {
+          const line = rawLine.trim();
+          if (!line) continue;
+
+          // Bash-wrapper breadcrumbs are plain text — bypass JSON parsing.
+          if (/^\[(entry|claude-version|exec|exit)\]/.test(line)) {
+            server.sendLoggingMessage({ level: "info", data: `[${agent_name}] ${line}` }).catch(() => {});
+            continue;
+          }
+
+          // Everything else should be a stream-json event.
+          let event;
+          try { event = JSON.parse(line); } catch { continue; }
+          if (!event || typeof event !== "object") continue;
+
+          const texts = [];
+          // Dominant shape: {type:"assistant", message:{content:[{type:"text", text:"..."}, ...]}}
+          if (event.type === "assistant" && event.message && Array.isArray(event.message.content)) {
+            for (const block of event.message.content) {
+              if (block && block.type === "text" && typeof block.text === "string") texts.push(block.text);
+            }
+          // Partial-streaming shape (only when --include-partial-messages is set, but harmless to support)
+          } else if (event.type === "stream_event" && event.event && event.event.type === "content_block_delta"
+                     && event.event.delta && event.event.delta.type === "text_delta"
+                     && typeof event.event.delta.text === "string") {
+            texts.push(event.event.delta.text);
+          // Defensive fallbacks for SDK-version drift
+          } else if (event.type === "text" && typeof event.text === "string") {
+            texts.push(event.text);
+          } else if (event.type === "result" && typeof event.result === "string") {
+            texts.push(event.result);
+          }
+
+          for (const text of texts) {
+            extractedText += text + "\n";
+            for (const t of text.split("\n")) {
+              const trimmed = t.trim();
+              if (/^\[(STEP \d+|DONE)\]/.test(trimmed)) {
+                server.sendLoggingMessage({ level: "info", data: `[${agent_name}] ${trimmed}` }).catch(() => {});
+              }
+            }
+          }
+        }
+
         if (stdout.length > 10 * 1024 * 1024) {
           proc.kill();
-          resolve({ status: 1, stdout: stdout.slice(-10 * 1024 * 1024), stderr, error: new Error("Output exceeded 10MB limit") });
+          resolve({ status: 1, stdout: stdout.slice(-10 * 1024 * 1024), stderr, extractedText, error: new Error("Output exceeded 10MB limit") });
         }
       });
       proc.stderr?.on("data", (chunk) => { stderr += chunk.toString(); });
 
       const timer = setTimeout(() => {
         proc.kill();
-        resolve({ status: 1, stdout, stderr, error: new Error("Timeout after 10 minutes") });
+        resolve({ status: 1, stdout, stderr, extractedText, error: new Error("Timeout after 10 minutes") });
       }, 600000);
 
       proc.on("close", (code) => {
         clearTimeout(timer);
-        resolve({ status: code, stdout, stderr, error: null });
+        resolve({ status: code, stdout, stderr, extractedText, error: null });
       });
       proc.on("error", (err) => {
         clearTimeout(timer);
-        resolve({ status: 1, stdout, stderr, error: err });
+        resolve({ status: 1, stdout, stderr, extractedText, error: err });
       });
     });
 
@@ -2045,12 +2107,39 @@ server.tool(
     const dashLine = dashboardUrl(dashPath) ? `\n\nDashboard: ${dashboardUrl(dashPath)}` : "";
     const logLine = `\n\nLog: \`.voltron/logs/${logFilename}\``;
 
+    // Extract progress breadcrumbs into a trail section so the orchestrator
+    // can scan what happened without reading the full output wall.
+    // v3.6.4: with stream-json, raw stdout is JSONL — wrapper breadcrumbs are still
+    // plain-text lines in stdout, while [STEP N]/[DONE] live inside parsed assistant
+    // text (captured during streaming as `extractedText`).
+    const allOutputLines = (result.stdout || "").split("\n");
+    const wrapperLines = allOutputLines
+      .map((l) => l.trim())
+      .filter((l) => /^\[(entry|claude-version|exec|exit)\]/.test(l));
+    const stepLines = (result.extractedText || "")
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => /^\[(STEP \d+|DONE)\]/.test(l));
+    const headerLines = wrapperLines.filter((l) => !/^\[exit\]/.test(l));
+    const exitLines = wrapperLines.filter((l) => /^\[exit\]/.test(l));
+    const trailLines = [...headerLines, ...stepLines, ...exitLines];
+    const trailSection = trailLines.length > 0
+      ? `### Progress Trail\n\`\`\`\n${trailLines.join("\n")}\n\`\`\``
+      : "";
+
     if (result.error || result.status !== 0) {
+      const tail = allOutputLines.slice(-80).join("\n");
       return {
         content: [
           {
             type: "text",
-            text: `## Agent ${agent_name} failed\n\n**Exit code:** ${result.status}\n\n**Output:**\n${result.stdout || ""}\n\n**Error:**\n${result.stderr || result.error?.message || "Unknown error"}${logLine}${dashLine}`,
+            text: [
+              `## Agent ${agent_name} FAILED (exit ${result.status})`,
+              trailSection,
+              `### Output Tail\n\`\`\`\n${tail}\n\`\`\``,
+              result.stderr ? `### Stderr\n\`\`\`\n${result.stderr}\n\`\`\`` : "",
+              result.error?.message ? `**Error:** ${result.error.message}` : "",
+            ].filter(Boolean).join("\n\n") + logLine + dashLine,
           },
         ],
       };
@@ -2060,7 +2149,11 @@ server.tool(
       content: [
         {
           type: "text",
-          text: `## Agent ${agent_name} completed\n\n${result.stdout}${logLine}${dashLine}`,
+          text: [
+            `## Agent ${agent_name} completed ✅`,
+            trailSection,
+            `### Full Output\n${result.stdout}`,
+          ].filter(Boolean).join("\n\n") + logLine + dashLine,
         },
       ],
     };

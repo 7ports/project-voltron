@@ -182,6 +182,22 @@ Default chains for common tasks. Dispatch via `run_agent_in_docker`.
 | Add method to shader C# class | csharp-member-adder → build-runner |
 | Add shader package | unity-manifest-editor → build-runner |
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+`[STEP N] <one short verb-phrase describing what this call does>`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one `[STEP N]`. If you make N tool calls, you emit N `[STEP]` lines.
+
+Your final output MUST end with one line in this format:
+
+`[DONE] <one-sentence summary of what was accomplished>`
+
+If you exit without a `[DONE]` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:

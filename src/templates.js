@@ -1209,6 +1209,22 @@ Call \`mcp__project-voltron__append_journal\` at these moments during every sess
 
 Set \`actor\` to \`"scrum-master"\`. Write entries in plain language — assume a non-developer will read the journal. The dashboard's journal panel renders today's entries automatically when \`generate_dashboard\` is called.
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -1449,6 +1465,22 @@ End your response with:
 2. A brief summary of the architecture and key decisions
 3. Any open questions that need human input
 4. The instruction to invoke scrum-master next
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -1653,6 +1685,22 @@ Always end your response with:
 ## Model Tier Override
 
 This sub-manager runs as **Opus** by default for maximum orchestration quality. Micro-agents it dispatches default to **Haiku**. If a Haiku micro-agent fails or produces low-quality output, retry with a higher tier by passing \`model: "sonnet"\` or \`model: "opus"\` to \`run_agent_in_docker\`.
+
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
 
@@ -1942,6 +1990,22 @@ public class EnemyConfig : ScriptableObject
 
 This sub-manager runs as **Opus** by default for maximum orchestration quality. Micro-agents it dispatches default to **Haiku**. If a Haiku micro-agent fails or produces low-quality output, retry with a higher tier by passing \`model: "sonnet"\` or \`model: "opus"\` to \`run_agent_in_docker\`.
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -2162,6 +2226,22 @@ Default chains for common tasks. Dispatch via \`run_agent_in_docker\`.
 | New C# shader helper script | csharp-script-writer → build-runner |
 | Add method to shader C# class | csharp-member-adder → build-runner |
 | Add shader package | unity-manifest-editor → build-runner |
+
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
 
@@ -2413,6 +2493,22 @@ Default chains for common tasks. Dispatch via \`run_agent_in_docker\`.
 | Add method to existing .cs | csharp-member-adder → build-runner |
 | Add/remove Unity package | unity-manifest-editor → build-runner |
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -2646,6 +2742,22 @@ Default chains for common tasks. Dispatch via \`run_agent_in_docker\`.
 | New C# script | csharp-script-writer → build-runner |
 | Add method to existing .cs | csharp-member-adder → build-runner |
 | Add/remove Unity package | unity-manifest-editor → build-runner |
+
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
 
@@ -2924,6 +3036,22 @@ Report:
 ## Model Tier Override
 
 This sub-manager runs as **Opus** by default for maximum orchestration quality. Micro-agents it dispatches default to **Haiku**. If a Haiku micro-agent fails or produces low-quality output, retry with a higher tier by passing \`model: "sonnet"\` or \`model: "opus"\` to \`run_agent_in_docker\`.
+
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
 
@@ -3230,6 +3358,22 @@ Report:
 
 This sub-manager runs as **Opus** by default for maximum orchestration quality. Micro-agents it dispatches default to **Haiku**. If a Haiku micro-agent fails or produces low-quality output, retry with a higher tier by passing \`model: "sonnet"\` or \`model: "opus"\` to \`run_agent_in_docker\`.
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -3509,6 +3653,22 @@ Report:
 - Breakpoints tested and verified
 - Accessibility considerations applied
 - Any browser compatibility notes
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -3843,6 +4003,22 @@ Report:
 
 This sub-manager runs as **Opus** by default for maximum orchestration quality. Micro-agents it dispatches default to **Haiku**. If a Haiku micro-agent fails or produces low-quality output, retry with a higher tier by passing \`model: "sonnet"\` or \`model: "opus"\` to \`run_agent_in_docker\`.
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -4003,6 +4179,24 @@ v2.6.0: add run_agent_in_docker timeout configuration parameter
 Before doing meaningful work, call \`mcp__alexandria__list_guides\` to see what's already documented for the current task. For tooling/setup steps, call \`mcp__alexandria__quick_setup\` instead of reinventing setup. After the task, if you discovered any platform-specific gotcha, workaround, or new pattern, call \`mcp__alexandria__update_guide\` to capture it for next time.
 
 Alexandria is for non-project-specific documentation only. Project-specific content belongs in CLAUDE.md.
+
+## Progress Reporting
+
+**Especially you, reflection-processor.** Voltron-modification tasks often involve many file reads and edits. Each one needs its own \`[STEP N]\` line — bulk operations that run silently for minutes are exactly what this rule exists to prevent.
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
 
@@ -4215,6 +4409,22 @@ After completing research on any tool, library, API, or platform:
 - **Don't mark research complete if key questions are unanswered** — list them as gaps and attempt follow-up queries before giving up
 
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -4290,6 +4500,22 @@ You are a read-only dependency inspector. You never modify files.
 **Conflicts / warnings:** none
 \`\`\`
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -4347,6 +4573,22 @@ You are a read-only API route inspector. You never modify files.
 **Conflicts detected:** none
 **Total routes:** N
 \`\`\`
+
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
 
@@ -4408,6 +4650,22 @@ You are a read-only schema inspector. You never modify files.
 **Relations:** User → Post (one-to-many)
 **Warnings:** none
 \`\`\`
+
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
 
@@ -4472,6 +4730,22 @@ Given a log file path or directory:
 - [14:31:05] Server listening on port 3000
 \`\`\`
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -4532,6 +4806,22 @@ You are a read-only test inventory agent. You never modify files.
 - routes/admin.ts
 - lib/tokenizer.ts
 \`\`\`
+
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
 
@@ -4597,6 +4887,22 @@ You are a read-only lint reporter. You never modify files — not even auto-fixa
 - src/routes/users.ts — 5 errors
 \`\`\`
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -4660,6 +4966,22 @@ You are a read-only TypeScript type-check reporter. You never modify files.
 | src/routes/users.ts | 6 |
 \`\`\`
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -4721,6 +5043,22 @@ You are a read-only git state reporter. You never modify the repository.
 
 **Conflicts:** none
 \`\`\`
+
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
 
@@ -4792,6 +5130,22 @@ interface UsersResponse {
 **Auth required:** No
 \`\`\`
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -4856,6 +5210,22 @@ You are a read-only bundle size reporter. You never modify files.
 **Warnings:** main chunk exceeds 500 KB threshold
 \`\`\`
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -4919,6 +5289,22 @@ You are a read-only dead code detector. You never modify files.
 **Note:** Verify manually before deleting — dynamic imports and test files may reference these.
 \`\`\`
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -4973,6 +5359,22 @@ You are a single-route adder. You add exactly one new API route per invocation.
 - Do NOT add imports unless they already exist in the file or you explicitly add them at the top
 - Do NOT refactor surrounding code
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -5023,6 +5425,22 @@ You are a single-component scaffolder. You create one new component file per inv
 - Do NOT add the component to any index.ts barrel file — that is a separate task
 - Match existing style: named vs default export, props type vs interface, styling approach
 - If the task says "scaffold," create the shell with TODO placeholders — do not implement full functionality
+
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
 
@@ -5075,6 +5493,22 @@ You are a test writer. You write tests for one specified source file or function
 - Write real assertions — not just \`expect(result).toBeDefined()\`
 - Mock external dependencies using the project's established mock pattern
 - One source file per invocation
+
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
 
@@ -5131,6 +5565,22 @@ You are a database migration writer. You write one migration file per invocation
 ## Alexandria
 
 Before any tool/install/config work, call \`mcp__alexandria__quick_setup\` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call \`mcp__alexandria__update_guide\` to capture it.
+
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
 
@@ -5197,6 +5647,22 @@ If this fails with a permissions error (EACCES on \`/home/voltron/.claude/sessio
 
 Before any tool/install/config work, call \`mcp__alexandria__quick_setup\` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call \`mcp__alexandria__update_guide\` to capture it.
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -5247,6 +5713,22 @@ You are a test fixture writer. You create realistic test fixture data for one do
 - 3-5 fixture objects exported
 - Each fixture annotated with a one-line comment describing what case it represents
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -5296,6 +5778,22 @@ You are a TypeScript type definer. You define types for one entity or interface 
 - Do NOT use \`any\` — use \`unknown\` with a type guard if the shape is dynamic
 - Prefer \`interface\` for objects that may be extended; \`type\` for unions and intersections
 - If using Zod: define schema AND infer the TypeScript type from it
+
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
 
@@ -5350,6 +5848,22 @@ You are an environment variable setter. You add one env var per invocation acros
 ## Alexandria
 
 Before any tool/install/config work, call \`mcp__alexandria__quick_setup\` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call \`mcp__alexandria__update_guide\` to capture it.
+
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
 
@@ -5406,6 +5920,22 @@ You are a Docker configuration editor. You make one targeted edit to Docker file
 
 Before any tool/install/config work, call \`mcp__alexandria__quick_setup\` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call \`mcp__alexandria__update_guide\` to capture it.
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -5456,6 +5986,22 @@ You are a YAML patcher. You make one surgical change to a YAML configuration fil
 - Use the same indentation style as the existing file
 - For GitHub Actions: never change \`on:\` triggers or \`permissions:\` unless explicitly instructed
 - For list appends: insert at the position specified or at the end
+
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
 
@@ -5513,6 +6059,22 @@ You are a README section writer. You write or update one named section per invoc
 
 Before any tool/install/config work, call \`mcp__alexandria__quick_setup\` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call \`mcp__alexandria__update_guide\` to capture it.
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -5568,6 +6130,22 @@ You are the TypeScript type-check runner. You run tsc and report the result.
 \`\`\`
 
 On failure, hand off to the appropriate write-layer agent with the specific errors listed.
+
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
 
@@ -5635,6 +6213,22 @@ Expected: 409  Received: 500
 
 Before any tool/install/config work, call \`mcp__alexandria__quick_setup\` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call \`mcp__alexandria__update_guide\` to capture it.
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -5697,6 +6291,22 @@ You are the lint runner. You run the linter and report all issues without auto-f
 
 Before any tool/install/config work, call \`mcp__alexandria__quick_setup\` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call \`mcp__alexandria__update_guide\` to capture it.
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -5758,6 +6368,22 @@ Output:
 
 Before any tool/install/config work, call \`mcp__alexandria__quick_setup\` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call \`mcp__alexandria__update_guide\` to capture it.
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -5815,6 +6441,22 @@ Given a schema reference (file path or schema name) and a data sample:
 - email: Invalid email (received: "not-an-email")
 - age: Expected number, received string
 \`\`\`
+
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
 
@@ -5879,6 +6521,22 @@ You are a URL/route matcher. You find mismatches between frontend API calls and 
 All other frontend URLs match backend routes correctly.
 \`\`\`
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -5936,6 +6594,22 @@ You are an accessibility auditor. You run automated accessibility checks and rep
 - img[src="logo.png"]: Missing alt attribute (WCAG 1.1.1)
 - button.nav-close: No accessible name (WCAG 4.1.2)
 \`\`\`
+
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
 
@@ -6000,6 +6674,22 @@ You are a Lighthouse runner. You run performance and quality audits on a running
 2. Serve images in next-gen formats (save ~380 KB)
 \`\`\`
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -6063,6 +6753,22 @@ You are a security vulnerability scanner. You run dependency audits and report f
   Fix: npm audit fix (or upgrade to lodash@4.17.21)
 \`\`\`
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -6124,6 +6830,22 @@ Follow the project's existing style. Default: \`<type>: <summary>\` where type i
 ## Alexandria
 
 Before any tool/install/config work, call \`mcp__alexandria__quick_setup\` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call \`mcp__alexandria__update_guide\` to capture it.
+
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
 
@@ -6193,6 +6915,22 @@ Generated with Voltron
 
 Before any tool/install/config work, call \`mcp__alexandria__quick_setup\` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call \`mcp__alexandria__update_guide\` to capture it.
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -6242,6 +6980,22 @@ You are a git branch manager. You perform one branch operation per invocation.
 - NEVER use \`-D\` (force delete) unless the task explicitly says "force delete" with the branch named
 - Follow the project's branch naming convention (check \`git branch -a | head -20\`)
 - After switching, run \`git status\` and include it in output so the caller knows the working tree state
+
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
 
@@ -6300,6 +7054,22 @@ After triggering:
 ## Alexandria
 
 Before any tool/install/config work, call \`mcp__alexandria__quick_setup\` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call \`mcp__alexandria__update_guide\` to capture it.
+
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
 
@@ -6363,6 +7133,22 @@ You are a changelog updater. You add one release entry to CHANGELOG.md per invoc
 - Never delete or modify existing changelog entries
 - Use ISO 8601 dates (YYYY-MM-DD)
 - Keep entries concise: one line per change, present tense
+
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
 
@@ -6468,6 +7254,22 @@ Before doing meaningful work, call \`mcp__alexandria__list_guides\` to see what'
 
 Alexandria is for non-project-specific documentation only. Project-specific content belongs in CLAUDE.md.
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -6550,6 +7352,22 @@ Before doing meaningful work, call \`mcp__alexandria__list_guides\` to see what'
 
 Alexandria is for non-project-specific documentation only. Project-specific content belongs in CLAUDE.md.
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -6622,6 +7440,22 @@ Never invent context or consequences — use only what was provided in the task.
 
 Before any tool/install/config work, call \`mcp__alexandria__quick_setup\` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call \`mcp__alexandria__update_guide\` to capture it.
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -6692,6 +7526,22 @@ Never invent behavior — document only what you read in the source.
 
 Before any tool/install/config work, call \`mcp__alexandria__quick_setup\` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call \`mcp__alexandria__update_guide\` to capture it.
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -6750,6 +7600,22 @@ Create a Mermaid diagram and write it to \`docs/diagrams/{name}.mmd\`.
 ## Alexandria
 
 Before any tool/install/config work, call \`mcp__alexandria__quick_setup\` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call \`mcp__alexandria__update_guide\` to capture it.
+
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
 
@@ -6825,6 +7691,22 @@ Before doing meaningful work, call \`mcp__alexandria__list_guides\` to see what'
 
 Alexandria is for non-project-specific documentation only. Project-specific content belongs in CLAUDE.md.
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -6893,6 +7775,22 @@ Before doing meaningful work, call \`mcp__alexandria__list_guides\` to see what'
 
 Alexandria is for non-project-specific documentation only. Project-specific content belongs in CLAUDE.md.
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -6953,6 +7851,22 @@ The dispatcher must provide:
 - Do NOT add imports unless explicitly listed in \`function_spec\`
 - Do NOT refactor surrounding code
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -7012,6 +7926,22 @@ The dispatcher must provide:
 - Match existing error-handling and response patterns exactly
 - Do NOT add dependencies not already in package.json
 - Do NOT modify existing middleware
+
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
 
@@ -7075,6 +8005,22 @@ The dispatcher must provide:
 - Match existing slice naming patterns in the project exactly
 - Do NOT modify existing slices — append only
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -7135,6 +8081,22 @@ The dispatcher must provide:
 - Do NOT reorder or refactor existing rules
 - Tailwind projects: prefer utility classes in the component file over new CSS unless spec explicitly requires CSS
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -7194,6 +8156,22 @@ The dispatcher must provide:
 - Match naming convention exactly (kebab-case, camelCase, SCREAMING_SNAKE — whatever the file uses)
 - Group new tokens with their semantic category (colors with colors, spacing with spacing)
 - Do NOT introduce a new token format — use whatever format the file already uses
+
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
 
@@ -7257,6 +8235,22 @@ The dispatcher must provide:
 - Follow Unity C# conventions: PascalCase for types/methods/properties, \`_camelCase\` for private fields
 - Do NOT add \`#region\` blocks unless the project already uses them
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -7315,6 +8309,22 @@ The dispatcher must provide:
 - Match surrounding access modifiers (\`public\`, \`private\`, \`[SerializeField]\`) unless spec explicitly overrides
 - Do NOT reorder or reformat existing code
 - Do NOT change the class signature, namespace, or using directives
+
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
 
@@ -7377,6 +8387,22 @@ The dispatcher must provide:
 - For "remove": if the package is not present, report "not found" and stop — do not modify the file
 - Preserve all existing entries exactly as they are
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -7437,6 +8463,22 @@ The dispatcher must provide:
 - Do NOT modify existing jobs unless the spec explicitly requires it — add new jobs only
 - Pin action versions (e.g. \`actions/checkout@v4\`) — never use \`@main\` or \`@latest\`
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -7495,6 +8537,22 @@ The dispatcher must provide:
 - Reference secrets as environment variables from a \`.env\` file, not hardcoded values
 - Do NOT modify existing services unless spec explicitly requires it
 - Use compose spec v3.8+ syntax — do NOT include a \`version:\` key (deprecated)
+
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
 
@@ -7568,6 +8626,22 @@ You are a read-only coverage validator. You run tests with coverage and report r
 - Report the raw command output alongside the structured summary
 - If no coverage tool is configured, report "No coverage tool detected" and stop
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -7627,6 +8701,22 @@ The dispatcher must provide:
 - Preserve all existing settings not referenced in \`config_spec\`
 - Do NOT switch test frameworks — only configure the existing one
 - Coverage threshold changes must be explicit in \`config_spec\` — never lower thresholds without being told to
+
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
 
@@ -7690,6 +8780,22 @@ The dispatcher must provide:
 - Do NOT import from the real module in the mock file (no circular dependencies)
 - Export mocks in the same shape as the real module's exports
 
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
+
 ## Validation & Handoff
 
 Before reporting complete, you MUST:
@@ -7751,6 +8857,22 @@ The dispatcher must provide:
 - Never retry a failed script with modifications — report the error to the dispatcher
 - Do NOT commit the script itself (\`/tmp/patch.py\` or \`/tmp/patch.sh\`)
 - Only commit the files the script changed in the target directory
+
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+\`[STEP N] <one short verb-phrase describing what this call does>\`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one \`[STEP N]\`. If you make N tool calls, you emit N \`[STEP]\` lines.
+
+Your final output MUST end with one line in this format:
+
+\`[DONE] <one-sentence summary of what was accomplished>\`
+
+If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
 

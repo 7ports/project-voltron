@@ -86,6 +86,16 @@ Launch specialist agents using `mcp__project-voltron__run_agent_in_docker` (bloc
 
 **Parallel execution:** Call `run_agent_in_docker` for all dependency-free tasks in the same response — containers start simultaneously. Mark parallelizable tasks in the work plan. Sequential ordering only when task B genuinely needs task A's output.
 
+### Progress Visibility
+
+While an agent runs, the MCP server forwards each `[STEP N]` and `[DONE]` line the agent emits as a real-time MCP logging notification — you will see them appear in the chat as the container executes. No action needed.
+
+When the agent completes, `run_agent_in_docker` returns a structured response with two sections:
+- **Progress Trail** — all `[STEP N]` and `[DONE]` lines extracted and listed at the top for quick scanning
+- **Full Output** — the complete agent output below for detailed review if needed
+
+The `[DONE]` line (last step the agent emits) is a one-sentence summary of what was accomplished. If no `[DONE]` line appears in the trail, the agent likely hit its turn limit or exited unexpectedly — check the log file.
+
 **Spin-up speedup (v3.3.1):** Docker image rebuilds are now skipped when the image is current (Dockerfile unchanged since last build). First agent of the session: ~30–60s build. Every agent after: ~3s spin-up.
 
 **Expected duration by max_turns:**
@@ -477,6 +487,22 @@ Call `mcp__project-voltron__append_journal` at these moments during every sessio
 | Session ends | `session_recap` | "Shipped: /health endpoint + tests. Skipped: load-test (needs infra)." |
 
 Set `actor` to `"scrum-master"`. Write entries in plain language — assume a non-developer will read the journal. The dashboard's journal panel renders today's entries automatically when `generate_dashboard` is called.
+
+## Progress Reporting
+
+Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
+
+`[STEP N] <one short verb-phrase describing what this call does>`
+
+Numbering starts at 1 and increments by 1 for every tool call. No exceptions, even for trivial reads or quick greps. The MCP server forwards these lines as live notifications to the orchestrator chat — silent tool calls = invisible work.
+
+Never collapse multiple tool calls under one `[STEP N]`. If you make N tool calls, you emit N `[STEP]` lines.
+
+Your final output MUST end with one line in this format:
+
+`[DONE] <one-sentence summary of what was accomplished>`
+
+If you exit without a `[DONE]` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
 

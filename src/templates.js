@@ -8977,6 +8977,13 @@ export const DOCKERFILE_CONTENT =
   "RUN useradd -m -s /bin/bash voltron && \\\n" +
   "    mkdir -p /home/voltron/.claude && \\\n" +
   "    chown -R voltron:voltron /home/voltron/.claude\n" +
+  "\n" +
+  "# v3.6.5: Mark /workspace as a safe directory at the system level so git accepts\n" +
+  "# the bind-mounted repo even though the host UID owning it differs from the\n" +
+  "# voltron container UID. System config (/etc/gitconfig) is preferred over\n" +
+  "# global because $HOME/.gitconfig may be bind-mounted read-only from the host\n" +
+  "# (see scripts/voltron-run.sh) and would shadow any per-user fix.\n" +
+  "RUN git config --system --add safe.directory /workspace\n" +
   "USER voltron\n" +
   "WORKDIR /workspace\n" +
   'ENTRYPOINT ["claude"]';

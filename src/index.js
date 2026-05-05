@@ -2010,7 +2010,10 @@ server.tool(
       "-c",
       // v3.3.2: breadcrumb-wrapped — surfaces stalls before claude produces its first byte.
       // [entry]/[claude-version]/[exec]/[exit] echoes localize hangs to mount, auth, parse, or run.
-      `{ echo "[entry] $(date -Is) host=$(hostname) user=$(whoami)"; echo "[claude-version] $(claude --version 2>&1)"; echo "[exec] $(date -Is) starting prompt"; claude --dangerously-skip-permissions ${modelFlag} --max-turns ${max_turns} -p "$(cat /tmp/task.md)" 2>&1; CLAUDE_EXIT=\$?; echo "[exit] $(date -Is) code=\$CLAUDE_EXIT"; exit \$CLAUDE_EXIT; } | tee /workspace/.voltron/logs/${logFilename}; exit \${PIPESTATUS[0]}`,
+      // v3.6.4: --output-format stream-json --verbose so intermediate assistant text
+      // (including [STEP N] progress lines emitted before each tool call) reaches stdout.
+      // Plain `-p` only prints the final assistant message and would suppress all [STEP N]s.
+      `{ echo "[entry] $(date -Is) host=$(hostname) user=$(whoami)"; echo "[claude-version] $(claude --version 2>&1)"; echo "[exec] $(date -Is) starting prompt"; claude --dangerously-skip-permissions ${modelFlag} --max-turns ${max_turns} --output-format stream-json --verbose -p "$(cat /tmp/task.md)" 2>&1; CLAUDE_EXIT=\$?; echo "[exit] $(date -Is) code=\$CLAUDE_EXIT"; exit \$CLAUDE_EXIT; } | tee /workspace/.voltron/logs/${logFilename}; exit \${PIPESTATUS[0]}`,
     ];
 
     // Async spawn — allows multiple agents to run in parallel Docker containers
@@ -2019,9 +2022,13 @@ server.tool(
       let stderr = "";
       const proc = spawn("docker", dockerArgs, { cwd });
 
-      // Forward [STEP N] / [DONE] / breadcrumb lines as MCP logging notifications
-      // so the orchestrator gets real-time progress visibility without --verbose.
+      // v3.6.4: claude is invoked with --output-format stream-json --verbose, so
+      // its stdout is a JSONL stream of events (system/assistant/user/result) interleaved
+      // with the bash-wrapper plain-text breadcrumbs ([entry]/[claude-version]/[exec]/[exit]).
+      // We forward wrapper breadcrumbs verbatim, parse JSON lines for assistant text content,
+      // and emit any [STEP N]/[DONE] markers found in that text as MCP logging notifications.
       let pendingLine = "";
+      let extractedText = "";
       proc.stdout?.on("data", (chunk) => {
         const chunkStr = chunk.toString();
         stdout += chunkStr;
@@ -2029,31 +2036,69 @@ server.tool(
         pendingLine += chunkStr;
         const parts = pendingLine.split("\n");
         pendingLine = parts.pop() ?? "";
-        for (const line of parts) {
-          if (/^\[(STEP \d+|DONE|entry|exec|exit)\]/.test(line.trim())) {
-            server.sendLoggingMessage({ level: "info", data: `[${agent_name}] ${line.trim()}` }).catch(() => {});
+        for (const rawLine of parts) {
+          const line = rawLine.trim();
+          if (!line) continue;
+
+          // Bash-wrapper breadcrumbs are plain text — bypass JSON parsing.
+          if (/^\[(entry|claude-version|exec|exit)\]/.test(line)) {
+            server.sendLoggingMessage({ level: "info", data: `[${agent_name}] ${line}` }).catch(() => {});
+            continue;
+          }
+
+          // Everything else should be a stream-json event.
+          let event;
+          try { event = JSON.parse(line); } catch { continue; }
+          if (!event || typeof event !== "object") continue;
+
+          const texts = [];
+          // Dominant shape: {type:"assistant", message:{content:[{type:"text", text:"..."}, ...]}}
+          if (event.type === "assistant" && event.message && Array.isArray(event.message.content)) {
+            for (const block of event.message.content) {
+              if (block && block.type === "text" && typeof block.text === "string") texts.push(block.text);
+            }
+          // Partial-streaming shape (only when --include-partial-messages is set, but harmless to support)
+          } else if (event.type === "stream_event" && event.event && event.event.type === "content_block_delta"
+                     && event.event.delta && event.event.delta.type === "text_delta"
+                     && typeof event.event.delta.text === "string") {
+            texts.push(event.event.delta.text);
+          // Defensive fallbacks for SDK-version drift
+          } else if (event.type === "text" && typeof event.text === "string") {
+            texts.push(event.text);
+          } else if (event.type === "result" && typeof event.result === "string") {
+            texts.push(event.result);
+          }
+
+          for (const text of texts) {
+            extractedText += text + "\n";
+            for (const t of text.split("\n")) {
+              const trimmed = t.trim();
+              if (/^\[(STEP \d+|DONE)\]/.test(trimmed)) {
+                server.sendLoggingMessage({ level: "info", data: `[${agent_name}] ${trimmed}` }).catch(() => {});
+              }
+            }
           }
         }
 
         if (stdout.length > 10 * 1024 * 1024) {
           proc.kill();
-          resolve({ status: 1, stdout: stdout.slice(-10 * 1024 * 1024), stderr, error: new Error("Output exceeded 10MB limit") });
+          resolve({ status: 1, stdout: stdout.slice(-10 * 1024 * 1024), stderr, extractedText, error: new Error("Output exceeded 10MB limit") });
         }
       });
       proc.stderr?.on("data", (chunk) => { stderr += chunk.toString(); });
 
       const timer = setTimeout(() => {
         proc.kill();
-        resolve({ status: 1, stdout, stderr, error: new Error("Timeout after 10 minutes") });
+        resolve({ status: 1, stdout, stderr, extractedText, error: new Error("Timeout after 10 minutes") });
       }, 600000);
 
       proc.on("close", (code) => {
         clearTimeout(timer);
-        resolve({ status: code, stdout, stderr, error: null });
+        resolve({ status: code, stdout, stderr, extractedText, error: null });
       });
       proc.on("error", (err) => {
         clearTimeout(timer);
-        resolve({ status: 1, stdout, stderr, error: err });
+        resolve({ status: 1, stdout, stderr, extractedText, error: err });
       });
     });
 
@@ -2064,10 +2109,20 @@ server.tool(
 
     // Extract progress breadcrumbs into a trail section so the orchestrator
     // can scan what happened without reading the full output wall.
+    // v3.6.4: with stream-json, raw stdout is JSONL — wrapper breadcrumbs are still
+    // plain-text lines in stdout, while [STEP N]/[DONE] live inside parsed assistant
+    // text (captured during streaming as `extractedText`).
     const allOutputLines = (result.stdout || "").split("\n");
-    const trailLines = allOutputLines.filter((l) =>
-      /^\[(STEP \d+|DONE|entry|exec|exit|claude-version)\]/.test(l.trim())
-    );
+    const wrapperLines = allOutputLines
+      .map((l) => l.trim())
+      .filter((l) => /^\[(entry|claude-version|exec|exit)\]/.test(l));
+    const stepLines = (result.extractedText || "")
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => /^\[(STEP \d+|DONE)\]/.test(l));
+    const headerLines = wrapperLines.filter((l) => !/^\[exit\]/.test(l));
+    const exitLines = wrapperLines.filter((l) => /^\[exit\]/.test(l));
+    const trailLines = [...headerLines, ...stepLines, ...exitLines];
     const trailSection = trailLines.length > 0
       ? `### Progress Trail\n\`\`\`\n${trailLines.join("\n")}\n\`\`\``
       : "";

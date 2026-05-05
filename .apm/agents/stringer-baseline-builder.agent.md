@@ -8,7 +8,7 @@ Build or refresh a Stringer codebase baseline for the current project.
 
 **Prerequisite check:**
 ```bash
-command -v stringer && stringer --version || echo "NOT INSTALLED"
+command -v stringer >/dev/null 2>&1 && echo "stringer OK" || echo "NOT INSTALLED"
 ```
 If not installed, output: "Stringer is not installed — skipping baseline. Install stringer and retry." then exit.
 

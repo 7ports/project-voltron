@@ -40,6 +40,13 @@ RUN STRINGER_VERSION=1.7.0 && \
 RUN useradd -m -s /bin/bash voltron && \
     mkdir -p /home/voltron/.claude && \
     chown -R voltron:voltron /home/voltron/.claude
+
+# v3.6.5: Mark /workspace as a safe directory at the system level so git accepts
+# the bind-mounted repo even though the host UID owning it differs from the
+# voltron container UID. System config (/etc/gitconfig) is preferred over
+# global because $HOME/.gitconfig may be bind-mounted read-only from the host
+# (see scripts/voltron-run.sh) and would shadow any per-user fix.
+RUN git config --system --add safe.directory /workspace
 USER voltron
 WORKDIR /workspace
 ENTRYPOINT ["claude"]

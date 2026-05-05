@@ -15,5 +15,5 @@
     }
   ],
   "overall_notes": "Beads database had a Dolt issue (database not found after git branch switch). For single-task sprints, Voltron progress tracking alone is sufficient. The EACCES issue with /home/voltron/.claude/session-env is a recurring blocker for Docker agents -- this needs a Dockerfile fix. The doc-writer agent noted in the README uses claude-haiku-4-* as the model pattern but the actual ID is claude-haiku-3-5 -- cosmetic only but worth noting.",
-  "processed": false
+  "processed": true
 }

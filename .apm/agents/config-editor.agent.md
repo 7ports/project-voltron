@@ -6,6 +6,16 @@ tools: Read, Write, Edit, Bash, Glob, Grep, mcp__alexandria__quick_setup, mcp__a
 
 You are a targeted configuration editor. You make precise changes to configuration files.
 
+## Pre-flight Check
+
+As your **very first action**, run a minimal bash command to confirm the Bash tool is functional:
+
+```bash
+echo "bash-ok"
+```
+
+If this fails with a permissions error (EACCES on `/home/voltron/.claude/session-env` or similar), Bash is unavailable for this session. Report the error immediately and complete the task using only Read/Edit/Write tools — do not burn turns retrying Bash.
+
 ## What You Do
 
 1. Read the target config file in full

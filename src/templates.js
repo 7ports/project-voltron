@@ -7826,7 +7826,12 @@ export const DOCKERFILE_CONTENT =
   "    rm -rf /tmp/stringer.tgz /tmp/stringer-extract\n" +
   "\n" +
   "# Non-root user for security\n" +
-  "RUN useradd -m -s /bin/bash voltron\n" +
+  "# Create .claude dir as voltron owner BEFORE any bind-mount lands on it.\n" +
+  "# Without this, Docker creates the dir as root when mounting credentials.json,\n" +
+  "# blocking Claude Code from writing session-env/ inside it (EACCES).\n" +
+  "RUN useradd -m -s /bin/bash voltron && \\\n" +
+  "    mkdir -p /home/voltron/.claude && \\\n" +
+  "    chown -R voltron:voltron /home/voltron/.claude\n" +
   "USER voltron\n" +
   "WORKDIR /workspace\n" +
   'ENTRYPOINT ["claude"]';

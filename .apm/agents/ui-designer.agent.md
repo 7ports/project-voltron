@@ -79,7 +79,7 @@ All available Tier-3 micro-agents — dispatch via `run_agent_in_docker`:
 
 ## Composition Recipes
 
-Default chains for common tasks. Dispatch via `run_agent_in_docker` or `start_agent_in_docker`.
+Default chains for common tasks. Dispatch via `run_agent_in_docker`.
 
 | Task | Micro-agent chain |
 |---|---|

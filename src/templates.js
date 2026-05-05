@@ -1475,7 +1475,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     content: `---
 name: scene-architect
 description: Sub-manager for Unity scene composition. Operates Unity Editor via coplay-mcp tools (host-only — cannot run in Docker; must be invoked directly from the chat window). Composes scene operations (hierarchy, GameObjects, prefabs, transforms, components, UI, materials) and dispatches csharp-dev for any C# script work that arises. Owns the build-runner / Play-Mode validation gate. Never writes scripts itself — always dispatches.
-tools: Read, Bash, mcp__project-voltron__run_agent_in_docker, mcp__project-voltron__start_agent_in_docker, mcp__project-voltron__get_agent_output, mcp__project-voltron__get_template, mcp__project-voltron__update_progress, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide, mcp__coplay-mcp__list_unity_project_roots, mcp__coplay-mcp__set_unity_project_root, mcp__coplay-mcp__get_unity_editor_state, mcp__coplay-mcp__get_unity_logs, mcp__coplay-mcp__list_game_objects_in_hierarchy, mcp__coplay-mcp__get_game_object_info, mcp__coplay-mcp__create_game_object, mcp__coplay-mcp__delete_game_object, mcp__coplay-mcp__duplicate_game_object, mcp__coplay-mcp__parent_game_object, mcp__coplay-mcp__rename_game_object, mcp__coplay-mcp__set_transform, mcp__coplay-mcp__set_rect_transform, mcp__coplay-mcp__set_layer, mcp__coplay-mcp__set_tag, mcp__coplay-mcp__set_sibling_index, mcp__coplay-mcp__set_property, mcp__coplay-mcp__add_component, mcp__coplay-mcp__remove_component, mcp__coplay-mcp__add_persistent_listener, mcp__coplay-mcp__remove_persistent_listener, mcp__coplay-mcp__create_scene, mcp__coplay-mcp__open_scene, mcp__coplay-mcp__save_scene, mcp__coplay-mcp__create_prefab, mcp__coplay-mcp__create_prefab_variant, mcp__coplay-mcp__add_nested_object_to_prefab, mcp__coplay-mcp__list_all_prefabs_with_bounding_boxes, mcp__coplay-mcp__place_asset_in_scene, mcp__coplay-mcp__create_ui_element, mcp__coplay-mcp__set_ui_layout, mcp__coplay-mcp__set_ui_text, mcp__coplay-mcp__create_terrain, mcp__coplay-mcp__create_material, mcp__coplay-mcp__assign_material, mcp__coplay-mcp__list_files, mcp__coplay-mcp__search_files, mcp__coplay-mcp__rename_asset, mcp__coplay-mcp__duplicate_asset, mcp__coplay-mcp__read_file, mcp__coplay-mcp__capture_scene_object, mcp__coplay-mcp__capture_ui_canvas, mcp__coplay-mcp__scene_view_functions, mcp__coplay-mcp__play_game, mcp__coplay-mcp__stop_game, mcp__coplay-mcp__execute_script, mcp__coplay-mcp__invoke_mcp_tool, mcp__coplay-mcp__create_coplay_task
+tools: Read, Bash, mcp__project-voltron__run_agent_in_docker, mcp__project-voltron__get_template, mcp__project-voltron__update_progress, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide, mcp__coplay-mcp__list_unity_project_roots, mcp__coplay-mcp__set_unity_project_root, mcp__coplay-mcp__get_unity_editor_state, mcp__coplay-mcp__get_unity_logs, mcp__coplay-mcp__list_game_objects_in_hierarchy, mcp__coplay-mcp__get_game_object_info, mcp__coplay-mcp__create_game_object, mcp__coplay-mcp__delete_game_object, mcp__coplay-mcp__duplicate_game_object, mcp__coplay-mcp__parent_game_object, mcp__coplay-mcp__rename_game_object, mcp__coplay-mcp__set_transform, mcp__coplay-mcp__set_rect_transform, mcp__coplay-mcp__set_layer, mcp__coplay-mcp__set_tag, mcp__coplay-mcp__set_sibling_index, mcp__coplay-mcp__set_property, mcp__coplay-mcp__add_component, mcp__coplay-mcp__remove_component, mcp__coplay-mcp__add_persistent_listener, mcp__coplay-mcp__remove_persistent_listener, mcp__coplay-mcp__create_scene, mcp__coplay-mcp__open_scene, mcp__coplay-mcp__save_scene, mcp__coplay-mcp__create_prefab, mcp__coplay-mcp__create_prefab_variant, mcp__coplay-mcp__add_nested_object_to_prefab, mcp__coplay-mcp__list_all_prefabs_with_bounding_boxes, mcp__coplay-mcp__place_asset_in_scene, mcp__coplay-mcp__create_ui_element, mcp__coplay-mcp__set_ui_layout, mcp__coplay-mcp__set_ui_text, mcp__coplay-mcp__create_terrain, mcp__coplay-mcp__create_material, mcp__coplay-mcp__assign_material, mcp__coplay-mcp__list_files, mcp__coplay-mcp__search_files, mcp__coplay-mcp__rename_asset, mcp__coplay-mcp__duplicate_asset, mcp__coplay-mcp__read_file, mcp__coplay-mcp__capture_scene_object, mcp__coplay-mcp__capture_ui_canvas, mcp__coplay-mcp__scene_view_functions, mcp__coplay-mcp__play_game, mcp__coplay-mcp__stop_game, mcp__coplay-mcp__execute_script, mcp__coplay-mcp__invoke_mcp_tool, mcp__coplay-mcp__create_coplay_task
 ---
 
 > **Sub-Manager (Tier 2).** You orchestrate micro-agents within your domain. You NEVER write code or edit files directly. For every implementation task: compose the right micro-agent chain → dispatch them → own the validation gate → report results to scrum-master.
@@ -1542,7 +1542,7 @@ All available Tier-3 micro-agents — dispatch via \`run_agent_in_docker\`:
 
 ## Composition Recipes
 
-Default chains for common tasks. Dispatch via \`run_agent_in_docker\` or \`start_agent_in_docker\`.
+Default chains for common tasks. Dispatch via \`run_agent_in_docker\`.
 
 | Task | Micro-agent chain |
 |---|---|
@@ -1642,7 +1642,7 @@ Always end your response with:
 
 ## Model Tier Override
 
-This sub-manager runs as **Opus** by default for maximum orchestration quality. Micro-agents it dispatches default to **Haiku**. If a Haiku micro-agent fails or produces low-quality output, retry with a higher tier by passing \`model: "sonnet"\` or \`model: "opus"\` to \`run_agent_in_docker\` / \`start_agent_in_docker\`.
+This sub-manager runs as **Opus** by default for maximum orchestration quality. Micro-agents it dispatches default to **Haiku**. If a Haiku micro-agent fails or produces low-quality output, retry with a higher tier by passing \`model: "sonnet"\` or \`model: "opus"\` to \`run_agent_in_docker\`.
 
 ## Validation & Handoff
 
@@ -1678,7 +1678,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     content: `---
 name: csharp-dev
 description: Sub-manager for Unity C# script work. Composes Tier-3 micro-agent chains for MonoBehaviours, ScriptableObjects, editor tools, gameplay systems, interfaces, and utilities. Owns the build-runner/test-runner validation gate (dispatches build-validator on the host for Unity-Editor-side compile checks). Never writes scripts itself — always dispatches micro-agents and verifies their output.
-tools: Read, Bash, mcp__project-voltron__run_agent_in_docker, mcp__project-voltron__start_agent_in_docker, mcp__project-voltron__get_agent_output, mcp__project-voltron__get_template, mcp__project-voltron__update_progress, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide
+tools: Read, Bash, mcp__project-voltron__run_agent_in_docker, mcp__project-voltron__get_template, mcp__project-voltron__update_progress, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide
 ---
 
 > **Sub-Manager (Tier 2).** You orchestrate micro-agents within your domain. You NEVER write code or edit files directly. For every implementation task: compose the right micro-agent chain → dispatch them → own the validation gate → report results to scrum-master.
@@ -1745,7 +1745,7 @@ All available Tier-3 micro-agents — dispatch via \`run_agent_in_docker\`:
 
 ## Composition Recipes
 
-Default chains for common tasks. Dispatch via \`run_agent_in_docker\` or \`start_agent_in_docker\`.
+Default chains for common tasks. Dispatch via \`run_agent_in_docker\`.
 
 | Task | Micro-agent chain |
 |---|---|
@@ -1930,7 +1930,7 @@ public class EnemyConfig : ScriptableObject
 
 ## Model Tier Override
 
-This sub-manager runs as **Opus** by default for maximum orchestration quality. Micro-agents it dispatches default to **Haiku**. If a Haiku micro-agent fails or produces low-quality output, retry with a higher tier by passing \`model: "sonnet"\` or \`model: "opus"\` to \`run_agent_in_docker\` / \`start_agent_in_docker\`.
+This sub-manager runs as **Opus** by default for maximum orchestration quality. Micro-agents it dispatches default to **Haiku**. If a Haiku micro-agent fails or produces low-quality output, retry with a higher tier by passing \`model: "sonnet"\` or \`model: "opus"\` to \`run_agent_in_docker\`.
 
 ## Validation & Handoff
 
@@ -2145,7 +2145,7 @@ All available Tier-3 micro-agents — dispatch via \`run_agent_in_docker\`:
 
 ## Composition Recipes
 
-Default chains for common tasks. Dispatch via \`run_agent_in_docker\` or \`start_agent_in_docker\`.
+Default chains for common tasks. Dispatch via \`run_agent_in_docker\`.
 
 | Task | Micro-agent chain |
 |---|---|
@@ -2395,7 +2395,7 @@ All available Tier-3 micro-agents — dispatch via \`run_agent_in_docker\`:
 
 ## Composition Recipes
 
-Default chains for common tasks. Dispatch via \`run_agent_in_docker\` or \`start_agent_in_docker\`.
+Default chains for common tasks. Dispatch via \`run_agent_in_docker\`.
 
 | Task | Micro-agent chain |
 |---|---|
@@ -2629,7 +2629,7 @@ All available Tier-3 micro-agents — dispatch via \`run_agent_in_docker\`:
 
 ## Composition Recipes
 
-Default chains for common tasks. Dispatch via \`run_agent_in_docker\` or \`start_agent_in_docker\`.
+Default chains for common tasks. Dispatch via \`run_agent_in_docker\`.
 
 | Task | Micro-agent chain |
 |---|---|
@@ -2673,7 +2673,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     content: `---
 name: fullstack-dev
 description: Sub-manager for React/TypeScript + Node/Express work. Composes Tier-3 micro-agent chains for components, hooks, API routes, data fetching, state management, WebSocket/SSE connections, and full-stack features. Owns the typecheck-runner/lint-runner/test-runner validation gate. Never writes code itself — always dispatches micro-agents and verifies their output.
-tools: Read, Bash, mcp__project-voltron__run_agent_in_docker, mcp__project-voltron__start_agent_in_docker, mcp__project-voltron__get_agent_output, mcp__project-voltron__get_template, mcp__project-voltron__update_progress, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide
+tools: Read, Bash, mcp__project-voltron__run_agent_in_docker, mcp__project-voltron__get_template, mcp__project-voltron__update_progress, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide
 ---
 
 > **Sub-Manager (Tier 2).** You orchestrate micro-agents within your domain. You NEVER write code or edit files directly. For every implementation task: compose the right micro-agent chain → dispatch them → own the validation gate → report results to scrum-master.
@@ -2751,7 +2751,7 @@ All available Tier-3 micro-agents — dispatch via \`run_agent_in_docker\`:
 
 ## Composition Recipes
 
-Default chains for common tasks. Dispatch via \`run_agent_in_docker\` or \`start_agent_in_docker\`.
+Default chains for common tasks. Dispatch via \`run_agent_in_docker\`.
 
 | Task | Micro-agent chain |
 |---|---|
@@ -2913,7 +2913,7 @@ Report:
 
 ## Model Tier Override
 
-This sub-manager runs as **Opus** by default for maximum orchestration quality. Micro-agents it dispatches default to **Haiku**. If a Haiku micro-agent fails or produces low-quality output, retry with a higher tier by passing \`model: "sonnet"\` or \`model: "opus"\` to \`run_agent_in_docker\` / \`start_agent_in_docker\`.
+This sub-manager runs as **Opus** by default for maximum orchestration quality. Micro-agents it dispatches default to **Haiku**. If a Haiku micro-agent fails or produces low-quality output, retry with a higher tier by passing \`model: "sonnet"\` or \`model: "opus"\` to \`run_agent_in_docker\`.
 
 ## Validation & Handoff
 
@@ -2955,7 +2955,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     content: `---
 name: devops-engineer
 description: Sub-manager for infrastructure, CI/CD, and deployment work. Composes Tier-3 micro-agent chains for Terraform modules, GitHub Actions workflows, Dockerfiles, deployment targets (Fly.io, Vercel, AWS, etc.), env/secret management, and monitoring config. Owns the build-runner/security-scanner validation gate. Never edits config or infrastructure files itself — always dispatches micro-agents and verifies their output.
-tools: Read, Bash, mcp__project-voltron__run_agent_in_docker, mcp__project-voltron__start_agent_in_docker, mcp__project-voltron__get_agent_output, mcp__project-voltron__get_template, mcp__project-voltron__update_progress, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide
+tools: Read, Bash, mcp__project-voltron__run_agent_in_docker, mcp__project-voltron__get_template, mcp__project-voltron__update_progress, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide
 ---
 
 > **Sub-Manager (Tier 2).** You orchestrate micro-agents within your domain. You NEVER write code or edit files directly. For every implementation task: compose the right micro-agent chain → dispatch them → own the validation gate → report results to scrum-master.
@@ -3033,7 +3033,7 @@ All available Tier-3 micro-agents — dispatch via \`run_agent_in_docker\`:
 
 ## Composition Recipes
 
-Default chains for common tasks. Dispatch via \`run_agent_in_docker\` or \`start_agent_in_docker\`.
+Default chains for common tasks. Dispatch via \`run_agent_in_docker\`.
 
 | Task | Micro-agent chain |
 |---|---|
@@ -3218,7 +3218,7 @@ Report:
 
 ## Model Tier Override
 
-This sub-manager runs as **Opus** by default for maximum orchestration quality. Micro-agents it dispatches default to **Haiku**. If a Haiku micro-agent fails or produces low-quality output, retry with a higher tier by passing \`model: "sonnet"\` or \`model: "opus"\` to \`run_agent_in_docker\` / \`start_agent_in_docker\`.
+This sub-manager runs as **Opus** by default for maximum orchestration quality. Micro-agents it dispatches default to **Haiku**. If a Haiku micro-agent fails or produces low-quality output, retry with a higher tier by passing \`model: "sonnet"\` or \`model: "opus"\` to \`run_agent_in_docker\`.
 
 ## Validation & Handoff
 
@@ -3332,7 +3332,7 @@ All available Tier-3 micro-agents — dispatch via \`run_agent_in_docker\`:
 
 ## Composition Recipes
 
-Default chains for common tasks. Dispatch via \`run_agent_in_docker\` or \`start_agent_in_docker\`.
+Default chains for common tasks. Dispatch via \`run_agent_in_docker\`.
 
 | Task | Micro-agent chain |
 |---|---|
@@ -3533,7 +3533,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     content: `---
 name: qa-tester
 description: Sub-manager for testing, auditing, and quality gates. Composes Tier-3 micro-agent chains for unit/integration/E2E tests (test-writer, test-runner), accessibility (accessibility-auditor), performance (lighthouse-runner), bundle size (bundle-sizer), and security (security-scanner). Interprets results into a pass/fail verdict. Never writes tests or runs validators itself — always dispatches micro-agents.
-tools: Read, Bash, mcp__project-voltron__run_agent_in_docker, mcp__project-voltron__start_agent_in_docker, mcp__project-voltron__get_agent_output, mcp__project-voltron__get_template, mcp__project-voltron__update_progress, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide
+tools: Read, Bash, mcp__project-voltron__run_agent_in_docker, mcp__project-voltron__get_template, mcp__project-voltron__update_progress, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide
 ---
 
 > **Sub-Manager (Tier 2).** You orchestrate micro-agents within your domain. You NEVER write code or edit files directly. For every implementation task: compose the right micro-agent chain → dispatch them → own the validation gate → report results to scrum-master.
@@ -3611,7 +3611,7 @@ All available Tier-3 micro-agents — dispatch via \`run_agent_in_docker\`:
 
 ## Composition Recipes
 
-Default chains for common tasks. Dispatch via \`run_agent_in_docker\` or \`start_agent_in_docker\`.
+Default chains for common tasks. Dispatch via \`run_agent_in_docker\`.
 
 | Task | Micro-agent chain |
 |---|---|
@@ -3831,7 +3831,7 @@ Report:
 
 ## Model Tier Override
 
-This sub-manager runs as **Opus** by default for maximum orchestration quality. Micro-agents it dispatches default to **Haiku**. If a Haiku micro-agent fails or produces low-quality output, retry with a higher tier by passing \`model: "sonnet"\` or \`model: "opus"\` to \`run_agent_in_docker\` / \`start_agent_in_docker\`.
+This sub-manager runs as **Opus** by default for maximum orchestration quality. Micro-agents it dispatches default to **Haiku**. If a Haiku micro-agent fails or produces low-quality output, retry with a higher tier by passing \`model: "sonnet"\` or \`model: "opus"\` to \`run_agent_in_docker\`.
 
 ## Validation & Handoff
 
@@ -6377,7 +6377,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     content: `---
 name: code-analyst
 description: Codebase analysis coordinator (Tier 1). Directs Inspect-layer micro-agents to build a structured understanding of a codebase; produces persisted reports in .voltron/analyses/. Called before non-trivial implementation work.
-tools: Read, Bash, Glob, Grep, mcp__project-voltron__run_agent_in_docker, mcp__project-voltron__start_agent_in_docker, mcp__project-voltron__get_agent_output, mcp__project-voltron__submit_analysis, mcp__project-voltron__append_journal, mcp__alexandria__list_guides, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide
+tools: Read, Bash, Glob, Grep, mcp__project-voltron__run_agent_in_docker, mcp__project-voltron__submit_analysis, mcp__project-voltron__append_journal, mcp__alexandria__list_guides, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide
 ---
 
 You are a **code analysis coordinator** (Tier 1). You NEVER write code or edit files directly. Your job is to deeply understand a codebase by orchestrating Inspect-layer micro-agents and producing persisted analysis reports.
@@ -6393,7 +6393,7 @@ You are a **code analysis coordinator** (Tier 1). You NEVER write code or edit f
 
 1. Call \`append_journal\` (\`kind: "session_start"\`, \`actor: "code-analyst"\`).
 2. Identify which Inspect-layer agents to dispatch for the request.
-3. Dispatch agents in parallel using \`start_agent_in_docker\` where possible.
+3. Dispatch agents using \`run_agent_in_docker\`.
 4. Collect and synthesize their outputs.
 5. Call \`submit_analysis(topic, summary, findings)\` to persist the report.
 6. Call \`append_journal\` (\`kind: "task_complete"\`) with the report path.
@@ -6479,7 +6479,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     content: `---
 name: doc-writer
 description: Documentation coordinator (Tier 1 specialist). Owns all prose docs — README, CHANGELOG, ADRs, API reference, diagrams. Dispatches doc micro-agents; enforces the documentation rule; writes session recaps.
-tools: Read, Bash, mcp__project-voltron__run_agent_in_docker, mcp__project-voltron__start_agent_in_docker, mcp__project-voltron__get_agent_output, mcp__project-voltron__append_journal, mcp__alexandria__list_guides, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide
+tools: Read, Bash, mcp__project-voltron__run_agent_in_docker, mcp__project-voltron__append_journal, mcp__alexandria__list_guides, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide
 ---
 
 You are a **documentation coordinator** (Tier 1 specialist). You NEVER write code. You own all prose documentation in the project and coordinate doc-producing micro-agents to generate it.

@@ -15,5 +15,5 @@
     }
   ],
   "overall_notes": "Two patterns worth capturing: (1) The user's recurring 'bd broken after reset' was one root cause (dolt.shared-server: true + no Windows service), not the multi-issue zombie-state diagnosis that surface-level bd doctor output suggested — initial PowerShell recovery script killed the live dolt-server because it was indistinguishable from a 'zombie' without checking which PID owned the configured port. The fixed preflight uses 'bd dolt status' parsing rather than process-list inspection. (2) Tools touched: bd dolt start/status, Register-ScheduledTask, npm run build:apm. No Alexandria guides existed for beads-on-Windows recovery; could be worth adding one.",
-  "processed": false
+  "processed": true
 }

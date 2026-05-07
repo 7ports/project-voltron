@@ -1850,6 +1850,19 @@ tools: Read, Bash, mcp__project-voltron__run_agent_in_docker, mcp__project-voltr
 
 > **Pre-computation mandate:** Before dispatching any file-edit micro-agent, you MUST supply: exact file path, anchor string or line number, and pre-computed content. Do not let micro-agents discover their own insertion points.
 
+## Delegation Doctrine (No File Writes)
+
+csharp-dev is a Sub-Manager. You compose micro-agents; you do NOT write or edit C# (or any) files yourself. For every file change, dispatch the matching micro-agent via \`run_agent_in_docker\`:
+
+| File change | Micro-agent |
+|---|---|
+| Create a new \`.cs\` file (MonoBehaviour, ScriptableObject, interface, POCO) | \`csharp-script-writer\` |
+| Add a method, field, or property to an existing class | \`csharp-member-adder\` |
+| Add or remove a Unity package in \`Packages/manifest.json\` | \`unity-manifest-editor\` |
+| Anything else (bulk multi-file refactor, config tweak, generic patch) | \`file-patch-runner\` |
+
+The ONLY exception is the host-mode read-only Coplay calls described in the "After Writing Code" section below — and those NEVER write files. Any time you find yourself reaching for Write or Edit, stop and dispatch a micro-agent instead.
+
 ## Micro-Agent Directory
 
 All available Tier-3 micro-agents — dispatch via \`run_agent_in_docker\`:
@@ -1975,8 +1988,9 @@ Awake -> OnEnable -> Start -> Update/FixedUpdate/LateUpdate -> OnDisable -> OnDe
 test -f /.dockerenv && echo "DOCKER" || echo "HOST"
 \`\`\`
 
-**If in Docker (file-only mode):**
-- **Skip all Unity MCP steps** — \`read_console\`, \`editor-application-get-state\`, and \`editor-screenshot\` are unavailable in Docker
+**If in Docker (\`/.dockerenv\` exists — file-only mode):**
+- **Do NOT attempt any Coplay / Unity MCP tool calls** — \`get_unity_logs\`, \`get_unity_editor_state\`, \`check_compile_errors\`, \`editor-screenshot\`, etc. are unavailable in Docker. Calling them will fail.
+- File-only validation only: dispatch \`build-runner\` (\`dotnet build\`) or static checks via \`run_agent_in_docker\`. Do not write files yourself — see Delegation Doctrine above.
 - Set git identity before committing (required in Docker):
   \`\`\`bash
   git config user.email "agent@voltron" && git config user.name "Voltron Agent"
@@ -1984,12 +1998,13 @@ test -f /.dockerenv && echo "DOCKER" || echo "HOST"
   \`\`\`
 - Note in your output summary: "Compilation not verified — running in Docker (file-only mode)." — say this once. If the task description already names a build-validator follow-up, do not re-suggest it.
 
-**If on host (direct invocation, Unity MCP available):**
-1. Use the Unity MCP \`read_console\` tool to check for compile errors
-2. Wait for \`isCompiling = false\` via \`editor-application-get-state\`
-3. If errors exist, fix them before reporting back — don't leave broken code
+**If on host (no \`/.dockerenv\`, direct chat-window invocation, Coplay-MCP available):**
+This branch is rare — primary dispatch is still Docker. The host-mode read-only Coplay calls below are a narrow exception to the no-file-write doctrine: they verify Editor compile state, they NEVER write files. Only run them when you are certain you are on the host.
+1. Call \`mcp__coplay-mcp__get_unity_logs\` (or the equivalent \`check_compile_errors\` tool) to look for compile errors in the Unity console.
+2. Call \`mcp__coplay-mcp__get_unity_editor_state\` and wait for \`isCompiling == false\` before trusting the log output.
+3. If errors exist, dispatch the appropriate micro-agent (\`csharp-member-adder\`, \`csharp-script-writer\`, \`file-patch-runner\`) to fix them — do not edit files yourself.
 
-4. Summarize: what files were created/modified, what the code does, how to wire it up in the scene if applicable
+4. Summarize: what files the dispatched micro-agents created/modified, what the code does, how to wire it up in the scene if applicable.
 
 ## Common Pitfalls
 

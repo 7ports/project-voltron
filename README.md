@@ -14,15 +14,15 @@ An MCP server that provides teams of specialized agent templates for Claude Code
 
 ### Unity
 
-Unity agents fall into two invocation modes. The scrum-master handles Docker agents automatically; **Direct** agents must be invoked from the chat window (they need a live Unity Editor with Unity MCP connected).
+`run_agent_in_docker` is the **primary dispatch path** for Unity work — C# scripts, shader/material file edits, manifest changes, and folder/asset structure all run in Docker. A narrow exception covers four Editor-bound managers that need a live Unity Editor with Coplay MCP; the scrum-master dispatches those via the built-in `Agent` tool from the host.
 
-| Agent | Purpose | Mode |
+| Agent | Purpose | Dispatch |
 |---|---|---|
-| **scene-architect** | GameObject hierarchy, prefabs, scene composition, transforms, and components | Direct only |
-| **csharp-dev** | MonoBehaviours, ScriptableObjects, gameplay systems, editor tools | Docker (file edit) |
-| **shader-artist** | Shaders, materials, VFX Graph, render pipeline features (URP/HDRP/Built-in) | Docker (file) / Direct (preview) |
-| **build-validator** | Console monitoring, compile checks, Play Mode smoke tests | Direct only |
-| **asset-manager** | Folder structure, import settings, naming conventions | Docker (folders) / Direct (import settings) |
+| **scene-architect** | GameObject hierarchy, prefabs, scene composition, transforms, and components | `Agent` tool (Editor exception) |
+| **csharp-dev** | MonoBehaviours, ScriptableObjects, gameplay systems, editor tools — composes `csharp-script-writer` / `csharp-member-adder` micro-agents, never DIY | `run_agent_in_docker` (file edit) |
+| **shader-artist** | Shaders, materials, VFX Graph, render pipeline features (URP/HDRP/Built-in) — composes file-writing micro-agents for code, uses Coplay for Editor preview | `run_agent_in_docker` (file) / `Agent` tool (Editor preview) |
+| **build-validator** | Console monitoring, compile checks, Play Mode smoke tests | `Agent` tool (Editor exception) |
+| **asset-manager** | Folder structure, import settings, naming conventions — composes `unity-manifest-editor` and other micro-agents for files, uses Coplay for import settings | `run_agent_in_docker` (folders) / `Agent` tool (import settings) |
 
 ### Web / Fullstack
 
@@ -224,6 +224,18 @@ When the scrum-master invokes an agent, `run_agent_in_docker`:
 3. `ANTHROPIC_API_KEY` env var (passed through if set; reserved for CI)
 
 On Windows, OAuth is stored in the Credential Manager by default and `~/.claude/.credentials.json` does not exist. Run `claude setup-token` once in a normal terminal to materialize a long-lived token at that path, then Voltron Docker agents will pick it up automatically.
+
+### Unity Editor exception: auto-orchestration via Agent tool
+
+`run_agent_in_docker` is the **primary dispatch path** — Docker, isolated, parallel-safe — for >95% of work across all project types. Unity projects have one narrow exception: four Editor-bound managers need a live Unity Editor with Coplay MCP, which Docker cannot provide. The scrum-master dispatches those managers from the host via the built-in `Agent` tool instead.
+
+- **Editor-exception managers (Unity only):** `scene-architect` (scene hierarchy, prefabs, components), `build-validator` (Play Mode, console, compile state), and the Editor-preview slices of `shader-artist` (visual material/shader preview) and `asset-manager` (texture/audio/mesh import settings). All four run on the host via the `Agent` tool and use Coplay MCP to drive the live Editor.
+- **File-only Unity work still goes through Docker:** C# script writing/refactoring (`csharp-dev`), shader code edits (`.shader`/`.hlsl`/`.shadergraph`), `Packages/manifest.json` updates, `asmdef` edits, and folder/asset structure changes are all dispatched via `run_agent_in_docker`. If a task can be expressed as file edits without live Editor feedback, it is Docker work.
+- **Web/general projects: no exception.** Every agent in a web, fullstack, or general-purpose project goes through `run_agent_in_docker`. The Editor exception is Unity-only.
+
+### Managers compose micro-agents — they never write files directly
+
+Sub-managers like `csharp-dev`, `fullstack-dev`, `qa-tester`, `devops-engineer`, `scene-architect`, `shader-artist`, `build-validator`, and `asset-manager` are orchestrators. For every file change, they dispatch the matching Tier-3 micro-agent (e.g. `csharp-script-writer`, `route-adder`, `test-writer`, `config-editor`) via `run_agent_in_docker`. This is the STOP RULE in every sub-manager template — managers never DIY.
 
 > **Future enhancement:** Separate per-agent containers for blast-radius isolation between specialist agents.
 

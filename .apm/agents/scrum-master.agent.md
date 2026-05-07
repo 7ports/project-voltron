@@ -421,6 +421,8 @@ Stop when `bd ready --json` returns empty. Run `bd stats` to surface any blocked
 
 **Unity projects:**
 
+> **Scope guard — Editor exception is NARROW.** User-mediated invocation is the EXCEPTION, not the default. Use it ONLY for tasks that require a live Unity Editor: scene hierarchy, Play Mode, console monitoring, prefab overrides, import settings, Editor-preview shader/material work. Every other Unity task — including all C# script writing/editing, shader code editing, manifest edits, and folder/asset structure changes — MUST be dispatched via `run_agent_in_docker`. `run_agent_in_docker` is the primary dispatch for >95% of work; the Editor exception covers a narrow band. If a task can be expressed as file edits without live Editor feedback, it is Docker work — do not hand it to the user.
+
 ⚠ **Critical Docker constraint:** Many Unity operations require a running Unity Editor and Unity MCP tools (scene manipulation, Play Mode testing, console monitoring, import settings, component inspection). These tasks **cannot run in Docker** — they need direct Editor access. When planning Unity work, distinguish between:
 - **Editor-required tasks** (`run_agent_in_docker` is NOT appropriate): scene hierarchy, Play Mode, console monitoring, Physics/Nav bake, prefab overrides, import settings
 - **File-only tasks** (Docker-compatible): C# script writing/refactoring that doesn't need compilation feedback, shader code editing, folder structure changes, manifest edits
@@ -429,12 +431,16 @@ Stop when `bd ready --json` returns empty. Run `bd stats` to surface any blocked
 
 | Task type | Agent | Docker? |
 |---|---|---|
-| C# script creation, logic, refactoring | `csharp-dev` | ✓ (file edit only) |
-| Scene hierarchy, GameObjects, prefabs, transforms | `scene-architect` | ✗ (needs Unity MCP) |
-| Materials, shaders, Shader Graph, VFX Graph, URP/HDRP | `shader-artist` | ✓ (file edit) / ✗ (Editor preview) |
-| Compile errors, Play Mode testing, console monitoring | `build-validator` | ✗ (needs Unity Editor) |
-| Folder structure, asset import settings, package manifest | `asset-manager` | ✓ (file edit) / ✗ (import settings) |
-| Tech stack research, architecture planning | `project-planner` | ✓ |
+| C# script creation, logic, refactoring | `csharp-dev` | ✓ `run_agent_in_docker` (file edit only — primary dispatch) |
+| Scene hierarchy, GameObjects, prefabs, transforms | `scene-architect` | ✗ — invoke manually (needs Unity MCP) |
+| Shader code, .shader/.hlsl/.shadergraph file edits | `shader-artist` | ✓ `run_agent_in_docker` (file edit) |
+| Material assignment, Shader Graph visual preview, VFX Graph tuning | `shader-artist` | ✗ — invoke manually (Editor preview) |
+| Compile errors, Play Mode testing, console monitoring | `build-validator` | ✗ — invoke manually (needs Unity Editor) |
+| Folder structure, package manifest, .meta file edits | `asset-manager` | ✓ `run_agent_in_docker` (file edit) |
+| Asset import settings, texture/audio/model inspector | `asset-manager` | ✗ — invoke manually (Editor inspector) |
+| Tech stack research, architecture planning | `project-planner` | ✓ `run_agent_in_docker` |
+
+**Reading this table:** any row marked `✓ run_agent_in_docker` is the default path — dispatch it. Only rows marked `✗ — invoke manually` go through user-mediated handoff.
 
 **Standard Unity task sequencing:**
 1. `csharp-dev` — write/edit scripts (file-only, Docker OK)

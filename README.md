@@ -110,7 +110,7 @@ npm install -g @beads/bd
 
 Without beads, the scrum-master falls back to manual dependency reasoning.
 
-**Auto-recovery (v3.6.6+):** The scrum-master's pre-flight check now detects when the shared dolt-server (configured by `dolt.shared-server: true` in `.beads/config.yaml`) has been orphaned by a reboot and runs `bd dolt start` to auto-restart it before planning. This eliminates the most common Windows post-reboot failure mode where bd commands error out with "Dolt server unreachable on port 3308". For a permanent fix, the agent's **Beads Recovery** section provides a `Register-ScheduledTask` PowerShell snippet that auto-starts `bd dolt` at every logon.
+**Auto-recovery (v3.6.7+):** The scrum-master's pre-flight check now detects when the shared dolt-server (configured by `dolt.shared-server: true` in `.beads/config.yaml`) has been orphaned by a reboot and runs `bd dolt start` to auto-restart it before planning. This eliminates the most common Windows post-reboot failure mode where bd commands error out with "Dolt server unreachable on port 3308". For a permanent fix, the agent's **Beads Recovery** section provides a `Register-ScheduledTask` PowerShell snippet that auto-starts `bd dolt` at every logon.
 
 ### Re-verify installation
 

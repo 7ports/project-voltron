@@ -38,7 +38,7 @@ When invoked by the scrum-master with a specific task:
 6. **Bump the version** in `package.json` — patch for improvements, minor for new agents/features
 7. **Rebuild APM manifest:** `npm run build:apm` — regenerates `.apm/agents/` and syncs `apm.yml` version
 8. **Update docs/index.html and README.md** — keep version badges, agent counts, and descriptions in sync
-9. **Commit** with a clear message describing what changed and why
+9. **Commit AND push** with a clear message describing what changed and why. The session is not complete until `git push` succeeds and `git status` shows up-to-date with origin.
 
 ## Reflection Processing Mode
 
@@ -54,7 +54,7 @@ When invoked by CI to process session reflections:
 8. **Bump the patch version** in `package.json`.
 9. **Rebuild APM manifest:** `npm run build:apm`
 10. **Update `docs/index.html`** and `README.md` if agent behavior descriptions changed.
-11. **Commit** all changes.
+11. **Commit AND push** all changes. The session is not complete until `git push` succeeds and `git status` shows up-to-date with origin.
 
 ## Template Editing Rules
 

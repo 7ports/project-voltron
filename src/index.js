@@ -2008,14 +2008,18 @@ server.tool(
     // Conditionally mount ~/.gitconfig so git commits work inside Docker. When nested,
     // check the container-side mount point /home/voltron/.gitconfig (where the parent
     // mounted it) instead of the host path (which is unreachable from the Linux container).
+    // v3.8.4: For nested dispatch we use --volumes-from on the parent container, which
+    // inherits gitconfig automatically — leave gitConfigMount empty in that branch.
     const gitConfigHostPath = hostJoin(homeDir, ".gitconfig");
     const gitConfigCheckPath = isNested ? "/home/voltron/.gitconfig" : gitConfigHostPath;
     let gitConfigMount = [];
-    try {
-      await fs.access(gitConfigCheckPath);
-      gitConfigMount = ["--mount", `type=bind,source=${gitConfigHostPath},target=/home/voltron/.gitconfig,readonly`];
-    } catch {
-      // No ~/.gitconfig — agents must set git identity manually if they need to commit
+    if (!isNested) {
+      try {
+        await fs.access(gitConfigCheckPath);
+        gitConfigMount = ["--mount", `type=bind,source=${gitConfigHostPath},target=/home/voltron/.gitconfig,readonly`];
+      } catch {
+        // No ~/.gitconfig — agents must set git identity manually if they need to commit
+      }
     }
 
     // v3.4.1: Auth path = narrow OAuth credentials mount + env-var passthrough.
@@ -2030,12 +2034,18 @@ server.tool(
     // On Windows the credentials file only exists if the user has run `claude setup-token`
     // (Windows otherwise stores OAuth in the Credential Manager, which the Linux container
     // can't reach). Mount is conditional on file existence; falls back to env-var auth.
+    // v3.8.4: For nested dispatch, --volumes-from inherits the parent's creds mount
+    // (and the docker socket), so credsMount stays empty in that branch.
     const credsHostPath = hostJoin(homeDir, ".claude", ".credentials.json");
     const credsCheckPath = isNested ? "/home/voltron/.claude/.credentials.json" : credsHostPath;
     let credsMount = [];
+    let credsAvailable = false;
     try {
       await fs.access(credsCheckPath);
-      credsMount = ["--mount", `type=bind,source=${credsHostPath},target=/home/voltron/.claude/.credentials.json,readonly`];
+      credsAvailable = true;
+      if (!isNested) {
+        credsMount = ["--mount", `type=bind,source=${credsHostPath},target=/home/voltron/.claude/.credentials.json,readonly`];
+      }
     } catch {
       // No ~/.claude/.credentials.json — auth must come from env vars
     }
@@ -2048,7 +2058,7 @@ server.tool(
       authEnvArgs.push("-e", `ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY}`);
     }
 
-    if (credsMount.length === 0 && authEnvArgs.length === 0) {
+    if (!credsAvailable && authEnvArgs.length === 0) {
       await fs.unlink(tmpFile).catch(() => {});
       return { content: [{ type: "text", text: "Error: No auth available for Docker agent. Either run `claude setup-token` (creates ~/.claude/.credentials.json which will be mounted), or set CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY in your environment." }] };
     }
@@ -2080,8 +2090,10 @@ server.tool(
     // On Windows + Docker Desktop the socket path is `//var/run/docker.sock` (leading `//`
     // defeats MSYS/Git-Bash absolute-path mangling); POSIX hosts use `/var/run/docker.sock`.
     // Skipped for `nestable: false` — terminal agents have no reason to talk to docker.
+    // v3.8.4: For nested dispatch the socket arrives via --volumes-from, so we don't add it
+    // as a separate --mount in that branch.
     const dockerSocketHostPath = process.platform === "win32" ? "//var/run/docker.sock" : "/var/run/docker.sock";
-    const socketMount = nestable ? ["--mount", `type=bind,source=${dockerSocketHostPath},target=/var/run/docker.sock`] : [];
+    const socketMount = (nestable && !isNested) ? ["--mount", `type=bind,source=${dockerSocketHostPath},target=/var/run/docker.sock`] : [];
 
     // v3.8.0: Propagate host-side paths + depth through the process tree so a nested
     // run_agent_in_docker call can reconstruct host-visible mount sources instead of /workspace.
@@ -2092,6 +2104,39 @@ server.tool(
       "-e", `VOLTRON_DEPTH=${currentDepth + 1}`,
     ];
 
+    // v3.8.4: Two mount strategies, branched on nesting depth.
+    //
+    // OUTER (depth 0, on the host): use --mount type=bind with host-resolved paths.
+    //   The host docker daemon handles Windows path translation (e.g. C:/Users/...) correctly.
+    //
+    // NESTED (depth > 0, dispatched from inside a container): use a single --volumes-from
+    //   <own-id> flag, which inherits the parent's ENTIRE mount table — /workspace,
+    //   /var/run/docker.sock, ~/.gitconfig, ~/.claude/.credentials.json — without ever
+    //   handing the Linux daemon a host-flavored path it cannot resolve. This is the
+    //   validated fix for the Windows path-translation failure: the in-container docker
+    //   CLI cannot translate /workspace → C:/Users/...; --volumes-from sidesteps the
+    //   translation entirely by referencing the parent container's existing mounts by id.
+    //
+    //   The per-run task file lives at <cwd>/.voltron/tmp/<tmpFilename>, which is inside
+    //   the inherited /workspace, so we read it from /workspace/.voltron/tmp/<tmpFilename>
+    //   instead of a separate /tmp/task.md mount.
+    let mountArgs;
+    let taskFilePathInContainer;
+    if (isNested) {
+      const ownId = os.hostname();
+      mountArgs = ["--volumes-from", ownId];
+      taskFilePathInContainer = `/workspace/.voltron/tmp/${tmpFilename}`;
+    } else {
+      mountArgs = [
+        "--mount", `type=bind,source=${hostRoot},target=/workspace`,
+        ...gitConfigMount,        // mount ~/.gitconfig if present so git commits work
+        ...credsMount,            // mount ~/.claude/.credentials.json:ro for Max-plan OAuth
+        ...socketMount,           // v3.8.0: docker socket for nested dispatch (omit for tier-3)
+        "--mount", `type=bind,source=${hostTmpFile},target=/tmp/task.md,readonly`,
+      ];
+      taskFilePathInContainer = "/tmp/task.md";
+    }
+
     // Named container enables `docker logs <name> -f` from a second terminal while running.
     // tee writes a live log to .voltron/logs/ on the host (mounted via /workspace).
     // PIPESTATUS[0] propagates claude's exit code through the pipe to Docker's exit code.
@@ -2101,11 +2146,7 @@ server.tool(
       "--entrypoint", "bash",
       ...authEnvArgs,
       ...voltronEnvArgs,        // v3.8.0: VOLTRON_HOST_ROOT/HOME/TMPDIR/DEPTH for nested dispatch
-      "--mount", `type=bind,source=${hostRoot},target=/workspace`,
-      ...gitConfigMount,        // mount ~/.gitconfig if present so git commits work
-      ...credsMount,            // mount ~/.claude/.credentials.json:ro for Max-plan OAuth
-      ...socketMount,           // v3.8.0: docker socket for nested dispatch (omit for tier-3)
-      "--mount", `type=bind,source=${hostTmpFile},target=/tmp/task.md,readonly`,
+      ...mountArgs,
       "voltron-agent",
       "-c",
       // v3.3.2: breadcrumb-wrapped — surfaces stalls before claude produces its first byte.
@@ -2115,7 +2156,7 @@ server.tool(
       // Plain `-p` only prints the final assistant message and would suppress all [STEP N]s.
       // v3.8.0: ${mcpConfigFlag} adds --mcp-config when the agent is nestable, registering
       // project-voltron inside the container so the dispatched claude can call run_agent_in_docker.
-      `{ echo "[entry] $(date -Is) host=$(hostname) user=$(whoami)"; echo "[claude-version] $(claude --version 2>&1)"; echo "[exec] $(date -Is) starting prompt"; claude --dangerously-skip-permissions ${modelFlag} ${mcpConfigFlag} --max-turns ${max_turns} --output-format stream-json --verbose -p "$(cat /tmp/task.md)" 2>&1; CLAUDE_EXIT=\$?; echo "[exit] $(date -Is) code=\$CLAUDE_EXIT"; exit \$CLAUDE_EXIT; } | tee /workspace/.voltron/logs/${logFilename}; exit \${PIPESTATUS[0]}`,
+      `{ echo "[entry] $(date -Is) host=$(hostname) user=$(whoami)"; echo "[claude-version] $(claude --version 2>&1)"; echo "[exec] $(date -Is) starting prompt"; claude --dangerously-skip-permissions ${modelFlag} ${mcpConfigFlag} --max-turns ${max_turns} --output-format stream-json --verbose -p "$(cat ${taskFilePathInContainer})" 2>&1; CLAUDE_EXIT=\$?; echo "[exit] $(date -Is) code=\$CLAUDE_EXIT"; exit \$CLAUDE_EXIT; } | tee /workspace/.voltron/logs/${logFilename}; exit \${PIPESTATUS[0]}`,
     ];
 
     // Async spawn — allows multiple agents to run in parallel Docker containers

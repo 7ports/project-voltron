@@ -1,5 +1,5 @@
 name: project-voltron
-version: 3.8.3
+version: 3.8.4
 description: >
   MCP server providing 63 specialized agent templates for Claude Code.
   Three-tier hierarchy: coordinator (scrum-master, code-analyst, doc-writer),

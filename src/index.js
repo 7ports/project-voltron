@@ -2013,7 +2013,7 @@ server.tool(
     let gitConfigMount = [];
     try {
       await fs.access(gitConfigCheckPath);
-      gitConfigMount = ["-v", `${gitConfigHostPath}:/home/voltron/.gitconfig:ro`];
+      gitConfigMount = ["--mount", `type=bind,source=${gitConfigHostPath},target=/home/voltron/.gitconfig,readonly`];
     } catch {
       // No ~/.gitconfig — agents must set git identity manually if they need to commit
     }
@@ -2035,7 +2035,7 @@ server.tool(
     let credsMount = [];
     try {
       await fs.access(credsCheckPath);
-      credsMount = ["-v", `${credsHostPath}:/home/voltron/.claude/.credentials.json:ro`];
+      credsMount = ["--mount", `type=bind,source=${credsHostPath},target=/home/voltron/.claude/.credentials.json,readonly`];
     } catch {
       // No ~/.claude/.credentials.json — auth must come from env vars
     }
@@ -2081,7 +2081,7 @@ server.tool(
     // defeats MSYS/Git-Bash absolute-path mangling); POSIX hosts use `/var/run/docker.sock`.
     // Skipped for `nestable: false` — terminal agents have no reason to talk to docker.
     const dockerSocketHostPath = process.platform === "win32" ? "//var/run/docker.sock" : "/var/run/docker.sock";
-    const socketMount = nestable ? ["-v", `${dockerSocketHostPath}:/var/run/docker.sock`] : [];
+    const socketMount = nestable ? ["--mount", `type=bind,source=${dockerSocketHostPath},target=/var/run/docker.sock`] : [];
 
     // v3.8.0: Propagate host-side paths + depth through the process tree so a nested
     // run_agent_in_docker call can reconstruct host-visible mount sources instead of /workspace.
@@ -2101,11 +2101,11 @@ server.tool(
       "--entrypoint", "bash",
       ...authEnvArgs,
       ...voltronEnvArgs,        // v3.8.0: VOLTRON_HOST_ROOT/HOME/TMPDIR/DEPTH for nested dispatch
-      "-v", `${hostRoot}:/workspace`,
+      "--mount", `type=bind,source=${hostRoot},target=/workspace`,
       ...gitConfigMount,        // mount ~/.gitconfig if present so git commits work
       ...credsMount,            // mount ~/.claude/.credentials.json:ro for Max-plan OAuth
       ...socketMount,           // v3.8.0: docker socket for nested dispatch (omit for tier-3)
-      "-v", `${hostTmpFile}:/tmp/task.md:ro`,
+      "--mount", `type=bind,source=${hostTmpFile},target=/tmp/task.md,readonly`,
       "voltron-agent",
       "-c",
       // v3.3.2: breadcrumb-wrapped — surfaces stalls before claude produces its first byte.

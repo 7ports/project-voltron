@@ -1,0 +1,19 @@
+{
+  "timestamp": "2026-05-07T21:53:45.583Z",
+  "project_name": "project-voltron",
+  "project_type": "general",
+  "session_summary": "Sprint complete. v3.7.0 shipped on branch voltron/unity-editor-exception (HEAD e6cdd9c), pushed to origin. 7 commits across 9 closed beads: voltron-10w (audit), voltron-7ky (scrum-master narrow scope), voltron-65g (4 Editor managers), voltron-3kd (csharp-dev doctrine), voltron-wg2 (Coplay gaps + Agent + STOP-rule enforceability), voltron-di9 (docs sweep), voltron-9qw (3.7.0 bump), voltron-48b (12/12 validation PASS), voltron-d4s (push). bd stats: 34 total, 34 closed, 0 ready/blocked. PR ready at https://github.com/7ports/project-voltron/pull/new/voltron/unity-editor-exception.",
+  "agents_used": [
+    "reflection-processor"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "reflection-processor",
+      "worked_well": "When given a small, well-bounded task (validation pass with 12 specific checks; finalize-commit with 5 numbered steps), reflection-processor executes cleanly within turn budget and emits [DONE] reliably. Parallel dispatch of 4 reflection-processor containers all editing src/templates.js in non-overlapping line ranges produced 4 conflict-free commits.",
+      "needs_improvement": "On medium tasks (~12 turns), reflection-processor frequently spends most turns on read/grep/verify operations and runs out before committing. voltron-di9 and voltron-9qw both hit max_turns immediately AFTER completing all substantive edits, with the commit step left undone. The 'verify exhaustively' habit is consuming more budget than the actual work. Also: Docker container has no git credentials, so any task whose acceptance criterion includes `git push` will fail at the final step — this needs to be either (a) provisioned in Dockerfile.voltron via mounted token, or (b) explicitly removed from agent task scope and handled by host orchestrator.",
+      "suggested_change": "Add to reflection-processor template under 'Output Efficiency': 'Reserve at least 3 turns for the final stage_files + commit + verify. If you find yourself on turn N-3 of a max_turns N task and have not yet committed, immediately stop reading/verifying and commit what you have.' Also: document in scrum-master template that `git push` is a host-side operation — agents create branches and commits, the host orchestrator pushes."
+    }
+  ],
+  "overall_notes": "Three reflection-processor sessions ended in max_turns immediately after their useful work was complete (voltron-di9, voltron-9qw, voltron-d4s). In each case the fix was a 5-10 turn finalizer agent. Pattern suggests we should default to splitting any task that combines 'edit + verify + commit + push' into separate dispatches. The Docker container has no GitHub credentials — the user-mediated push from the host shell completed cleanly via gh CLI. dolt auto-push fails intermittently with 'no common ancestor'; not blocking but worth investigating.",
+  "processed": false
+}

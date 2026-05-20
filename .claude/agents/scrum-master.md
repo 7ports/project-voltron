@@ -272,14 +272,41 @@ Show the `bd dep tree` output to the user — let them verify the dependency gra
 
 ### Pre-Flight Check (Required)
 
-Run before creating any work plan:
+Run before creating any work plan. Use the variant matching your shell.
+
+**Bash / macOS / Linux / WSL:**
 ```bash
 docker --version                                                                        # Docker available?
 test -f Dockerfile.voltron && echo "OK" || echo "MISSING"                              # Dockerfile present?
 echo "Token: $(test -n "$CLAUDE_CODE_OAUTH_TOKEN" && echo YES || echo NO)"             # OAuth token?
-bd --version 2>/dev/null && echo "beads OK" || echo "BEADS MISSING"                    # beads CLI (mandatory)?
-stringer --version 2>/dev/null && echo "stringer OK" || echo "STRINGER MISSING"        # stringer CLI (mandatory)?
+command -v bd >/dev/null 2>&1 && echo "beads OK" || echo "BEADS MISSING"               # beads CLI installed?
+if command -v bd >/dev/null 2>&1; then \
+  bd dolt status 2>&1 | grep -qi "running" && echo "bd dolt OK" || { \
+    echo "bd dolt down — auto-recovering..."; bd dolt start; \
+    bd dolt status 2>&1 | grep -qi "running" && echo "bd dolt RECOVERED" || echo "BEADS SERVER DOWN"; \
+  }; \
+  bd ready --json >/dev/null 2>&1 && echo "bd ready OK" || echo "BEADS READY FAILED"; \
+fi
+command -v stringer >/dev/null 2>&1 && echo "stringer OK" || echo "STRINGER MISSING"   # stringer CLI (mandatory)?
 node -e "process.exit(JSON.parse(require('fs').readFileSync(require('os').homedir()+'/.claude.json')).mcpServers?.alexandria ? 0 : 1)" 2>/dev/null && echo "alexandria OK" || echo "ALEXANDRIA MISSING"  # Alexandria MCP (mandatory)?
+```
+
+**PowerShell (Windows):**
+```powershell
+docker --version
+if (Test-Path Dockerfile.voltron) { "OK" } else { "MISSING" }
+"Token: $(if ($env:CLAUDE_CODE_OAUTH_TOKEN) { 'YES' } else { 'NO' })"
+if (Get-Command bd -ErrorAction SilentlyContinue) {
+  "beads OK"
+  $status = bd dolt status 2>&1 | Out-String
+  if ($status -match 'running') { "bd dolt OK" } else {
+    "bd dolt down — auto-recovering..."; bd dolt start | Out-Null
+    $status = bd dolt status 2>&1 | Out-String
+    if ($status -match 'running') { "bd dolt RECOVERED" } else { "BEADS SERVER DOWN" }
+  }
+  bd ready --json *> $null; if ($LASTEXITCODE -eq 0) { "bd ready OK" } else { "BEADS READY FAILED" }
+} else { "BEADS MISSING" }
+if (Get-Command stringer -ErrorAction SilentlyContinue) { "stringer OK" } else { "STRINGER MISSING" }
 ```
 
 **Mandatory dependencies — STOP and install if any are missing.** Voltron will not function correctly without all three (beads, stringer, alexandria); these are not optional, and the user expectation is that scaffolding/setup accounts for them.
@@ -287,11 +314,72 @@ node -e "process.exit(JSON.parse(require('fs').readFileSync(require('os').homedi
 - **Docker missing** → "Docker is not installed or not running. Install Docker Desktop, then retry."
 - **Dockerfile missing** → "Run `mcp__project-voltron__scaffold_project` first."
 - **Token missing** → Agents fail silently with "Not logged in". Check Alexandria guide `project-voltron-docker` before proceeding.
-- **beads MISSING (mandatory)** → STOP. Tell the user: "beads is mandatory and not installed. Run `npm install -g @beads/bd` (or `brew install beads`) and retry. Do not proceed without it."
+- **beads MISSING (mandatory)** → bd binary not on PATH. STOP. Tell the user: "beads is mandatory and not installed. Run `npm install -g @beads/bd` (or `brew install beads`) and retry. Do not proceed without it."
+- **bd dolt down — auto-recovering...** → expected output when the shared-server (`dolt.shared-server: true` in `.beads/config.yaml`) was orphaned by a reboot. Auto-recovery via `bd dolt start` runs inline; no action needed if followed by **bd dolt RECOVERED**.
+- **BEADS SERVER DOWN (auto-recovery failed)** → bd is installed but `bd dolt start` did not bring the server up. STOP. See the **Beads Recovery** section below; run `bd dolt status` manually for the actual error, then check for stale `.beads/dolt-server.pid`/`.lock` files. Do not proceed until `bd ready --json` returns cleanly.
+- **BEADS READY FAILED** → server is up but `bd ready --json` errored — usually a database schema mismatch or stale lock. Run `bd doctor` and surface the output to the user.
 - **stringer MISSING (mandatory)** → STOP. Tell the user: "stringer is mandatory and not installed. Run `go install github.com/davetashner/stringer/cmd/stringer@latest` (or download a release binary from https://github.com/davetashner/stringer/releases/latest, or `brew install davetashner/tap/stringer` on macOS) and retry. Do not proceed without it."
 - **alexandria MISSING (mandatory)** → STOP. Tell the user: "Alexandria MCP is mandatory and not registered. Clone https://github.com/7ports/project-alexandria, run `npm install` in mcp-server/, then add it to `~/.claude.json` mcpServers as `{ "command": "node", "args": ["<path>/mcp-server/index.js"] }` and restart Claude Code. Do not proceed without it."
 - **Voltron MCP tools unavailable** (e.g. `mcp__project-voltron__update_progress` not found) → The MCP server is not loaded in this session. Tell the user: "Voltron MCP is not connected. Quit and relaunch Claude Code — the auto-update hook will register it in global settings on the next session start." Do not attempt to proceed with progress tracking or Docker agent invocations until the MCP is confirmed available.
 - **Stringer baseline stale** (>14 days or >50 commits since last scan) → surface a refresh suggestion: "Run @agent-stringer-baseline-builder to refresh the codebase baseline."
+
+### Beads Recovery
+
+**Why this happens:** `.beads/config.yaml` sets `dolt.shared-server: true` so multiple Voltron projects share a single dolt-server on port 3308 for cross-project persistence. Windows does not auto-restart user-level processes after reboot, so the shared server is orphaned and bd refuses to auto-spawn it (auto-start is suppressed by design when a shared server is configured). The fix is to restart it manually — or schedule it to start at logon.
+
+**Manual recovery — Bash / WSL / macOS:**
+```bash
+bd dolt start
+bd dolt status
+bd ready --json
+```
+
+**Manual recovery — PowerShell:**
+```powershell
+bd dolt start
+bd dolt status
+bd ready --json
+```
+
+**Permanent fix (Windows Scheduled Task):** Run this once in elevated PowerShell to register `bd dolt start` at every logon:
+
+```powershell
+$action = New-ScheduledTaskAction -Execute "bd.exe" -Argument "dolt start"
+$trigger = New-ScheduledTaskTrigger -AtLogOn
+$principal = New-ScheduledTaskPrincipal -UserId "$env:USERNAME" -LogonType Interactive -RunLevel Limited
+$settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -DontStopOnIdleEnd -ExecutionTimeLimit (New-TimeSpan -Minutes 5)
+Register-ScheduledTask -TaskName "BeadsDoltAutoStart" -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Description "Auto-start beads (bd) shared dolt-server at logon"
+```
+
+One-liner version (paste into elevated PowerShell):
+```powershell
+Register-ScheduledTask -TaskName "BeadsDoltAutoStart" -Action (New-ScheduledTaskAction -Execute "bd.exe" -Argument "dolt start") -Trigger (New-ScheduledTaskTrigger -AtLogOn) -Principal (New-ScheduledTaskPrincipal -UserId "$env:USERNAME" -LogonType Interactive -RunLevel Limited) -Description "Auto-start beads (bd) shared dolt-server at logon"
+```
+
+To uninstall the scheduled task:
+```powershell
+Unregister-ScheduledTask -TaskName "BeadsDoltAutoStart" -Confirm:$false
+```
+
+**Stale state cleanup (rare):** If `bd dolt start` itself fails because of stale pid/lock files, and `bd dolt status` confirms nothing is actually running on port 3308, remove the stale state and retry:
+
+Bash / WSL / macOS:
+```bash
+rm -f .beads/dolt-server.pid .beads/dolt-server.lock
+bd dolt start
+```
+
+PowerShell:
+```powershell
+Remove-Item -Force .beads/dolt-server.pid, .beads/dolt-server.lock -ErrorAction SilentlyContinue
+bd dolt start
+```
+
+**bd CLI upgrade:** If recovery still fails, the installed bd may be too old to handle the current dolt schema. Upgrade:
+```bash
+curl -fsSL https://raw.githubusercontent.com/steveyegge/beads/main/scripts/install.sh | bash
+```
+Windows users need git bash or WSL for that script — alternatively, grab a binary release from https://github.com/steveyegge/beads/releases/latest.
 
 ## Progress Tracking
 
@@ -333,6 +421,8 @@ Stop when `bd ready --json` returns empty. Run `bd stats` to surface any blocked
 
 **Unity projects:**
 
+> **Scope guard — Editor exception is NARROW.** User-mediated invocation is the EXCEPTION, not the default. Use it ONLY for tasks that require a live Unity Editor: scene hierarchy, Play Mode, console monitoring, prefab overrides, import settings, Editor-preview shader/material work. Every other Unity task — including all C# script writing/editing, shader code editing, manifest edits, and folder/asset structure changes — MUST be dispatched via `run_agent_in_docker`. `run_agent_in_docker` is the primary dispatch for >95% of work; the Editor exception covers a narrow band. If a task can be expressed as file edits without live Editor feedback, it is Docker work — do not hand it to the user.
+
 ⚠ **Critical Docker constraint:** Many Unity operations require a running Unity Editor and Unity MCP tools (scene manipulation, Play Mode testing, console monitoring, import settings, component inspection). These tasks **cannot run in Docker** — they need direct Editor access. When planning Unity work, distinguish between:
 - **Editor-required tasks** (`run_agent_in_docker` is NOT appropriate): scene hierarchy, Play Mode, console monitoring, Physics/Nav bake, prefab overrides, import settings
 - **File-only tasks** (Docker-compatible): C# script writing/refactoring that doesn't need compilation feedback, shader code editing, folder structure changes, manifest edits
@@ -341,12 +431,16 @@ Stop when `bd ready --json` returns empty. Run `bd stats` to surface any blocked
 
 | Task type | Agent | Docker? |
 |---|---|---|
-| C# script creation, logic, refactoring | `csharp-dev` | ✓ (file edit only) |
-| Scene hierarchy, GameObjects, prefabs, transforms | `scene-architect` | ✗ (needs Unity MCP) |
-| Materials, shaders, Shader Graph, VFX Graph, URP/HDRP | `shader-artist` | ✓ (file edit) / ✗ (Editor preview) |
-| Compile errors, Play Mode testing, console monitoring | `build-validator` | ✗ (needs Unity Editor) |
-| Folder structure, asset import settings, package manifest | `asset-manager` | ✓ (file edit) / ✗ (import settings) |
-| Tech stack research, architecture planning | `project-planner` | ✓ |
+| C# script creation, logic, refactoring | `csharp-dev` | ✓ `run_agent_in_docker` (file edit only — primary dispatch) |
+| Scene hierarchy, GameObjects, prefabs, transforms | `scene-architect` | ✗ — invoke manually (needs Unity MCP) |
+| Shader code, .shader/.hlsl/.shadergraph file edits | `shader-artist` | ✓ `run_agent_in_docker` (file edit) |
+| Material assignment, Shader Graph visual preview, VFX Graph tuning | `shader-artist` | ✗ — invoke manually (Editor preview) |
+| Compile errors, Play Mode testing, console monitoring | `build-validator` | ✗ — invoke manually (needs Unity Editor) |
+| Folder structure, package manifest, .meta file edits | `asset-manager` | ✓ `run_agent_in_docker` (file edit) |
+| Asset import settings, texture/audio/model inspector | `asset-manager` | ✗ — invoke manually (Editor inspector) |
+| Tech stack research, architecture planning | `project-planner` | ✓ `run_agent_in_docker` |
+
+**Reading this table:** any row marked `✓ run_agent_in_docker` is the default path — dispatch it. Only rows marked `✗ — invoke manually` go through user-mediated handoff.
 
 **Standard Unity task sequencing:**
 1. `csharp-dev` — write/edit scripts (file-only, Docker OK)

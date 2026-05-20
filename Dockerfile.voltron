@@ -20,6 +20,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install Claude Code globally
 RUN npm install -g @anthropic-ai/claude-code
 
+# v3.8.0: docker-ce-cli (CLI only, no daemon) for nested-dispatch via Docker-out-of-Docker.
+# Agents running inside this container need the `docker` CLI to launch sibling containers
+# via the host socket mounted at /var/run/docker.sock. Installed from Docker's official
+# debian repo because the distro-shipped `docker.io` package pulls in the full daemon.
+RUN install -m 0755 -d /etc/apt/keyrings && \
+    curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc && \
+    chmod a+r /etc/apt/keyrings/docker.asc && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian $(. /etc/os-release && echo \"$VERSION_CODENAME\") stable" > /etc/apt/sources.list.d/docker.list && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends docker-ce-cli && \
+    rm -rf /var/lib/apt/lists/*
+
 # v3.4.0: mandatory voltron dependencies
 # beads (gastownhall/beads) — dependency-aware task tracking; required by scrum-master
 RUN npm install -g @beads/bd

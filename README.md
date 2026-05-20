@@ -225,6 +225,18 @@ When the scrum-master invokes an agent, `run_agent_in_docker`:
 
 On Windows, OAuth is stored in the Credential Manager by default and `~/.claude/.credentials.json` does not exist. Run `claude setup-token` once in a normal terminal to materialize a long-lived token at that path, then Voltron Docker agents will pick it up automatically.
 
+### Nested 3-tier dispatch (v3.8.0)
+
+A containerized sub-manager or `reflection-processor` can now dispatch its own Tier-3 micro-agents via `run_agent_in_docker` — end to end, from inside a container. The scrum-master no longer has to flatten work plans to a single tier: Tier-2 sub-managers running in Docker drive the Tier-3 micro-agents that do the file edits, and the chain bottoms out cleanly because every Tier-3 template is tagged `nestable: false`.
+
+**How it works:**
+- `run_agent_in_docker` resolves host paths via `VOLTRON_HOST_ROOT` / `VOLTRON_HOST_HOME` / `VOLTRON_HOST_TMPDIR` so the inner `docker run` sees the real host filesystem (not the container's view of it).
+- `/var/run/docker.sock` is mounted into the agent container so the nested Claude Code can talk to the host Docker daemon.
+- A `container-mcp.json` is generated at launch and mounted into the inner container so the nested Claude Code has its own `project-voltron` MCP available.
+- A depth-cap guard refuses any 4th-tier launch — micro-agents cannot dispatch further.
+
+> **⚠️ Security disclosure — trusted dev machines only.** To make nested dispatch work, the Docker socket is mounted into every agent container. Inside a container, having `/var/run/docker.sock` is **equivalent to root on the host**: an agent can launch privileged containers, mount any host path, and read/write anything the Docker daemon can. **Only run Voltron on a trusted developer machine, and only with prompts you trust.** Do not point this at untrusted user input, public webhooks, or shared CI without a hardened sandbox in front.
+
 ### Unity Editor exception: auto-orchestration via Agent tool
 
 `run_agent_in_docker` is the **primary dispatch path** — Docker, isolated, parallel-safe — for >95% of work across all project types. Unity projects have one narrow exception: four Editor-bound managers need a live Unity Editor with Coplay MCP, which Docker cannot provide. The scrum-master dispatches those managers from the host via the built-in `Agent` tool instead.

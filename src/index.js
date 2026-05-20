@@ -162,6 +162,19 @@ async function ensureVoltronImage(cwd, dockerfilePath) {
   });
 }
 
+// v3.8.0: Join path segments using the separator implied by the base. Used to build
+// host-side mount sources for nested `docker -v` args when this MCP server runs inside
+// a Linux container but the host is Windows (POSIX path.join would lose the `\` separator).
+// Heuristic: a base containing `\` and not starting with `/` is treated as Windows.
+function hostJoin(base, ...parts) {
+  if (!base) return base;
+  const isWin = base.includes("\\") && !base.startsWith("/");
+  const sep = isWin ? "\\" : "/";
+  const cleanBase = base.replace(/[\\/]+$/, "");
+  const cleanParts = parts.map((p) => String(p).replace(/^[\\/]+/, "").replace(/[\\/]+$/, ""));
+  return [cleanBase, ...cleanParts].join(sep);
+}
+
 function detectProjectRoot(rawRoot) {
   // 1. Explicit parameter always wins
   if (rawRoot) {
@@ -1844,6 +1857,32 @@ server.tool(
       .describe("Model tier override. If omitted, uses the template's default model. Priority: explicit parameter > template.model > session default."),
   },
   async ({ agent_name, task, max_turns = 30, model }) => {
+    // v3.8.0: Depth-cap guard for nested dispatch (scrum-master → sub-manager → micro-agent).
+    // Refuse to spawn at depth >= 3 to prevent unbounded recursion. VOLTRON_DEPTH is set by
+    // the parent's docker run -e on every spawn; missing/0 means top-level (host) invocation.
+    const currentDepth = parseInt(process.env.VOLTRON_DEPTH || "0", 10);
+    if (currentDepth >= 3) {
+      return {
+        content: [{
+          type: "text",
+          text: `❌ Max nesting depth (3) reached: scrum-master → sub-manager → micro-agent. Tier-3 micro-agents must not dispatch further. Current VOLTRON_DEPTH=${currentDepth}.`,
+        }],
+      };
+    }
+    const isNested = currentDepth > 0;
+
+    // v3.8.0: Refuse nested spawns when host-path propagation was lost (e.g. parent forgot
+    // to set VOLTRON_HOST_ROOT). Without it the docker daemon would receive /workspace as
+    // the mount source, which it cannot see.
+    if (isNested && !process.env.VOLTRON_HOST_ROOT) {
+      return {
+        content: [{
+          type: "text",
+          text: "❌ Nested dispatch detected (VOLTRON_DEPTH>0) but VOLTRON_HOST_ROOT was not propagated. The parent container failed to forward host-path env vars; refusing to spawn.",
+        }],
+      };
+    }
+
     const { root: cwd } = detectProjectRoot(undefined);
 
     // 1. Look up the template
@@ -1868,6 +1907,11 @@ server.tool(
         }],
       };
     }
+
+    // v3.8.0: Terminal (Tier-3) micro-agents declare `nestable: false` and never dispatch.
+    // For them we skip generating the container MCP config and skip mounting the docker socket,
+    // which removes the *capability* of further nesting rather than relying on the runtime cap.
+    const nestable = template.nestable !== false;
 
     // Resolve model tier: explicit parameter > template default > omit (session default)
     const resolvedModel = model || template.model;
@@ -1903,11 +1947,14 @@ server.tool(
       task,
     ].join("\n");
 
-    // 4. Write prompt to temp file (avoids shell escaping issues)
-    const tmpFile = path.join(
-      os.tmpdir(),
-      `voltron-${agent_name}-${Date.now()}.md`
-    );
+    // 4. Write prompt to temp file (avoids shell escaping issues).
+    // v3.8.0: Live under <cwd>/.voltron/tmp/ rather than os.tmpdir() so the file is on the
+    // bind-mounted tree. This makes the host-path of the file computable inside nested
+    // containers (it's just hostRoot/.voltron/tmp/<filename>) and lets us mount it back.
+    const tmpDir = path.join(cwd, ".voltron", "tmp");
+    await fs.mkdir(tmpDir, { recursive: true });
+    const tmpFilename = `voltron-${agent_name}-${Date.now()}.md`;
+    const tmpFile = path.join(tmpDir, tmpFilename);
     await fs.writeFile(tmpFile, prompt);
 
     // 5. Check Docker CLI + daemon are both available
@@ -1948,14 +1995,25 @@ server.tool(
     // Use spawnSync with an explicit args array — avoids host-shell quoting issues
     // on Windows where execSync uses cmd.exe (which doesn't understand single quotes),
     // causing the -c argument to be mangled before reaching Docker.
-    const homeDir = process.env.HOME || process.env.USERPROFILE || os.homedir();
+    //
+    // v3.8.0: When this MCP server runs inside a nested container, process.cwd() resolves
+    // to /workspace and os.homedir() to /home/voltron — neither is visible to the host
+    // docker daemon. The parent propagates VOLTRON_HOST_ROOT / VOLTRON_HOST_HOME /
+    // VOLTRON_HOST_TMPDIR carrying the host-side strings; prefer those when set.
+    const homeDir = process.env.VOLTRON_HOST_HOME || process.env.HOME || process.env.USERPROFILE || os.homedir();
+    const hostRoot = process.env.VOLTRON_HOST_ROOT || cwd;
+    const hostTmpdir = process.env.VOLTRON_HOST_TMPDIR || tmpDir;
+    const hostTmpFile = hostJoin(hostTmpdir, tmpFilename);
 
-    // Conditionally mount ~/.gitconfig so git commits work inside Docker
-    const gitConfigPath = path.join(homeDir, ".gitconfig");
+    // Conditionally mount ~/.gitconfig so git commits work inside Docker. When nested,
+    // check the container-side mount point /home/voltron/.gitconfig (where the parent
+    // mounted it) instead of the host path (which is unreachable from the Linux container).
+    const gitConfigHostPath = hostJoin(homeDir, ".gitconfig");
+    const gitConfigCheckPath = isNested ? "/home/voltron/.gitconfig" : gitConfigHostPath;
     let gitConfigMount = [];
     try {
-      await fs.access(gitConfigPath);
-      gitConfigMount = ["-v", `${gitConfigPath}:/home/voltron/.gitconfig:ro`];
+      await fs.access(gitConfigCheckPath);
+      gitConfigMount = ["-v", `${gitConfigHostPath}:/home/voltron/.gitconfig:ro`];
     } catch {
       // No ~/.gitconfig — agents must set git identity manually if they need to commit
     }
@@ -1972,11 +2030,12 @@ server.tool(
     // On Windows the credentials file only exists if the user has run `claude setup-token`
     // (Windows otherwise stores OAuth in the Credential Manager, which the Linux container
     // can't reach). Mount is conditional on file existence; falls back to env-var auth.
-    const credsPath = path.join(homeDir, ".claude", ".credentials.json");
+    const credsHostPath = hostJoin(homeDir, ".claude", ".credentials.json");
+    const credsCheckPath = isNested ? "/home/voltron/.claude/.credentials.json" : credsHostPath;
     let credsMount = [];
     try {
-      await fs.access(credsPath);
-      credsMount = ["-v", `${credsPath}:/home/voltron/.claude/.credentials.json:ro`];
+      await fs.access(credsCheckPath);
+      credsMount = ["-v", `${credsHostPath}:/home/voltron/.claude/.credentials.json:ro`];
     } catch {
       // No ~/.claude/.credentials.json — auth must come from env vars
     }
@@ -1994,6 +2053,45 @@ server.tool(
       return { content: [{ type: "text", text: "Error: No auth available for Docker agent. Either run `claude setup-token` (creates ~/.claude/.credentials.json which will be mounted), or set CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY in your environment." }] };
     }
 
+    // v3.8.0: Generate a container-local MCP config so the dispatched agent's `claude`
+    // CLI can register project-voltron and recursively call run_agent_in_docker. We deliberately
+    // do NOT mount ~/.claude.json (that's the v3.3.2 hang bug); a fresh per-run file is safe.
+    // Skipped for `nestable: false` (Tier-3) templates — they should never dispatch.
+    let mcpConfigFlag = "";
+    if (nestable) {
+      const mcpConfigDir = path.join(cwd, ".voltron");
+      await fs.mkdir(mcpConfigDir, { recursive: true });
+      const mcpConfigPath = path.join(mcpConfigDir, "container-mcp.json");
+      const mcpConfig = {
+        mcpServers: {
+          "project-voltron": {
+            command: "node",
+            args: ["/workspace/src/index.js"],
+          },
+        },
+      };
+      await fs.writeFile(mcpConfigPath, JSON.stringify(mcpConfig, null, 2));
+      mcpConfigFlag = "--mcp-config /workspace/.voltron/container-mcp.json";
+    }
+
+    // v3.8.0: Docker-out-of-Docker — mount the host docker socket so the in-container
+    // `docker` CLI drives the host's daemon. Nested containers become *siblings* of the parent
+    // on the host (not children-of-the-container), which keeps host-path translation working.
+    // On Windows + Docker Desktop the socket path is `//var/run/docker.sock` (leading `//`
+    // defeats MSYS/Git-Bash absolute-path mangling); POSIX hosts use `/var/run/docker.sock`.
+    // Skipped for `nestable: false` — terminal agents have no reason to talk to docker.
+    const dockerSocketHostPath = process.platform === "win32" ? "//var/run/docker.sock" : "/var/run/docker.sock";
+    const socketMount = nestable ? ["-v", `${dockerSocketHostPath}:/var/run/docker.sock`] : [];
+
+    // v3.8.0: Propagate host-side paths + depth through the process tree so a nested
+    // run_agent_in_docker call can reconstruct host-visible mount sources instead of /workspace.
+    const voltronEnvArgs = [
+      "-e", `VOLTRON_HOST_ROOT=${hostRoot}`,
+      "-e", `VOLTRON_HOST_HOME=${homeDir}`,
+      "-e", `VOLTRON_HOST_TMPDIR=${hostTmpdir}`,
+      "-e", `VOLTRON_DEPTH=${currentDepth + 1}`,
+    ];
+
     // Named container enables `docker logs <name> -f` from a second terminal while running.
     // tee writes a live log to .voltron/logs/ on the host (mounted via /workspace).
     // PIPESTATUS[0] propagates claude's exit code through the pipe to Docker's exit code.
@@ -2002,10 +2100,12 @@ server.tool(
       "--name", containerName,
       "--entrypoint", "bash",
       ...authEnvArgs,
-      "-v", `${cwd}:/workspace`,
+      ...voltronEnvArgs,        // v3.8.0: VOLTRON_HOST_ROOT/HOME/TMPDIR/DEPTH for nested dispatch
+      "-v", `${hostRoot}:/workspace`,
       ...gitConfigMount,        // mount ~/.gitconfig if present so git commits work
       ...credsMount,            // mount ~/.claude/.credentials.json:ro for Max-plan OAuth
-      "-v", `${tmpFile}:/tmp/task.md:ro`,
+      ...socketMount,           // v3.8.0: docker socket for nested dispatch (omit for tier-3)
+      "-v", `${hostTmpFile}:/tmp/task.md:ro`,
       "voltron-agent",
       "-c",
       // v3.3.2: breadcrumb-wrapped — surfaces stalls before claude produces its first byte.
@@ -2013,7 +2113,9 @@ server.tool(
       // v3.6.4: --output-format stream-json --verbose so intermediate assistant text
       // (including [STEP N] progress lines emitted before each tool call) reaches stdout.
       // Plain `-p` only prints the final assistant message and would suppress all [STEP N]s.
-      `{ echo "[entry] $(date -Is) host=$(hostname) user=$(whoami)"; echo "[claude-version] $(claude --version 2>&1)"; echo "[exec] $(date -Is) starting prompt"; claude --dangerously-skip-permissions ${modelFlag} --max-turns ${max_turns} --output-format stream-json --verbose -p "$(cat /tmp/task.md)" 2>&1; CLAUDE_EXIT=\$?; echo "[exit] $(date -Is) code=\$CLAUDE_EXIT"; exit \$CLAUDE_EXIT; } | tee /workspace/.voltron/logs/${logFilename}; exit \${PIPESTATUS[0]}`,
+      // v3.8.0: ${mcpConfigFlag} adds --mcp-config when the agent is nestable, registering
+      // project-voltron inside the container so the dispatched claude can call run_agent_in_docker.
+      `{ echo "[entry] $(date -Is) host=$(hostname) user=$(whoami)"; echo "[claude-version] $(claude --version 2>&1)"; echo "[exec] $(date -Is) starting prompt"; claude --dangerously-skip-permissions ${modelFlag} ${mcpConfigFlag} --max-turns ${max_turns} --output-format stream-json --verbose -p "$(cat /tmp/task.md)" 2>&1; CLAUDE_EXIT=\$?; echo "[exit] $(date -Is) code=\$CLAUDE_EXIT"; exit \$CLAUDE_EXIT; } | tee /workspace/.voltron/logs/${logFilename}; exit \${PIPESTATUS[0]}`,
     ];
 
     // Async spawn — allows multiple agents to run in parallel Docker containers

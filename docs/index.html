@@ -296,7 +296,7 @@
       <h1>Project Voltron</h1>
       <p>Specialized agent teams for Claude Code, served via MCP. Scaffold Unity, web, or general projects with battle-tested subagent templates — 51 micro-agents, Alexandria-aware, self-improving, and auto-updating.</p>
       <div class="badge-row">
-        <span class="badge">v3.7.0</span>
+        <span class="badge">v3.8.0</span>
         <span class="badge">MCP Server</span>
         <span class="badge">Unity</span>
         <span class="badge">Web / Fullstack</span>
@@ -380,6 +380,24 @@
         <div class="loop-node">
           <strong>Managers compose micro-agents — they never write files directly</strong>
           <span>Sub-managers like <code>csharp-dev</code>, <code>fullstack-dev</code>, <code>qa-tester</code>, <code>devops-engineer</code>, <code>scene-architect</code>, <code>shader-artist</code>, <code>build-validator</code>, and <code>asset-manager</code> are orchestrators. For every file change, they dispatch the matching Tier-3 micro-agent (e.g. <code>csharp-script-writer</code>, <code>route-adder</code>, <code>test-writer</code>, <code>config-editor</code>) via <code>run_agent_in_docker</code>. This is the STOP RULE in every sub-manager template — managers never DIY.</span>
+        </div>
+      </div>
+
+      <h3 style="margin-top: 40px;">Nested 3-tier dispatch (v3.8.0)</h3>
+      <p class="section-sub" style="margin-top: 8px;">A containerized sub-manager or <code>reflection-processor</code> can now dispatch its own Tier-3 micro-agents via <code>run_agent_in_docker</code> — end to end, from inside a container. The scrum-master no longer has to flatten work plans to a single tier; sub-managers running in Docker drive the micro-agents that do the file edits, and the chain bottoms out cleanly because Tier-3 agents are marked <code>nestable: false</code>.</p>
+
+      <div class="loop-diagram" style="margin-top: 16px;">
+        <div class="loop-node">
+          <strong>How it works</strong>
+          <span>The MCP server resolves host paths via <code>VOLTRON_HOST_ROOT</code> / <code>VOLTRON_HOST_HOME</code> / <code>VOLTRON_HOST_TMPDIR</code> so the inner <code>docker run</code> sees the real host filesystem, mounts the Docker socket into the container, generates a <code>container-mcp.json</code> at launch so the nested Claude Code has its own project-voltron MCP, and enforces a depth cap that refuses a 4th tier.</span>
+        </div>
+        <div class="loop-node" style="margin-top: 12px;">
+          <strong>Security disclosure — trusted machines only</strong>
+          <span>To make nested dispatch work, <code>/var/run/docker.sock</code> is mounted into every agent container. Inside a container, having that socket is equivalent to root on the host: an agent can launch privileged containers, mount any host path, and read/write anything the Docker daemon can. <strong>Only run Voltron on a trusted developer machine, and only with prompts you trust.</strong> Do not point this at untrusted user input, public webhooks, or shared CI without a hardened sandbox in front.</span>
+        </div>
+        <div class="loop-node" style="margin-top: 12px;">
+          <strong>Depth cap</strong>
+          <span>Sub-managers may dispatch micro-agents (Tier-2 → Tier-3) but micro-agents cannot dispatch further. The depth-cap guard in <code>run_agent_in_docker</code> refuses any 4th-tier launch, and every Tier-3 template is tagged <code>nestable: false</code> so the orchestrator surfaces the misuse instead of silently failing inside the container.</span>
         </div>
       </div>
     </div>
@@ -866,7 +884,7 @@ node scripts/setup.js</code></pre>
     <div class="container">
       <p>
         <a href="https://github.com/7ports/project-voltron">GitHub</a> &middot;
-        v3.7.0 &middot;
+        v3.8.0 &middot;
         MIT License &middot;
         Built by <a href="https://github.com/7ports">7ports</a>
       </p>

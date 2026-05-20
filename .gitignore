@@ -13,6 +13,8 @@ Thumbs.db
 .voltron/dashboard.html
 .voltron/progress.json
 .voltron/screenshots/staged/
+.voltron/tmp/
+.voltron/container-mcp.json
 
 # Voltron — user-specific local files
 .mcp.json

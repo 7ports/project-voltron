@@ -32,6 +32,23 @@ RUN install -m 0755 -d /etc/apt/keyrings && \
     apt-get install -y --no-install-recommends docker-ce-cli && \
     rm -rf /var/lib/apt/lists/*
 
+# v3.8.1: grant the non-root `voltron` user access to the mounted host Docker socket.
+# The host's /var/run/docker.sock is owned root:docker with mode 0660; its group GID
+# is host-dependent and unknown at image-build time, so we cannot preemptively add
+# voltron to the correct group. Instead, install sudo and shadow `docker` with a
+# wrapper that re-execs the real CLI as root — root bypasses the group check entirely,
+# so nested `run_agent_in_docker` calls succeed regardless of the host's socket GID.
+# Sudo privilege is tightly scoped to /usr/bin/docker only (NOPASSWD), so the agent
+# cannot escalate to a general root shell. /usr/local/bin precedes /usr/bin in PATH,
+# so bare `docker ...` invocations resolve to the wrapper transparently.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends sudo && \
+    rm -rf /var/lib/apt/lists/* && \
+    printf 'voltron ALL=(root) NOPASSWD: /usr/bin/docker\n' > /etc/sudoers.d/voltron-docker && \
+    chmod 0440 /etc/sudoers.d/voltron-docker && \
+    printf '#!/bin/sh\nexec sudo -n /usr/bin/docker "$@"\n' > /usr/local/bin/docker && \
+    chmod 0755 /usr/local/bin/docker
+
 # v3.4.0: mandatory voltron dependencies
 # beads (gastownhall/beads) — dependency-aware task tracking; required by scrum-master
 RUN npm install -g @beads/bd

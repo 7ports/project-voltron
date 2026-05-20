@@ -9197,6 +9197,23 @@ export const DOCKERFILE_CONTENT =
   "    apt-get install -y --no-install-recommends docker-ce-cli && \\\n" +
   "    rm -rf /var/lib/apt/lists/*\n" +
   "\n" +
+  "# v3.8.1: grant the non-root `voltron` user access to the mounted host Docker socket.\n" +
+  "# The host's /var/run/docker.sock is owned root:docker with mode 0660; its group GID\n" +
+  "# is host-dependent and unknown at image-build time, so we cannot preemptively add\n" +
+  "# voltron to the correct group. Instead, install sudo and shadow `docker` with a\n" +
+  "# wrapper that re-execs the real CLI as root — root bypasses the group check entirely,\n" +
+  "# so nested `run_agent_in_docker` calls succeed regardless of the host's socket GID.\n" +
+  "# Sudo privilege is tightly scoped to /usr/bin/docker only (NOPASSWD), so the agent\n" +
+  "# cannot escalate to a general root shell. /usr/local/bin precedes /usr/bin in PATH,\n" +
+  "# so bare `docker ...` invocations resolve to the wrapper transparently.\n" +
+  "RUN apt-get update && \\\n" +
+  "    apt-get install -y --no-install-recommends sudo && \\\n" +
+  "    rm -rf /var/lib/apt/lists/* && \\\n" +
+  "    printf 'voltron ALL=(root) NOPASSWD: /usr/bin/docker\\n' > /etc/sudoers.d/voltron-docker && \\\n" +
+  "    chmod 0440 /etc/sudoers.d/voltron-docker && \\\n" +
+  "    printf '#!/bin/sh\\nexec sudo -n /usr/bin/docker \"$@\"\\n' > /usr/local/bin/docker && \\\n" +
+  "    chmod 0755 /usr/local/bin/docker\n" +
+  "\n" +
   "# v3.4.0: mandatory voltron dependencies\n" +
   "# beads (gastownhall/beads) — dependency-aware task tracking; required by scrum-master\n" +
   "RUN npm install -g @beads/bd\n" +

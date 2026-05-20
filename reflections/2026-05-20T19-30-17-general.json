@@ -1,0 +1,35 @@
+{
+  "timestamp": "2026-05-20T19:30:17.142Z",
+  "project_name": "project-voltron",
+  "project_type": "general",
+  "session_summary": "Built and debugged nested micro-agent dispatch on a Windows host. Shipped on branch voltron/nested-dispatch (unpushed): v3.8.0 nested dispatch (MCP-in-container + DooD socket), v3.8.1 socket-permission fix, v3.8.2 rename reflection-processor->harness-engineer, v3.8.3 -v->--mount fix. Also merged PR #31 and researched an LLM-as-judge testing harness. Nested 3-tier dispatch is now believed working but unvalidated pending a Claude Code restart. 2-tier dispatch worked flawlessly throughout.",
+  "agents_used": [
+    "scrum-master",
+    "researcher",
+    "project-planner",
+    "reflection-processor",
+    "fullstack-dev",
+    "config-editor",
+    "committer"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "reflection-processor",
+      "worked_well": "Correctly handled large multi-file Voltron edits and self-rename; always halted cleanly and reported when nested dispatch was unavailable rather than falling back.",
+      "needs_improvement": "Tasks that bundled 'edit + verify + commit' hit max_turns ~4 times this session, with the COMMIT always the casualty (work done, uncommitted). Separately, every run on this Windows repo flipped CRLF->LF line endings on touched files, creating noisy diffs and once burning ~8 turns fighting it.",
+      "suggested_change": "Split 'commit' out as its own step/dispatch by default rather than bundling it into a large edit task. Add a line-endings rule to the harness-engineer template: never normalize EOLs; rely on git autocrlf; if a file shows an EOL-only diff, git checkout -- it. Consider adding a repo .gitattributes to end the churn."
+    },
+    {
+      "agent": "fullstack-dev",
+      "worked_well": "Exemplary tier discipline: dispatched to micro-agents, and on dispatch failure STOPPED and reported the verbatim error every time instead of writing files itself.",
+      "needs_improvement": "Nothing — behavior was exactly as intended."
+    },
+    {
+      "agent": "scrum-master",
+      "worked_well": "Parallel-safe orchestration, bead tracking, and anchor pre-computation before file-edit dispatches.",
+      "suggested_change": "When dispatching any Voltron-edit task, default to a separate committer dispatch for the commit; do not let edit+commit share one turn budget."
+    }
+  ],
+  "overall_notes": "Nested-dispatch design under-specified Windows Docker: needed 3 fixes after the initial build — socket permission (non-root user can't read mounted socket; fixed with sudo + a docker wrapper), and `-v` mount parsing (Windows `C:\\` drive-colon breaks the Linux docker CLI's `-v` splitter; fixed by switching all mounts to `--mount type=bind`). Future DooD work on Windows should mandate `--mount` syntax and address socket perms up front. Also: every run_agent_in_docker result exceeded the inline token limit and had to be parsed from a saved file — consistent minor friction. Any change to src/index.js or templates.js requires a full Claude Code restart to take effect, which makes iterating on dispatch internals slow — worth noting in contributor docs.",
+  "processed": false
+}

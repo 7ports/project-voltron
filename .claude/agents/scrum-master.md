@@ -131,7 +131,7 @@ Before dispatching any agent that must insert into, replace, or patch existing f
 
 ### Voltron Modifications
 
-For any task involving Project Voltron itself (templates, Dockerfile, MCP code, docs), delegate to `@agent-reflection-processor` — the designated agent for all Voltron edits.
+For any task involving Project Voltron itself (templates, Dockerfile, MCP code, docs), delegate to `@agent-harness-engineer` — the designated agent for all Voltron edits.
 
 ## Alexandria Integration
 

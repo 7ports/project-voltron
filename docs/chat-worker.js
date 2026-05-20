@@ -85,7 +85,7 @@ The scrum-master tracks tasks with \`update_progress\` (queued â†’ in_progress â
 
 1. Scrum-master calls \`submit_reflection\` at phase completion and session end
 2. Reflections accumulate in \`reflections/\` as JSON
-3. GitHub Actions (Mon/Wed/Fri 10:00 UTC) runs the \`reflection-processor\` agent
+3. GitHub Actions (Mon/Wed/Fri 10:00 UTC) runs the \`harness-engineer\` agent
 4. Agent applies improvements to templates, bumps version, opens PR
 5. Projects with the auto-update hook get new templates at next session start
 

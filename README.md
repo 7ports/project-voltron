@@ -80,7 +80,7 @@ Dispatched by sub-managers for single-verb, single-file tasks. Each does one thi
 
 | Agent | Purpose |
 |---|---|
-| **reflection-processor** | Processes session reflections in CI, applies targeted improvements to agent templates. Runs on Sonnet 4.6. |
+| **harness-engineer** | Owns all modifications to Project Voltron itself — agent templates, Dockerfile, MCP server code, docs, and scripts. Invoked by scrum-master for any Voltron change, and by CI to process session reflections into targeted template improvements. |
 
 ## Installation
 
@@ -196,7 +196,7 @@ A `[VOLTRON] Auto-updated N file(s)` message appears in context when an update o
 
 Agents submit post-session reflections via `submit_reflection`. The scrum-master now submits reflections automatically at phase completion, after significant blockers, and at session end. Reflections accumulate in the `reflections/` directory and are automatically processed by a GitHub Actions workflow that runs **Mon/Wed/Fri at 10:00 UTC**:
 
-1. The `reflection-processor` agent (running on Sonnet 4.6) reads all unprocessed reflections
+1. The `harness-engineer` agent reads all unprocessed reflections
 2. Groups feedback by agent and prioritizes by frequency
 3. Applies targeted improvements to `src/templates.js`
 4. Bumps the patch version and commits
@@ -227,7 +227,7 @@ On Windows, OAuth is stored in the Credential Manager by default and `~/.claude/
 
 ### Nested 3-tier dispatch (v3.8.0)
 
-A containerized sub-manager or `reflection-processor` can now dispatch its own Tier-3 micro-agents via `run_agent_in_docker` — end to end, from inside a container. The scrum-master no longer has to flatten work plans to a single tier: Tier-2 sub-managers running in Docker drive the Tier-3 micro-agents that do the file edits, and the chain bottoms out cleanly because every Tier-3 template is tagged `nestable: false`.
+A containerized sub-manager or `harness-engineer` can now dispatch its own Tier-3 micro-agents via `run_agent_in_docker` — end to end, from inside a container. The scrum-master no longer has to flatten work plans to a single tier: Tier-2 sub-managers running in Docker drive the Tier-3 micro-agents that do the file edits, and the chain bottoms out cleanly because every Tier-3 template is tagged `nestable: false`.
 
 **How it works:**
 - `run_agent_in_docker` resolves host paths via `VOLTRON_HOST_ROOT` / `VOLTRON_HOST_HOME` / `VOLTRON_HOST_TMPDIR` so the inner `docker run` sees the real host filesystem (not the container's view of it).
@@ -257,7 +257,7 @@ Voltron assigns each agent a default model tier based on its role. Sub-managers 
 
 | Tier | Model | Agents | Role |
 |---|---|---|---|
-| Opus | `claude-opus-4-*` | 5 | Coordinators & planners (scrum-master, project-planner, code-analyst, doc-writer, reflection-processor) |
+| Opus | `claude-opus-4-*` | 5 | Coordinators & planners (scrum-master, project-planner, code-analyst, doc-writer, harness-engineer) |
 | Sonnet | `claude-sonnet-4-*` | 16 | Sub-managers & domain specialists (fullstack-dev, devops-engineer, csharp-dev, qa-tester, etc.) |
 | Haiku | `claude-haiku-4-*` | 53 | Micro-agents — Inspect, Write, Validate, Publish layer workers |
 

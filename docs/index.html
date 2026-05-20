@@ -384,7 +384,7 @@
       </div>
 
       <h3 style="margin-top: 40px;">Nested 3-tier dispatch (v3.8.0)</h3>
-      <p class="section-sub" style="margin-top: 8px;">A containerized sub-manager or <code>reflection-processor</code> can now dispatch its own Tier-3 micro-agents via <code>run_agent_in_docker</code> — end to end, from inside a container. The scrum-master no longer has to flatten work plans to a single tier; sub-managers running in Docker drive the micro-agents that do the file edits, and the chain bottoms out cleanly because Tier-3 agents are marked <code>nestable: false</code>.</p>
+      <p class="section-sub" style="margin-top: 8px;">A containerized sub-manager or <code>harness-engineer</code> can now dispatch its own Tier-3 micro-agents via <code>run_agent_in_docker</code> — end to end, from inside a container. The scrum-master no longer has to flatten work plans to a single tier; sub-managers running in Docker drive the micro-agents that do the file edits, and the chain bottoms out cleanly because Tier-3 agents are marked <code>nestable: false</code>.</p>
 
       <div class="loop-diagram" style="margin-top: 16px;">
         <div class="loop-node">
@@ -587,7 +587,7 @@
       <div class="tier-grid">
         <div class="tier-card" style="border-top:3px solid #a371f7">
           <h3 style="color:#a371f7">Opus <span class="tier-badge">Coordinators &amp; Planners · 5 agents</span></h3>
-          <p style="color:#8b949e;font-size:0.85rem">Highest capability. Used by <code>scrum-master</code>, <code>project-planner</code>, <code>code-analyst</code>, <code>doc-writer</code>, and <code>reflection-processor</code>. Reserved for orchestration and complex reasoning.</p>
+          <p style="color:#8b949e;font-size:0.85rem">Highest capability. Used by <code>scrum-master</code>, <code>project-planner</code>, <code>code-analyst</code>, <code>doc-writer</code>, and <code>harness-engineer</code>. Reserved for orchestration and complex reasoning.</p>
         </div>
         <div class="tier-card" style="border-top:3px solid #58a6ff">
           <h3 style="color:#58a6ff">Sonnet <span class="tier-badge">Sub-managers &amp; Specialists · 16 agents</span></h3>
@@ -834,7 +834,7 @@ node scripts/setup.js</code></pre>
         <div class="loop-arrow">↓</div>
         <div class="loop-node">
           <strong>GitHub Actions runs Mon/Wed/Fri</strong>
-          <span>The <code>reflection-processor</code> agent (Sonnet 4.6) groups feedback by agent, prioritizes by frequency, applies targeted template edits, and opens a PR</span>
+          <span>The <code>harness-engineer</code> agent groups feedback by agent, prioritizes by frequency, applies targeted template edits, and opens a PR</span>
         </div>
         <div class="loop-arrow">↓</div>
         <div class="loop-node">

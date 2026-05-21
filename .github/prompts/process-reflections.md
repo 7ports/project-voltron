@@ -1,4 +1,4 @@
-<!-- Canonical source: "reflection-processor" template in src/templates.js. Keep in sync. -->
+<!-- Canonical source: "harness-engineer" template in src/templates.js. Keep in sync. -->
 
 # Process Voltron Reflections
 

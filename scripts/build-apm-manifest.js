@@ -10,7 +10,7 @@
  * Or:  npm run build:apm
  *
  * This script MUST be run after every version bump so the APM package
- * stays in sync with the installed templates. The reflection-processor
+ * stays in sync with the installed templates. The harness-engineer
  * template includes this as a required step in its Direct Modification
  * Mode workflow.
  */

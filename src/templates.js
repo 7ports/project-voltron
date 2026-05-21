@@ -858,7 +858,7 @@ Before dispatching any agent that must insert into, replace, or patch existing f
 
 ### Voltron Modifications
 
-For any task involving Project Voltron itself (templates, Dockerfile, MCP code, docs), delegate to \`@agent-reflection-processor\` — the designated agent for all Voltron edits.
+For any task involving Project Voltron itself (templates, Dockerfile, MCP code, docs), delegate to \`@agent-harness-engineer\` — the designated agent for all Voltron edits.
 
 ## Alexandria Integration
 
@@ -4222,22 +4222,22 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
 
   // ─── INTERNAL AGENTS (not scaffolded into user projects) ────────────────────
 
-  "reflection-processor": {
-    name: "reflection-processor",
-    filename: "reflection-processor.md",
+  "harness-engineer": {
+    name: "harness-engineer",
+    filename: "harness-engineer.md",
     description:
-      "Voltron's self-modification agent. Handles ALL edits to Project Voltron itself — agent templates, Dockerfile, MCP server code, docs, and scripts. Invoked by scrum-master for any Voltron improvement task, and by CI to process session reflections. Not scaffolded into user projects.",
+      "Voltron's harness engineer. Owns ALL modifications to Project Voltron itself — agent templates, Dockerfile, MCP server code, docs, and scripts — and processes post-session reflections into template improvements. Invoked by scrum-master for any Voltron change, and by CI to process reflections. Not scaffolded into user projects.",
     category: "agent",
-    destination: ".claude/agents/reflection-processor.md",
+    destination: ".claude/agents/harness-engineer.md",
     tags: ["internal"],
     model: "opus",
     content: `---
-name: reflection-processor
-description: Voltron's self-modification agent. Handles all edits to Project Voltron — agent templates, Dockerfile, MCP server code, docs, and scripts. Invoked by scrum-master for any Voltron improvement, and by CI for reflection processing.
-tools: Read, Write, Edit, Bash, Glob, Grep, mcp__alexandria__list_guides, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide
+name: harness-engineer
+description: Voltron's harness engineer. Owns all modifications to Project Voltron — agent templates, Dockerfile, MCP server code, docs, and scripts — and processes post-session reflections into template improvements. Invoked by scrum-master for any Voltron change, and by CI for reflection processing.
+tools: Read, Write, Edit, Bash, Glob, Grep, mcp__alexandria__list_guides, mcp__alexandria__quick_setup, mcp__alexandria__search_guides, mcp__alexandria__update_guide, mcp__project-voltron__run_agent_in_docker, mcp__project-voltron__get_template, mcp__project-voltron__update_progress
 ---
 
-You are the Voltron Engineer — the designated agent for **all modifications to Project Voltron itself**. You have two modes of operation:
+You are the Voltron **harness engineer** — the designated agent for **all modifications to Project Voltron itself** (the harness that scaffolds and runs agents in user projects). You have two modes of operation:
 
 1. **Direct Modification Mode** — invoked by the scrum-master with a specific change to make
 2. **Reflection Processing Mode** — invoked by CI to process session reflections and improve agents
@@ -4355,7 +4355,7 @@ Alexandria is for non-project-specific documentation only. Project-specific cont
 
 ## Progress Reporting
 
-**Especially you, reflection-processor.** Voltron-modification tasks often involve many file reads and edits. Each one needs its own \`[STEP N]\` line — bulk operations that run silently for minutes are exactly what this rule exists to prevent.
+**Especially you, harness-engineer.** Voltron-modification tasks often involve many file reads and edits. Each one needs its own \`[STEP N]\` line — bulk operations that run silently for minutes are exactly what this rule exists to prevent.
 
 Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
 
@@ -4637,6 +4637,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/dep-reader.md",
     tags: ["micro", "inspect", "core"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: dep-reader
@@ -4717,6 +4718,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/route-lister.md",
     tags: ["micro", "inspect", "web"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: route-lister
@@ -4791,6 +4793,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/schema-inspector.md",
     tags: ["micro", "inspect", "core"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: schema-inspector
@@ -4868,6 +4871,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/log-tailer.md",
     tags: ["micro", "inspect", "core"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: log-tailer
@@ -4947,6 +4951,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/test-lister.md",
     tags: ["micro", "inspect", "core"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: test-lister
@@ -5024,6 +5029,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/lint-reader.md",
     tags: ["micro", "inspect", "core"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: lint-reader
@@ -5104,6 +5110,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/type-error-reader.md",
     tags: ["micro", "inspect", "web"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: type-error-reader
@@ -5183,6 +5190,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/git-state-reader.md",
     tags: ["micro", "inspect", "core"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: git-state-reader
@@ -5261,6 +5269,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/api-shape-probe.md",
     tags: ["micro", "inspect", "web"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: api-shape-probe
@@ -5347,6 +5356,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/bundle-sizer.md",
     tags: ["micro", "inspect", "web"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: bundle-sizer
@@ -5427,6 +5437,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/dead-code-finder.md",
     tags: ["micro", "inspect", "core"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: dead-code-finder
@@ -5508,6 +5519,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/route-adder.md",
     tags: ["micro", "write", "web"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: route-adder
@@ -5576,6 +5588,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/component-scaffolder.md",
     tags: ["micro", "write", "web"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: component-scaffolder
@@ -5643,6 +5656,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/test-writer.md",
     tags: ["micro", "write", "core"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: test-writer
@@ -5711,6 +5725,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/migration-writer.md",
     tags: ["micro", "write", "web"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: migration-writer
@@ -5783,6 +5798,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/config-editor.md",
     tags: ["micro", "write", "core"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: config-editor
@@ -5864,6 +5880,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/fixture-writer.md",
     tags: ["micro", "write", "core"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: fixture-writer
@@ -5930,6 +5947,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/type-definer.md",
     tags: ["micro", "write", "web"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: type-definer
@@ -5996,6 +6014,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/env-var-setter.md",
     tags: ["micro", "write", "core"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: env-var-setter
@@ -6066,6 +6085,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/dockerfile-editor.md",
     tags: ["micro", "write", "core"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: dockerfile-editor
@@ -6137,6 +6157,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/yaml-patcher.md",
     tags: ["micro", "write", "core"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: yaml-patcher
@@ -6204,6 +6225,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/readme-section-writer.md",
     tags: ["micro", "write", "core"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: readme-section-writer
@@ -6278,6 +6300,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/typecheck-runner.md",
     tags: ["micro", "validate", "web"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: typecheck-runner
@@ -6348,6 +6371,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/test-runner.md",
     tags: ["micro", "validate", "core"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: test-runner
@@ -6430,6 +6454,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/lint-runner.md",
     tags: ["micro", "validate", "core"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: lint-runner
@@ -6508,6 +6533,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/build-runner.md",
     tags: ["micro", "validate", "core"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: build-runner
@@ -6585,6 +6611,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/schema-validator.md",
     tags: ["micro", "validate", "web"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: schema-validator
@@ -6659,6 +6686,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/url-route-matcher.md",
     tags: ["micro", "validate", "web"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: url-route-matcher
@@ -6738,6 +6766,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/accessibility-auditor.md",
     tags: ["micro", "validate", "web"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: accessibility-auditor
@@ -6812,6 +6841,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/lighthouse-runner.md",
     tags: ["micro", "validate", "web"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: lighthouse-runner
@@ -6891,6 +6921,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/security-scanner.md",
     tags: ["micro", "validate", "core"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: security-scanner
@@ -6972,6 +7003,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/committer.md",
     tags: ["micro", "publish", "core"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: committer
@@ -7048,6 +7080,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/pr-opener.md",
     tags: ["micro", "publish", "core"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: pr-opener
@@ -7132,6 +7165,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/branch-manager.md",
     tags: ["micro", "publish", "core"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: branch-manager
@@ -7198,6 +7232,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/deploy-trigger.md",
     tags: ["micro", "publish", "core"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: deploy-trigger
@@ -7272,6 +7307,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/changelog-updater.md",
     tags: ["micro", "publish", "core"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: changelog-updater
@@ -7571,6 +7607,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/adr-writer.md",
     tags: ["micro", "write", "core"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: adr-writer
@@ -7659,6 +7696,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/api-doc-generator.md",
     tags: ["micro", "write", "core"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: api-doc-generator
@@ -7745,6 +7783,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/diagram-maker.md",
     tags: ["micro", "write", "core"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: diagram-maker
@@ -7820,6 +7859,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/stringer-baseline-builder.md",
     tags: ["micro", "inspect", "core"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: stringer-baseline-builder
@@ -7910,6 +7950,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/stringer-delta-reader.md",
     tags: ["micro", "inspect", "core"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: stringer-delta-reader
@@ -7993,6 +8034,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/function-writer.md",
     tags: ["micro", "write", "web"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: function-writer
@@ -8069,6 +8111,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/middleware-writer.md",
     tags: ["micro", "write", "web"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: middleware-writer
@@ -8145,6 +8188,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/store-slice-writer.md",
     tags: ["micro", "write", "web"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: store-slice-writer
@@ -8223,6 +8267,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/css-writer.md",
     tags: ["micro", "write", "web"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: css-writer
@@ -8299,6 +8344,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/design-token-writer.md",
     tags: ["micro", "write", "web"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: design-token-writer
@@ -8375,6 +8421,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/csharp-script-writer.md",
     tags: ["micro", "write", "unity"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: csharp-script-writer
@@ -8453,6 +8500,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/csharp-member-adder.md",
     tags: ["micro", "write", "unity"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: csharp-member-adder
@@ -8528,6 +8576,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/unity-manifest-editor.md",
     tags: ["micro", "write", "unity"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: unity-manifest-editor
@@ -8605,6 +8654,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/ci-workflow-writer.md",
     tags: ["micro", "write", "web"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: ci-workflow-writer
@@ -8681,6 +8731,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/docker-compose-editor.md",
     tags: ["micro", "write", "web"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: docker-compose-editor
@@ -8756,6 +8807,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/coverage-runner.md",
     tags: ["micro", "validate", "web"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: coverage-runner
@@ -8844,6 +8896,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/test-config-writer.md",
     tags: ["micro", "write", "web"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: test-config-writer
@@ -8920,6 +8973,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/mock-writer.md",
     tags: ["micro", "write", "web"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: mock-writer
@@ -8998,6 +9052,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/file-patch-runner.md",
     tags: ["micro", "write", "core"],
+    nestable: false,
     model: "haiku",
     content: `---
 name: file-patch-runner
@@ -9129,6 +9184,35 @@ export const DOCKERFILE_CONTENT =
   "\n" +
   "# Install Claude Code globally\n" +
   "RUN npm install -g @anthropic-ai/claude-code\n" +
+  "\n" +
+  "# v3.8.0: docker-ce-cli (CLI only, no daemon) for nested-dispatch via Docker-out-of-Docker.\n" +
+  "# Agents running inside this container need the `docker` CLI to launch sibling containers\n" +
+  "# via the host socket mounted at /var/run/docker.sock. Installed from Docker's official\n" +
+  "# debian repo because the distro-shipped `docker.io` package pulls in the full daemon.\n" +
+  "RUN install -m 0755 -d /etc/apt/keyrings && \\\n" +
+  "    curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc && \\\n" +
+  "    chmod a+r /etc/apt/keyrings/docker.asc && \\\n" +
+  "    echo \"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian $(. /etc/os-release && echo \\\"$VERSION_CODENAME\\\") stable\" > /etc/apt/sources.list.d/docker.list && \\\n" +
+  "    apt-get update && \\\n" +
+  "    apt-get install -y --no-install-recommends docker-ce-cli && \\\n" +
+  "    rm -rf /var/lib/apt/lists/*\n" +
+  "\n" +
+  "# v3.8.1: grant the non-root `voltron` user access to the mounted host Docker socket.\n" +
+  "# The host's /var/run/docker.sock is owned root:docker with mode 0660; its group GID\n" +
+  "# is host-dependent and unknown at image-build time, so we cannot preemptively add\n" +
+  "# voltron to the correct group. Instead, install sudo and shadow `docker` with a\n" +
+  "# wrapper that re-execs the real CLI as root — root bypasses the group check entirely,\n" +
+  "# so nested `run_agent_in_docker` calls succeed regardless of the host's socket GID.\n" +
+  "# Sudo privilege is tightly scoped to /usr/bin/docker only (NOPASSWD), so the agent\n" +
+  "# cannot escalate to a general root shell. /usr/local/bin precedes /usr/bin in PATH,\n" +
+  "# so bare `docker ...` invocations resolve to the wrapper transparently.\n" +
+  "RUN apt-get update && \\\n" +
+  "    apt-get install -y --no-install-recommends sudo && \\\n" +
+  "    rm -rf /var/lib/apt/lists/* && \\\n" +
+  "    printf 'voltron ALL=(root) NOPASSWD: /usr/bin/docker\\n' > /etc/sudoers.d/voltron-docker && \\\n" +
+  "    chmod 0440 /etc/sudoers.d/voltron-docker && \\\n" +
+  "    printf '#!/bin/sh\\nexec sudo -n /usr/bin/docker \"$@\"\\n' > /usr/local/bin/docker && \\\n" +
+  "    chmod 0755 /usr/local/bin/docker\n" +
   "\n" +
   "# v3.4.0: mandatory voltron dependencies\n" +
   "# beads (gastownhall/beads) — dependency-aware task tracking; required by scrum-master\n" +

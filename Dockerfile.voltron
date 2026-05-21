@@ -20,6 +20,35 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install Claude Code globally
 RUN npm install -g @anthropic-ai/claude-code
 
+# v3.8.0: docker-ce-cli (CLI only, no daemon) for nested-dispatch via Docker-out-of-Docker.
+# Agents running inside this container need the `docker` CLI to launch sibling containers
+# via the host socket mounted at /var/run/docker.sock. Installed from Docker's official
+# debian repo because the distro-shipped `docker.io` package pulls in the full daemon.
+RUN install -m 0755 -d /etc/apt/keyrings && \
+    curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc && \
+    chmod a+r /etc/apt/keyrings/docker.asc && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian $(. /etc/os-release && echo \"$VERSION_CODENAME\") stable" > /etc/apt/sources.list.d/docker.list && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends docker-ce-cli && \
+    rm -rf /var/lib/apt/lists/*
+
+# v3.8.1: grant the non-root `voltron` user access to the mounted host Docker socket.
+# The host's /var/run/docker.sock is owned root:docker with mode 0660; its group GID
+# is host-dependent and unknown at image-build time, so we cannot preemptively add
+# voltron to the correct group. Instead, install sudo and shadow `docker` with a
+# wrapper that re-execs the real CLI as root — root bypasses the group check entirely,
+# so nested `run_agent_in_docker` calls succeed regardless of the host's socket GID.
+# Sudo privilege is tightly scoped to /usr/bin/docker only (NOPASSWD), so the agent
+# cannot escalate to a general root shell. /usr/local/bin precedes /usr/bin in PATH,
+# so bare `docker ...` invocations resolve to the wrapper transparently.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends sudo && \
+    rm -rf /var/lib/apt/lists/* && \
+    printf 'voltron ALL=(root) NOPASSWD: /usr/bin/docker\n' > /etc/sudoers.d/voltron-docker && \
+    chmod 0440 /etc/sudoers.d/voltron-docker && \
+    printf '#!/bin/sh\nexec sudo -n /usr/bin/docker "$@"\n' > /usr/local/bin/docker && \
+    chmod 0755 /usr/local/bin/docker
+
 # v3.4.0: mandatory voltron dependencies
 # beads (gastownhall/beads) — dependency-aware task tracking; required by scrum-master
 RUN npm install -g @beads/bd

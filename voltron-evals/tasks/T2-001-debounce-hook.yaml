@@ -1,0 +1,52 @@
+id: "T2-001"
+tier: 2
+category: "fullstack-feature"
+agent_under_test: "fullstack-dev"
+max_turns: 30
+project_type: "web"
+
+prompt: |
+  Add a typed `useDebounce(callback, ms)` React hook at client/src/hooks/useDebounce.ts. The hook
+  must be generic so the callback's signature is preserved. Write a Vitest spec at
+  client/src/hooks/useDebounce.test.ts covering: (a) the callback is not invoked before `ms`
+  elapses, (b) the latest call wins when invoked rapidly, (c) the timer is cleared on unmount.
+  Then run `npx tsc --noEmit` to confirm typecheck is clean.
+
+  Decompose this work as a sub-manager: dispatch function-writer for the hook implementation,
+  test-writer for the Vitest spec, and typecheck-runner to verify. Do not edit files directly.
+
+acceptance_criteria:
+  - id: "ac_1"
+    text: "client/src/hooks/useDebounce.ts exists and exports a function named useDebounce."
+    type: "programmatic"
+  - id: "ac_2"
+    text: "Hook signature is generic such that the callback return type is preserved."
+    type: "judged"
+  - id: "ac_3"
+    text: "A Vitest spec exists at client/src/hooks/useDebounce.test.ts and passes."
+    type: "programmatic"
+  - id: "ac_4"
+    text: "Typecheck passes (npx tsc --noEmit exits 0)."
+    type: "programmatic"
+  - id: "ac_5"
+    text: "fullstack-dev dispatched at least two micro-agents rather than editing directly."
+    type: "judged"
+  - id: "ac_6"
+    text: "Run emitted [DONE] within the 30-turn budget."
+    type: "programmatic"
+
+rubric: "voltron-evals/rubrics/T2-001.md"
+rubric_version_expected: "1.0.0"
+
+programmatic_signals:
+  capture_turn_count: true
+  capture_files_changed: true
+  detect_micro_agent_dispatch: true
+  capture_beads_snapshot: true
+  require_done_line: true
+  check_doc_updates: false
+
+notes: |
+  Tier-2 sub-manager test. The grade hinges on tier_discipline: did fullstack-dev decompose into
+  micro-agents, or did it shortcut and edit files itself? This is NOT a scrum-master test — the
+  runner dispatches fullstack-dev directly.

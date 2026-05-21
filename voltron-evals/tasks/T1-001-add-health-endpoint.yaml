@@ -1,0 +1,46 @@
+id: "T1-001"
+tier: 1
+category: "single-file-web-edit"
+agent_under_test: "route-adder"
+max_turns: 10
+project_type: "web"
+
+prompt: |
+  Add a `GET /health` route to server/src/index.ts that returns 200 with JSON body `{ "status": "ok" }`.
+  The file contains an anchor comment `// VOLTRON_EVAL_ANCHOR: register routes here` — insert the new
+  route registration on the line immediately after that anchor. Do not modify any other line. Do not
+  add new dependencies. The route handler should be inline (no separate file).
+
+acceptance_criteria:
+  - id: "ac_1"
+    text: "server/src/index.ts contains a route registration for GET /health."
+    type: "programmatic"
+  - id: "ac_2"
+    text: "The new code is inserted on the line directly after the VOLTRON_EVAL_ANCHOR comment."
+    type: "judged"
+  - id: "ac_3"
+    text: "Handler responds with HTTP 200 and JSON body { status: 'ok' }."
+    type: "judged"
+  - id: "ac_4"
+    text: "No other files in the workspace were modified."
+    type: "programmatic"
+  - id: "ac_5"
+    text: "Task completed within 10 turns and emitted a [DONE] line."
+    type: "programmatic"
+
+rubric: "voltron-evals/rubrics/T1-001.md"
+rubric_version_expected: "1.0.0"
+fixtures: "voltron-evals/lib/fixtures/T1-001"
+
+programmatic_signals:
+  capture_turn_count: true
+  capture_files_changed: true
+  detect_micro_agent_dispatch: false
+  capture_beads_snapshot: false
+  require_done_line: true
+  check_doc_updates: false
+
+notes: |
+  Tier-1 baseline. The anchor is precomputed so the task is unambiguous; this exercises whether a
+  Tier-3 micro-agent (route-adder) can perform a surgical insert in <=10 turns without sprawling
+  edits. AUT is a micro-agent, NOT a sub-manager.

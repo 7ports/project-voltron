@@ -4436,7 +4436,7 @@ Never normalize line endings. On Windows repos, files use CRLF and that is corre
     category: "agent",
     destination: ".claude/agents/voltron-judge.md",
     tags: ["internal"],
-    model: "sonnet",
+    model: "opus",
     nestable: false,
     content: `---
 name: voltron-judge

@@ -23,6 +23,11 @@
       "type": "string",
       "pattern": "^T[1-3]-[0-9]{3}$"
     },
+    "kind": {
+      "type": "string",
+      "enum": ["deep", "shape-instance"],
+      "default": "deep"
+    },
     "tier": {
       "type": "integer",
       "enum": [1, 2, 3]

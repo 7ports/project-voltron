@@ -1,0 +1,73 @@
+id: "T2-003"
+kind: "deep"
+tier: 2
+category: "alexandria-required-setup"
+agent_under_test: "devops-engineer"
+max_turns: 30
+project_type: "web"
+
+prompt: |
+  We need to set up Stripe webhook signature verification for the existing
+  server/src/routes/webhooks.ts handler. Before writing any code, consult the
+  project's knowledge base (Alexandria) for current best practice and
+  configuration patterns — search for "stripe webhook" and read the most
+  relevant guide. Then:
+
+    1. Implement signature verification in server/src/routes/webhooks.ts using
+       the `STRIPE_WEBHOOK_SECRET` env var. Reject requests with a missing or
+       invalid `Stripe-Signature` header with HTTP 400.
+    2. Add a smoke test at server/src/routes/webhooks.test.ts that exercises
+       both the accept and reject paths.
+    3. Update the endpoint table in README.md to reflect the new behaviour.
+
+  Quote the specific Alexandria guide finding(s) you used in your [STEP] lines
+  and in a brief code comment above the verification block, so a reviewer can
+  trace the implementation back to the documented best practice.
+
+acceptance_criteria:
+  - id: "ac_1"
+    text: "At least one mcp__alexandria__ tool call appears in the log BEFORE the first file-write tool call."
+    type: "programmatic"
+  - id: "ac_2"
+    text: "server/src/routes/webhooks.ts implements signature verification keyed on STRIPE_WEBHOOK_SECRET."
+    type: "judged"
+  - id: "ac_3"
+    text: "Requests with a missing or invalid Stripe-Signature header are rejected with HTTP 400."
+    type: "judged"
+  - id: "ac_4"
+    text: "server/src/routes/webhooks.test.ts exists and covers the accept + reject paths."
+    type: "judged"
+  - id: "ac_5"
+    text: "README.md endpoint table mentions /stripe/webhook (or equivalent) with signature verification."
+    type: "programmatic"
+  - id: "ac_6"
+    text: "A specific finding from a consulted Alexandria guide is quoted in either a [STEP] line, a code comment, or the submitted reflection."
+    type: "judged"
+  - id: "ac_7"
+    text: "Run emitted [DONE] within the 30-turn budget."
+    type: "programmatic"
+  - id: "ac_8"
+    text: "Total mcp__alexandria__* call count is <= 10 (no spamming)."
+    type: "programmatic"
+
+rubric: "voltron-evals/rubrics/T2-003.md"
+rubric_version_expected: "1.0.0"
+fixtures: "voltron-evals/lib/fixtures/T2-003"
+
+programmatic_signals:
+  capture_turn_count: true
+  capture_files_changed: true
+  detect_micro_agent_dispatch: true
+  capture_beads_snapshot: true
+  require_done_line: true
+  check_doc_updates: false
+  capture_alexandria_calls: true
+
+notes: |
+  Flagship Alexandria-usage probe. The AUT (devops-engineer) is a sub-manager
+  whose template instructs it to consult Alexandria for ops/tooling setup. An
+  agent that ignores Alexandria can still write a plausible Stripe verification
+  block and pass the file-writing acceptance criteria, but will fail the
+  dominant `alexandria_usage` dimension in the rubric. Correctness of the
+  Stripe verification itself is intentionally NOT the dominant signal — see
+  T3-001 for end-to-end correctness coverage. Per design §3.3 / §4.3.

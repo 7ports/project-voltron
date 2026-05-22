@@ -102,6 +102,9 @@
         },
         "check_doc_updates": {
           "type": "boolean"
+        },
+        "capture_alexandria_calls": {
+          "type": "boolean"
         }
       }
     },

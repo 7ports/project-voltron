@@ -73,6 +73,66 @@ function committerDispatched(targets, log) {
   return /\[committer\]|committer-\d{4}-\d{2}-\d{2}T/.test(log || "");
 }
 
+// First step at which any file-write tool ran. Looks for the canonical writer
+// tool names that appear in stream-json tool-use blocks: Write, Edit,
+// MultiEdit, NotebookEdit. Matching is keyed off the `[STEP N]` line that
+// immediately precedes each tool-use event. Returns null if no write happened.
+const WRITE_TOOL_RE = /"name"\s*:\s*"(Write|Edit|MultiEdit|NotebookEdit)"/;
+function firstFileWriteStep(log) {
+  if (!log) return null;
+  // Walk the log linearly. Track the last-seen [STEP N] number; when we see a
+  // writer-tool name we return that number.
+  let lastStep = null;
+  const lineRe = /\[STEP\s+(\d+)\]|"name"\s*:\s*"(Write|Edit|MultiEdit|NotebookEdit)"/g;
+  let m;
+  while ((m = lineRe.exec(log)) !== null) {
+    if (m[1] !== undefined) {
+      lastStep = Number(m[1]);
+    } else if (m[2] !== undefined) {
+      return lastStep;
+    }
+  }
+  return null;
+}
+
+// Grep the AUT log for `mcp__alexandria__*` tool calls. Records count, the
+// earliest occurrence step, and per-call metadata including whether it ran
+// before the first file write. Design §6, alexandria_calls signal.
+const ALEXANDRIA_TOOLS = [
+  "search_guides",
+  "read_guide",
+  "list_guides",
+  "get_project_setup_recommendations",
+  "update_guide",
+];
+const ALEXANDRIA_RE = /"name"\s*:\s*"(mcp__alexandria__(search_guides|read_guide|list_guides|get_project_setup_recommendations|update_guide))"/g;
+
+function scanAlexandriaCalls(log, firstWriteStep) {
+  if (!log) {
+    return { count: 0, first_call_step: null, calls: [], by_tool: {} };
+  }
+  // Index by stepping through the log and tracking last-seen [STEP N].
+  const calls = [];
+  let lastStep = null;
+  const lineRe = /\[STEP\s+(\d+)\]|"name"\s*:\s*"mcp__alexandria__(search_guides|read_guide|list_guides|get_project_setup_recommendations|update_guide)"/g;
+  let m;
+  while ((m = lineRe.exec(log)) !== null) {
+    if (m[1] !== undefined) {
+      lastStep = Number(m[1]);
+    } else if (m[2] !== undefined) {
+      const tool = m[2];
+      const step = lastStep;
+      const before_first_write =
+        firstWriteStep == null ? true : step != null && step < firstWriteStep;
+      calls.push({ tool, step, before_first_write });
+    }
+  }
+  const by_tool = {};
+  for (const c of calls) by_tool[c.tool] = (by_tool[c.tool] || 0) + 1;
+  const first_call_step = calls.length ? calls[0].step : null;
+  return { count: calls.length, first_call_step, calls, by_tool };
+}
+
 export function runScorers(task, ctx) {
   const { pre, post, journal } = ctx;
   const log = post.log || "";
@@ -101,6 +161,16 @@ export function runScorers(task, ctx) {
   const beads = signals.capture_beads_snapshot ? beadsDiff(pre, post) : { created: [], closed: [], deps_count: 0 };
   const max = task.max_turns || 30;
 
+  let alexandria_calls = null;
+  let alexandria_call_before_first_write = null;
+  let first_file_write_step = null;
+  if (signals.capture_alexandria_calls) {
+    first_file_write_step = firstFileWriteStep(log);
+    alexandria_calls = scanAlexandriaCalls(log, first_file_write_step);
+    alexandria_call_before_first_write =
+      alexandria_calls.calls.some(c => c.before_first_write && c.tool !== "list_guides");
+  }
+
   return {
     turns_used,
     done_line_present,
@@ -121,6 +191,9 @@ export function runScorers(task, ctx) {
     editor_handoff_emitted: /🎮\s*Editor task/i.test(log),
     commit_dispatched_via_committer: committerDispatched(dispatches.targets, log),
     has_step_lines: STEP_RE.test(log),
+    alexandria_calls,
+    alexandria_call_before_first_write,
+    first_file_write_step,
   };
 }
 
@@ -140,6 +213,12 @@ export function bandsFromSignals(task, sig) {
   }
   if (task.programmatic_signals?.check_doc_updates) {
     bands.doc_hygiene_touched = sig.docs_updated ? 1 : 0;
+  }
+  if (task.programmatic_signals?.capture_alexandria_calls) {
+    bands.alexandria_usage_consulted_before_writing =
+      sig.alexandria_call_before_first_write ? 1 : 0;
+    const n = sig.alexandria_calls?.count ?? 0;
+    bands.alexandria_usage_no_redundant_calls = n <= 5 ? 1 : n <= 10 ? 0.5 : 0;
   }
   return bands;
 }

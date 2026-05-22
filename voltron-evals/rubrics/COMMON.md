@@ -1,7 +1,7 @@
 ---
-rubric_version: 1.0.0
+rubric_version: 1.1.0
 scope: shared
-last_updated: 2026-05-21
+last_updated: 2026-05-22
 ---
 
 # Common Rubric — cross-cutting criteria
@@ -55,6 +55,36 @@ These criteria apply to every benchmark task. Per-task rubrics may reference the
 - `MET` — every sampled step has a verb-phrase and a target.
 - `PARTIAL` — at least one step is vague ("did stuff", "continue").
 - `UNMET` — most steps are missing or formatted incorrectly.
+
+## common.alexandria_usage.consulted_before_writing
+
+**Question:** Did the agent call any `mcp__alexandria__*` tool (`search_guides`, `read_guide`, `list_guides`, `get_project_setup_recommendations`, `update_guide`) BEFORE its first file-write tool call (Write/Edit/NotebookEdit/etc.)?
+**Evidence required:** \`programmatic_signals.alexandria_calls.first_call_step\` (earliest matching log line) and \`programmatic_signals.alexandria_call_before_first_write\` (boolean) — both pre-filled by the programmatic scorer; quote the relevant log line and the first file-write step number.
+**Verdict scale:**
+- `MET` — at least one `mcp__alexandria__{search_guides,read_guide,get_project_setup_recommendations}` call precedes the first file write.
+- `PARTIAL` — Alexandria call happened but only `list_guides` (no actual guide read) before the first write, OR a read happened only after some writes but before the substantive implementation.
+- `UNMET` — no Alexandria call at all, OR every Alexandria call came after the first file write.
+- `CANNOT_ASSESS` — `programmatic_signals.capture_alexandria_calls` is false (in which case the per-task rubric should set this weight to 0).
+
+## common.alexandria_usage.findings_applied
+
+**Question:** Does the agent's [STEP N] narration, a code comment in the diff, or the submitted reflection quote a specific finding (named guide title, configuration value, recommendation, snippet) from the consulted guide(s)?
+**Evidence required:** quote from `log.txt`, the diff, or the reflection JSON plus the guide name it references (visible in the preceding `mcp__alexandria__read_guide` call arguments).
+**Verdict scale:**
+- `MET` — a clear, attributable quote/paraphrase of a guide finding appears in the implementation context.
+- `PARTIAL` — the agent vaguely alludes to "the guide" or "best practice" without naming it.
+- `UNMET` — no observable application; the agent consulted Alexandria but wrote code as if it hadn't.
+- `CANNOT_ASSESS` — guide retrieval failed at the MCP layer (record the failure mode in `notes`).
+
+## common.alexandria_usage.no_redundant_calls
+
+**Question:** Did the agent avoid spamming Alexandria with redundant or unrelated calls?
+**Evidence required:** \`programmatic_signals.alexandria_calls.count\` and the list of `(tool, step)` tuples.
+**Verdict scale:**
+- `MET` — total Alexandria calls ≤ 5.
+- `PARTIAL` — 6–10 calls.
+- `UNMET` — > 10 calls, OR repeated identical-argument calls in a tight loop.
+- `CANNOT_ASSESS` — `programmatic_signals.capture_alexandria_calls` is false.
 
 ## Notes for the judge
 

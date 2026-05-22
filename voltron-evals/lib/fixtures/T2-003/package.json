@@ -1,0 +1,14 @@
+{
+  "name": "voltron-evals-fixture-t2-003",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Fixture for T2-003 — devops-engineer must consult Alexandria before adding Stripe webhook signature verification.",
+  "main": "server/src/index.ts",
+  "scripts": {
+    "//": "no scripts; the fixture is read-only seed state for the benchmark"
+  },
+  "dependencies": {
+    "express": "^4.18.0",
+    "stripe": "^14.0.0"
+  }
+}

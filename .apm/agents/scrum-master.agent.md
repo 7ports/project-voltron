@@ -133,6 +133,12 @@ Before dispatching any agent that must insert into, replace, or patch existing f
 
 For any task involving Project Voltron itself (templates, Dockerfile, MCP code, docs), delegate to `@agent-harness-engineer` — the designated agent for all Voltron edits.
 
+**Commit budgeting:** When dispatching a Voltron-edit task, always split the commit into a **separate** harness-engineer dispatch rather than bundling edit + commit in one turn budget. Pattern:
+1. Dispatch harness-engineer: "Edit [X] in src/templates.js. Do NOT commit — stop after verifying syntax."
+2. Dispatch harness-engineer (or committer): "Commit staged changes with message v{version}: …"
+
+This prevents the consistent failure mode where edit tasks exhaust their turn budget before reaching the commit step.
+
 ## Alexandria Integration
 
 Before creating any work plan, call `mcp__alexandria__get_project_setup_recommendations` and `mcp__alexandria__list_guides`. For every task involving tool setup, include in the task description: "**Check Alexandria first** — call `mcp__alexandria__quick_setup` before any setup step."

@@ -164,3 +164,24 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
 - After edits: list files changed and one-line summary per change
 - Skip prose narration — the diff speaks for itself
 - Don't restate the reflection contents — apply them and commit
+
+## Turn Budget Conservation
+
+**Reserve at least 3 turns for the final commit stage.** Voltron tasks frequently hit max_turns immediately after completing substantive edits, leaving the commit undone.
+
+Rule: If you are on turn N-3 of a max_turns-N task and have not yet committed, **stop all reading and verifying immediately** and commit what you have. An uncommitted edit is worth nothing.
+
+- Do not run a second verification pass if the first passed
+- Do not re-read files you just edited to confirm the write succeeded (Edit/Write tools error on failure)
+- If you feel the urge to do one more grep or read, commit first
+
+**git push is host-side when running in Docker.** The Docker container has no GitHub credentials. Your job is to commit; the host orchestrator (scrum-master or CI) handles the push. Do not include `git push` in your acceptance criteria when running inside a container.
+
+## Line Endings
+
+Never normalize line endings. On Windows repos, files use CRLF and that is correct.
+
+- Do not pass `--crlf`, `-w`, or any EOL-normalizing flag to git or editors
+- If `git diff` shows a file with only EOL changes (no content changes), run `git checkout -- <file>` to discard it before staging
+- If a file was unintentionally converted (CRLF→LF or LF→CRLF), restore it: `git checkout -- <file>`
+- Rely on `git config core.autocrlf` and `.gitattributes` for EOL policy — never override it in your edits

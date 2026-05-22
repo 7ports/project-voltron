@@ -1,7 +1,7 @@
 {
   "name": "project-voltron",
-  "version": "3.8.5",
-  "description": "MCP server providing specialized agent templates for Claude Code \u2014 Unity game dev, web/fullstack development, and general software projects with a scrum-master coordinator and 51 micro-agents.",
+  "version": "3.9.0",
+  "description": "MCP server providing specialized agent templates for Claude Code — Unity game dev, web/fullstack development, and general software projects with a scrum-master coordinator, 51 micro-agents, and the voltron-evals harness for repeatable agent-as-a-judge evaluations.",
   "main": "src/index.js",
   "type": "module",
   "bin": {
@@ -33,6 +33,7 @@
   "author": "7ports",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.12.1"
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "yaml": "^2.5.0"
   }
 }

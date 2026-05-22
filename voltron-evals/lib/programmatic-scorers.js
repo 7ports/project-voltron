@@ -8,14 +8,21 @@
 // Rule of thumb: programmatic > LLM-as-judge > Agent-as-judge. Only let the
 // judge opine on things that genuinely need reasoning.
 
-import { gitDiffNames, gitShortstat } from "./artifacts.js";
+import { gitDiffNames, gitShortstat, diffWorkingTreeSnapshots, fileListShortstat } from "./artifacts.js";
 
-const STEP_RE = /^\[STEP \s*\d+\]/m;
-const DONE_RE = /^\[DONE\]/m;
+// Logs are stream-json JSONL: the agent's `[STEP N]` / `[DONE]` markers live
+// inside JSON-encoded `"text"` payloads where line-breaks are escaped (`\n`),
+// so a `^`-anchored regex misses them. Match the markers as substrings; for
+// step counting, dedupe by step number to avoid counting the same line twice
+// when it echoes in both the assistant event and the final result event.
+const STEP_RE = /\[STEP\s+\d+\]/;
+const DONE_RE = /\[DONE\]/;
 
 function countStepLines(log) {
   if (!log) return 0;
-  return (log.match(/^\[STEP \s*\d+\]/gm) ?? []).length;
+  const seen = new Set();
+  for (const m of log.matchAll(/\[STEP\s+(\d+)\]/g)) seen.add(m[1]);
+  return seen.size;
 }
 
 function countDispatches(log) {
@@ -73,8 +80,23 @@ export function runScorers(task, ctx) {
 
   const turns_used = signals.capture_turn_count !== false ? countStepLines(log) : null;
   const done_line_present = signals.require_done_line !== false ? DONE_RE.test(log) : null;
-  const files = signals.capture_files_changed !== false ? gitDiffNames(pre.gitSha, post.gitSha) : [];
-  const { lines_added, lines_deleted } = gitShortstat(pre.gitSha, post.gitSha);
+  // Micro-AUTs don't commit — their changes live in the working tree. Compare
+  // working-tree snapshots when commit SHAs are unchanged, otherwise use the
+  // commit-range diff (for tasks where the AUT actually commits).
+  let files = [];
+  let lines_added = 0;
+  let lines_deleted = 0;
+  if (signals.capture_files_changed !== false) {
+    if (pre.gitSha && post.gitSha && pre.gitSha !== post.gitSha) {
+      files = gitDiffNames(pre.gitSha, post.gitSha);
+      const stat = gitShortstat(pre.gitSha, post.gitSha);
+      lines_added = stat.lines_added; lines_deleted = stat.lines_deleted;
+    } else if (pre.workingTree && post.workingTree) {
+      files = diffWorkingTreeSnapshots(pre.workingTree, post.workingTree);
+      const stat = fileListShortstat(files);
+      lines_added = stat.lines_added; lines_deleted = stat.lines_deleted;
+    }
+  }
   const dispatches = signals.detect_micro_agent_dispatch ? countDispatches(log) : { count: 0, targets: [] };
   const beads = signals.capture_beads_snapshot ? beadsDiff(pre, post) : { created: [], closed: [], deps_count: 0 };
   const max = task.max_turns || 30;

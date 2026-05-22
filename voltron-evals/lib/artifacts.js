@@ -31,9 +31,57 @@ export function gitHeadSha() {
   return safe(() => execFileSync("git", ["rev-parse", "HEAD"], { cwd: REPO_ROOT, encoding: "utf-8" }).trim());
 }
 
+// Micro-agents under test do not commit; HEAD doesn't move during a run. To
+// detect what the AUT changed we snapshot the working tree (tracked + untracked
+// files in the dirty set) before and after, then diff by content hash.
+export function workingTreeSnapshot() {
+  const out = safe(() => execFileSync(
+    "git",
+    ["status", "--porcelain=v1", "-z", "--untracked-files=all"],
+    { cwd: REPO_ROOT, encoding: "utf-8" },
+  ), "");
+  const files = [];
+  // -z output: "XY filename\0" with rename pairs separated by an extra \0.
+  // We don't care about rename arrows here — collect every path that is
+  // currently dirty (including untracked).
+  const parts = out.split("\0").filter(Boolean);
+  for (let i = 0; i < parts.length; i++) {
+    const entry = parts[i];
+    const xy = entry.slice(0, 2);
+    const fname = entry.slice(3);
+    if (!fname) continue;
+    files.push(fname);
+    // For "R " rename status the previous-name follows as the next entry.
+    if (xy.startsWith("R")) { i++; }
+  }
+  const snap = {};
+  for (const f of files) {
+    snap[f] = safe(() => execFileSync("git", ["hash-object", "--", f], { cwd: REPO_ROOT, encoding: "utf-8" }).trim(), "deleted");
+  }
+  return snap;
+}
+
+// Files whose hash differs between two snapshots — i.e. the AUT's changes.
+export function diffWorkingTreeSnapshots(pre, post) {
+  const all = new Set([...Object.keys(pre), ...Object.keys(post)]);
+  const changed = [];
+  for (const f of all) {
+    if ((pre[f] || null) !== (post[f] || null)) changed.push(f);
+  }
+  return changed.sort();
+}
+
 export function gitDiffPatch(preSha, postSha) {
   if (!preSha || !postSha) return "";
   return safe(() => execFileSync("git", ["diff", `${preSha}..${postSha}`], { cwd: REPO_ROOT, encoding: "utf-8" }), "");
+}
+
+// Patch of every dirty path (vs HEAD), including untracked files via no-index.
+// Used to capture what the AUT did when it doesn't commit.
+export function gitWorkingTreePatch() {
+  return safe(() => execFileSync(
+    "git", ["diff", "HEAD", "--"], { cwd: REPO_ROOT, encoding: "utf-8", maxBuffer: 50 * 1024 * 1024 },
+  ), "");
 }
 
 export function gitDiffNames(preSha, postSha) {
@@ -45,6 +93,16 @@ export function gitDiffNames(preSha, postSha) {
 export function gitShortstat(preSha, postSha) {
   if (!preSha || !postSha) return { lines_added: 0, lines_deleted: 0 };
   const raw = safe(() => execFileSync("git", ["diff", "--shortstat", `${preSha}..${postSha}`], { cwd: REPO_ROOT, encoding: "utf-8" }), "");
+  const ins = /(\d+)\s+insertion/.exec(raw); const del = /(\d+)\s+deletion/.exec(raw);
+  return { lines_added: ins ? Number(ins[1]) : 0, lines_deleted: del ? Number(del[1]) : 0 };
+}
+
+export function fileListShortstat(files) {
+  if (!files.length) return { lines_added: 0, lines_deleted: 0 };
+  const raw = safe(() => execFileSync(
+    "git", ["diff", "--shortstat", "HEAD", "--", ...files],
+    { cwd: REPO_ROOT, encoding: "utf-8" },
+  ), "");
   const ins = /(\d+)\s+insertion/.exec(raw); const del = /(\d+)\s+deletion/.exec(raw);
   return { lines_added: ins ? Number(ins[1]) : 0, lines_deleted: del ? Number(del[1]) : 0 };
 }
@@ -94,6 +152,7 @@ export async function capturePre() {
     gitSha: gitHeadSha(),
     beads: beadsSnapshot(),
     reflections: listReflections(),
+    workingTree: workingTreeSnapshot(),
     timestamp: Date.now(),
   };
 }
@@ -104,7 +163,8 @@ export async function capturePost(agentName, pre) {
   const logPath = findAgentLog(agentName, pre.timestamp);
   const log = await tailLog(logPath);
   const newReflections = findNewReflections(pre.reflections);
-  return { gitSha, beads, logPath, log, newReflections };
+  const workingTree = workingTreeSnapshot();
+  return { gitSha, beads, logPath, log, newReflections, workingTree };
 }
 
 // Write the per-run artifact bundle into runDir. Returns the paths map so the
@@ -126,7 +186,14 @@ export async function writeArtifacts(runDir, ctx) {
   await fs.copyFile(taskYamlPath, paths.task_yaml).catch(() => {});
   await fs.copyFile(rubricPath, paths.rubric).catch(() => {});
   await fs.writeFile(paths.log, post.log || "", "utf-8");
-  await fs.writeFile(paths.diff, gitDiffPatch(pre.gitSha, post.gitSha), "utf-8");
+  // Prefer the AUT-changed file list (uncommitted working-tree delta) — that's
+  // what micro-agents do. Fall back to commit-range diff for tasks where the
+  // AUT actually commits.
+  const changedFiles = ctx.changedFiles || [];
+  const aut_patch = changedFiles.length
+    ? safe(() => execFileSync("git", ["diff", "HEAD", "--", ...changedFiles], { cwd: REPO_ROOT, encoding: "utf-8", maxBuffer: 50 * 1024 * 1024 }), "")
+    : gitDiffPatch(pre.gitSha, post.gitSha);
+  await fs.writeFile(paths.diff, aut_patch, "utf-8");
   await fs.writeFile(paths.beads_pre, JSON.stringify(pre.beads, null, 2), "utf-8");
   await fs.writeFile(paths.beads_post, JSON.stringify(post.beads, null, 2), "utf-8");
   await fs.writeFile(paths.journal, JSON.stringify(journal ?? [], null, 2), "utf-8");

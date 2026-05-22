@@ -74,24 +74,65 @@ function checkRubricPinned(task) {
 }
 
 async function connectMcp() {
+  // The MCP SDK's StdioClientTransport only inherits a tiny POSIX safe-list
+  // (HOME/PATH/USER/…) when `env` is omitted. That strips VOLTRON_DEPTH,
+  // VOLTRON_HOST_ROOT/HOME/TMPDIR, and CLAUDE_CODE_OAUTH_TOKEN, so the spawned
+  // MCP server thinks it's at depth 0 and tries to bind-mount /workspace from
+  // the host — which fails inside a nested container. Forward the full env.
   const transport = new StdioClientTransport({
     command: "node",
     args: [path.join(REPO_ROOT, "src", "index.js")],
     cwd: REPO_ROOT,
+    env: { ...process.env },
   });
   const client = new Client({ name: "voltron-evals-runner", version: "0.1.0" }, { capabilities: {} });
   await client.connect(transport);
   return { client, transport };
 }
 
+// run_agent_in_docker spawns a sibling container that can run up to 10 minutes
+// (the dispatcher's internal cap). The MCP SDK's default request timeout is
+// 60s, which would abort every real dispatch — pass a generous per-request
+// timeout and reset it on each progress notification.
+const TOOL_CALL_TIMEOUT_MS = 15 * 60 * 1000;
+
 async function callTool(client, name, args) {
-  const r = await client.callTool({ name, arguments: args });
+  const r = await client.callTool(
+    { name, arguments: args },
+    undefined,
+    { timeout: TOOL_CALL_TIMEOUT_MS, resetTimeoutOnProgress: true, maxTotalTimeout: TOOL_CALL_TIMEOUT_MS },
+  );
   const text = (r.content ?? []).map(c => c.text ?? "").join("\n");
   return { text, raw: r };
 }
 
 function extractFencedJson(text) {
-  const m = /```json\s*\n([\s\S]*?)\n```/.exec(text);
+  // First try the direct case: a real fenced ```json block in the text.
+  const direct = /```json\s*\n([\s\S]*?)\n```/.exec(text);
+  if (direct) {
+    try { return JSON.parse(direct[1]); } catch { /* fall through */ }
+  }
+  // Fall back: the dispatcher returns the agent's stream-json stdout under
+  // `### Full Output`. The fenced block lives inside the final assistant
+  // message text, where newlines are escaped (`\n`) — the direct regex can't
+  // see across them. Parse each JSONL event, concatenate text payloads, then
+  // run the fenced-block regex on the decoded text.
+  let buf = "";
+  for (const rawLine of text.split("\n")) {
+    const line = rawLine.trim();
+    if (!line.startsWith("{")) continue;
+    let ev;
+    try { ev = JSON.parse(line); } catch { continue; }
+    if (!ev || typeof ev !== "object") continue;
+    if (ev.type === "result" && typeof ev.result === "string") {
+      buf += ev.result + "\n";
+    } else if (ev.type === "assistant" && ev.message && Array.isArray(ev.message.content)) {
+      for (const block of ev.message.content) {
+        if (block && block.type === "text" && typeof block.text === "string") buf += block.text + "\n";
+      }
+    }
+  }
+  const m = /```json\s*\n([\s\S]*?)\n```/.exec(buf);
   if (!m) return null;
   try { return JSON.parse(m[1]); } catch { return null; }
 }
@@ -179,19 +220,33 @@ async function runTask(task, client, opts) {
   const paths = await artifacts.writeArtifacts(runDir, {
     task, taskYamlPath: task._path, rubricPath, pre, post,
     programmatic, journal: [],
+    changedFiles: programmatic.files_changed || [],
   });
 
   process.stdout.write(`[STEP] runner: dispatching voltron-judge for ${task.id}\n`);
   let scorecard = null;
   if (!opts.dryRun) {
     const judgePrompt = buildJudgePrompt(task, paths, programmatic);
+    const judgeStartTs = Date.now();
     const { text: judgeText } = await callTool(client, "run_agent_in_docker", {
       agent_name: "voltron-judge",
       task: judgePrompt,
       max_turns: 20,
       model: opts.judgeModel,
     });
+    // `run_agent_in_docker` returns a truncation notice instead of the agent
+    // output when the response exceeds the MCP host's size cap (~252KB for
+    // voltron-judge in practice). The full output is always tee'd to
+    // `.voltron/logs/voltron-judge-<ts>.log`, so prefer the on-disk log as the
+    // primary source and keep the tool's return text as a fallback.
     scorecard = extractFencedJson(judgeText);
+    if (!scorecard) {
+      const judgeLogPath = artifacts.findAgentLog("voltron-judge", judgeStartTs);
+      if (judgeLogPath) {
+        const judgeLog = await artifacts.tailLog(judgeLogPath, 10 * 1024 * 1024);
+        scorecard = extractFencedJson(judgeLog);
+      }
+    }
     if (!scorecard) scorecard = { cannot_grade: { reason: "judge_parse_failed", detail: judgeText.slice(0, 500) } };
   } else {
     scorecard = { cannot_grade: { reason: "dry_run" } };

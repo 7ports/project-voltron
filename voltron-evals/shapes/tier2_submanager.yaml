@@ -1,0 +1,92 @@
+# voltron-evals/shapes/tier2_submanager.yaml
+#
+# Broad-layer SHAPE. Covers Tier-2 sub-managers: csharp-dev, js-dev,
+# unity-dev, python-dev, fullstack-dev, devops-engineer, ui-designer,
+# qa-tester, scene-architect, shader-artist, build-validator (as a
+# composing sub-manager), asset-manager, project-planner, harness-engineer.
+#
+# MUST compose at least one micro-agent — sub-managers that edit files
+# directly fail tier_discipline by design.
+# TODO(stage-5): wire instance generator.
+
+id: "tier2_submanager"
+kind: "broad"
+description: |
+  Given a small multi-step request that crosses ≥2 micro-agent specialties,
+  did the sub-manager dispatch ≥N micro-agents (per its template guidance)
+  instead of editing files directly, produce a coherent handoff, and finish
+  within budget?
+rubric: "voltron-evals/rubrics/shapes/tier2_submanager.md"
+rubric_version_expected: "1.0.0"
+
+parameters:
+  agent_under_test:
+    type: "string"
+    required: true
+    description: "Tier-2 sub-manager template name. EXCLUDES scrum-master (graded via Track B postmortem only)."
+  prompt_inputs:
+    type: "object"
+    required: true
+    description: |
+      Required keys: `task_summary` (1–2 sentences of work that genuinely
+      requires ≥2 micro-agents — e.g. "add a typed util AND a vitest spec
+      AND run typecheck"), `acceptance_signals` (array of 2–4 observable
+      outcomes the instance scorer treats as required artifacts, e.g.
+      `["src/utils/foo.ts created", "src/utils/foo.test.ts passes"]`).
+      Optional: `dispatch_floor_override` (instance may lower the shape's
+      default floor to match the AUT's template guidance, but never zero).
+  fixture:
+    type: "object"
+    required: true
+    description: |
+      Required keys: `dir` (workspace seed with empty target paths so the
+      sub-manager has to actually create files via its micro-agents), `seed_files`.
+      Optional: `expected_dispatch_targets` (array of micro-agent template
+      names the sub-manager is expected to invoke — used by the rubric's
+      `decomposition.specialty_match` criterion as advisory, not gating).
+  dispatch_floor:
+    type: "integer"
+    required: false
+    default: 2
+    description: |
+      Minimum `sub_dispatches` count the AUT must hit. Two is the shape
+      default; instances for sub-managers whose template explicitly mandates
+      higher (e.g. fullstack-dev ≥ 2; harness-engineer often ≥ 3) may raise.
+  forbidden_files:
+    type: "array<string>"
+    required: false
+    default: "any substantive source file in fixture.dir"
+    description: |
+      Sub-managers may write coordination notes or update beads, but the
+      substantive source edits MUST be performed by dispatched micro-agents.
+      The `forbidden_files_clean` scorer catches direct edits.
+  max_turns:
+    type: "integer"
+    required: false
+    default: 25
+
+programmatic_signals:
+  capture_turn_count: true
+  capture_files_changed: true
+  detect_micro_agent_dispatch: true        # CRITICAL — this is the load-bearing signal
+  capture_beads_snapshot: true             # sub-managers should leave a beads breadcrumb
+  require_done_line: true
+  check_doc_updates: false                 # only relevant if AUT == harness-engineer + Voltron edit
+  capture_alexandria_calls: false          # opt-in per instance (devops-engineer-style)
+
+applies_to:
+  category: "sub-manager-delegation"
+  tier: 2
+  must_dispatch_at_least: 2
+  excludes: ["scrum-master", "voltron-judge"]
+
+# Optional Haiku judge call ONLY for the reflection-honesty criterion — see
+# rubric frontmatter. Defaults to programmatic-only; instances inherit the
+# rubric's subjective_judge setting and CANNOT override it (per design §4.4).
+
+notes: |
+  Scoring is programmatic by default; the rubric MAY opt into a single Haiku
+  judge call for `reflection_honesty.matches_log_evidence` (the one Broad-layer
+  criterion where a misleading reflection narrative could pass raw counts).
+  All other signals are deterministic. This is the ONLY shape that mandates
+  micro-agent composition — the dispatch_floor is the load-bearing test.

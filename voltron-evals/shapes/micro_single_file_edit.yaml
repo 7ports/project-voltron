@@ -1,0 +1,100 @@
+# voltron-evals/shapes/micro_single_file_edit.yaml
+#
+# Broad-layer SHAPE. Parametrizable template for evaluating single-file Tier-3
+# editor micro-agents. Instances live under voltron-evals/instances/ and fill
+# the `parameters` block below; the runner loads INSTANCES, not shapes —
+# TODO(stage-5): wire instance generator + shape-to-instance expansion.
+#
+# Covers (non-exhaustive): function-writer, yaml-patcher, config-editor,
+# readme-section-writer, changelog-updater, route-adder, component-scaffolder,
+# migration-writer, fixture-writer, type-definer, env-var-setter,
+# dockerfile-editor, middleware-writer, store-slice-writer, css-writer,
+# design-token-writer, csharp-script-writer, csharp-member-adder,
+# unity-manifest-editor, ci-workflow-writer, docker-compose-editor,
+# test-config-writer, mock-writer, file-patch-runner.
+
+id: "micro_single_file_edit"
+kind: "broad"
+description: |
+  Given a fixture file + a precise one-verb write spec, did the agent produce
+  exactly the expected diff in budget, with no sprawl outside the named target?
+rubric: "voltron-evals/rubrics/shapes/micro_single_file_edit.md"
+rubric_version_expected: "1.0.0"
+
+# Parameters each instance YAML MUST supply.
+parameters:
+  agent_under_test:
+    type: "string"
+    required: true
+    description: "Template name from src/templates.js — must be a Tier-3 single-file editor."
+  prompt_inputs:
+    type: "object"
+    required: true
+    description: |
+      Inputs the runner interpolates into the prompt template at dispatch time.
+      Required keys: `target_file` (path the agent must edit), `verb_spec`
+      (one-sentence write spec, e.g. "add a pure function `slugify` exported
+      from this file"). Optional: `anchor` (literal string the edit must
+      respect), `signature` (typed signature the new symbol must match).
+  fixture:
+    type: "object"
+    required: true
+    description: |
+      Fixture descriptor. Required keys: `dir` (path under
+      voltron-evals/lib/fixtures/instances/<agent>/ holding the pre-edit
+      workspace), `seed_files` (array of paths inside `dir` the runner copies
+      into the scratch workspace). The fixture must NOT contain the expected
+      post-edit state — only the pre-edit baseline.
+  expected_files:
+    type: "array<string>"
+    required: true
+    description: |
+      Exact set of repo-relative paths the run MUST change. The
+      `expected_files_match` programmatic scorer asserts set equality.
+  forbidden_files:
+    type: "array<string>"
+    required: false
+    default: "anything outside fixture_dir"
+    description: |
+      Paths that must NOT change. Defaults to 'anything outside the fixture
+      directory'; instances may override to whitelist e.g. a README touch.
+  line_caps:
+    type: "object"
+    required: false
+    default: { added: 60, deleted: 30 }
+    description: |
+      Per-instance overrides for `lines_added`/`lines_deleted` caps. Instances
+      may tighten (not loosen) the defaults.
+  max_turns:
+    type: "integer"
+    required: false
+    default: 8
+    description: |
+      Turn budget cap. Shape default 8 turns; instances may override DOWN
+      (not up — single-file edits exceeding 8 turns indicate sprawl).
+
+# Programmatic signals the runner captures for every instance of this shape.
+# Mirrors voltron-evals/lib/programmatic-scorers.js signal IDs.
+programmatic_signals:
+  capture_turn_count: true
+  capture_files_changed: true
+  detect_micro_agent_dispatch: false   # micro-agents must not sub-dispatch
+  capture_beads_snapshot: false
+  require_done_line: true
+  check_doc_updates: false
+  capture_alexandria_calls: false
+
+# Predicate the --doctor coverage check uses to detect "should this agent be
+# instantiated against THIS shape?" Each Tier-3 editor template should match
+# exactly one shape across the catalog.
+applies_to:
+  category: "micro-agent-write"
+  tier: 3
+  must_not_dispatch: true
+
+notes: |
+  Scoring is programmatic-only (no LLM judge). Primary failure modes this
+  shape catches: out-of-scope edits, signature drift, missing [DONE], turn
+  budget overrun. The rubric does NOT score "is the code correct?" beyond
+  exact-diff matching — semantic correctness of generated code is covered by
+  the Deep-layer T1/T2 tasks.

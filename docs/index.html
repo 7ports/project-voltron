@@ -296,7 +296,7 @@
       <h1>Project Voltron</h1>
       <p>Specialized agent teams for Claude Code, served via MCP. Scaffold Unity, web, or general projects with battle-tested subagent templates — 51 micro-agents, Alexandria-aware, self-improving, and auto-updating.</p>
       <div class="badge-row">
-        <span class="badge">v3.9.1</span>
+        <span class="badge">v3.9.0</span>
         <span class="badge">MCP Server</span>
         <span class="badge">Unity</span>
         <span class="badge">Web / Fullstack</span>
@@ -854,15 +854,21 @@ node scripts/setup.js</code></pre>
   <!-- Eval Harness -->
   <section>
     <div class="container">
-      <h2>Eval Harness (v3.9.1)</h2>
+      <h2>Eval Harness (v3.9.0)</h2>
       <p class="section-sub">Voltron grades itself. The <code>voltron-evals/</code> directory is a small Node harness that runs benchmark tasks against any dispatchable agent, captures the run artifacts (log, git diff, beads snapshot, journal, reflection), and dispatches a new internal agent — <code>voltron-judge</code> — to score the run against a pinned, versioned rubric. Scorecards are mirrored into <code>reflections/</code>, so the existing <code>harness-engineer</code> self-improvement loop picks up failing criteria as actionable, evidence-cited suggestions for template edits.</p>
+
+      <p class="section-sub" style="margin-top:16px;"><strong>Two-layer design:</strong> <em>Deep</em> tasks are hand-authored T1/T2/T3 fixtures that exercise one agent end-to-end with a paired Opus-graded rubric. <em>Broad</em> coverage is template-driven: each agent declares a "shape" (input contract + dispatch expectation + acceptance signal); the runner enumerates one instance per shape × agent and judges with programmatic signals plus a Haiku judge. Ships with 70 generated Broad instances. Full design spec: <a href="https://github.com/7ports/project-voltron/blob/main/voltron-evals/DESIGN.md"><code>voltron-evals/DESIGN.md</code></a>.</p>
+
+      <p class="section-sub" style="margin-top:16px;"><strong>Run locally:</strong> <code>node voltron-evals/runner.js --tier=pr</code> (fast PR-tier: all Tier-1 Deep + a 10-instance Broad sample), <code>--tier=all</code> (full sweep), <code>--tier=deep</code> / <code>--tier=broad</code>, or <code>--doctor</code> to validate schemas / rubrics / shape resolution without dispatching agents.</p>
+
+      <p class="section-sub" style="margin-top:16px;"><strong>CI cadence:</strong> <code>.github/workflows/voltron-evals.yml</code> runs the full Deep + Broad sweep on the <strong>1st of each month at 12:00 UTC</strong> plus on manual <code>workflow_dispatch</code>. A content-hash cache keyed on <code>src/templates.js</code> + <code>voltron-evals/lib/template-hash.js</code> reuses prior scorecards so only agents whose templates changed pay the LLM cost; scorecards are uploaded as a CI artifact.</p>
 
       <div class="flow">
         <div class="flow-step">
           <div class="flow-icon">📋</div>
           <div>
             <strong>Task catalog</strong>
-            <span>One YAML per benchmark in <code>voltron-evals/tasks/</code>. Each YAML pins the agent under test, max-turns budget, prompt, acceptance criteria, and a path to a versioned rubric. MVP ships three tasks across T1/T2/T3 difficulty tiers.</span>
+            <span>Deep tasks live as one YAML per benchmark in <code>voltron-evals/tasks/</code>; Broad shapes live in <code>voltron-evals/shapes/</code> with generated instances under <code>voltron-evals/instances/</code>. Each pins the agent under test, max-turns budget, prompt, acceptance criteria, and a path to a versioned rubric.</span>
           </div>
         </div>
         <div class="arrow">↓</div>
@@ -870,7 +876,7 @@ node scripts/setup.js</code></pre>
           <div class="flow-icon">🐳</div>
           <div>
             <strong>Runner dispatches the AUT</strong>
-            <span><code>node voltron-evals/runner.js --task=&lt;id&gt;</code> calls <code>run_agent_in_docker</code> on the agent under test, then captures the run's log file, <code>git diff</code>, <code>bd list --json</code> snapshot, journal entries, and any reflection it produced.</span>
+            <span><code>node voltron-evals/runner.js --tier=pr</code> or <code>--task=&lt;id&gt;</code> calls <code>run_agent_in_docker</code> on the agent under test, then captures the run's log file, <code>git diff</code>, <code>bd list --json</code> snapshot, journal entries, and any reflection it produced.</span>
           </div>
         </div>
         <div class="arrow">↓</div>
@@ -937,7 +943,7 @@ node scripts/setup.js</code></pre>
     <div class="container">
       <p>
         <a href="https://github.com/7ports/project-voltron">GitHub</a> &middot;
-        v3.9.1 &middot;
+        v3.9.0 &middot;
         MIT License &middot;
         Built by <a href="https://github.com/7ports">7ports</a>
       </p>

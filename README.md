@@ -280,24 +280,42 @@ Progress data is persisted in `.voltron/progress.json`.
 
 Voltron grades itself. The `voltron-evals/` directory contains a small Node harness that runs benchmark tasks against any dispatchable agent, captures the run artifacts, and dispatches a new internal `voltron-judge` agent to score the run against a pinned, versioned rubric.
 
+**Two-layer design:**
+
+- **Deep** — hand-authored T1/T2/T3 tasks that exercise a specific agent end-to-end against a fixture. Each task has a paired rubric and a `voltron-judge` scorecard with quoted file:line evidence.
+- **Broad** — agent-template-driven coverage. Each agent declares a "shape" (input contract + dispatch expectation + acceptance signal); the runner enumerates one instance per shape × agent and judges with a mix of programmatic signals and a Haiku judge. Currently 70 generated Broad instances.
+
+**Run it locally:**
+
 ```bash
-node voltron-evals/runner.js --task=T1-001       # run one task
-node voltron-evals/runner.js --all               # full sweep
-node voltron-evals/runner.js --task=T2-001 --judge-model=haiku   # spot-check cheaper judge
+node voltron-evals/runner.js --tier=pr           # PR-tier: all Tier-1 Deep + 10-instance Broad sample (fast)
+node voltron-evals/runner.js --tier=all          # full Deep + Broad sweep
+node voltron-evals/runner.js --tier=deep         # Deep only
+node voltron-evals/runner.js --tier=broad        # Broad only
+node voltron-evals/runner.js --task=T1-001       # one specific task
+node voltron-evals/runner.js --doctor            # validate schemas, rubrics, shapes, instance enumeration (no LLM)
 ```
+
+**Full design spec:** [`voltron-evals/DESIGN.md`](voltron-evals/DESIGN.md) — covers the two-layer architecture, shape contract, judge routing (Opus for Deep, Haiku for Broad), content-hash caching keyed on `src/templates.js`, and the rubric-pinning protocol.
+
+**CI cadence:** `.github/workflows/voltron-evals.yml` runs the full sweep on the **1st of each month at 12:00 UTC**, plus on manual `workflow_dispatch`. The content-hash cache means only agents whose templates changed since the last sweep pay the LLM cost; scorecards are uploaded as a CI artifact.
 
 **Layout:**
 
 ```
 voltron-evals/
+  DESIGN.md                       — full design spec (architecture, shapes, caching, judge routing)
   README.md                       — quick-start
   schemas/task.schema.json        — JSON Schema for task YAMLs
-  tasks/                          — benchmark task definitions (3 in MVP)
+  shapes/                         — Broad-layer shape definitions (input / dispatch / acceptance)
+  tasks/                          — hand-authored Deep task definitions
+  instances/                      — generated Broad instances (one per agent × shape)
   rubrics/                        — pinned, versioned rubrics (rubric_version frontmatter)
   lib/artifacts.js                — capture helpers (git diff, bd list, log tail)
   lib/programmatic-scorers.js     — deterministic no-LLM signals (turns, [DONE], dispatch grep, …)
+  lib/template-hash.js            — content-hash key for scorecard caching
   lib/fixtures/                   — per-task fixtures the AUT operates on
-  runner.js                       — ~150 LOC orchestrator (loads YAML, dispatches AUT + judge, merges scorecard)
+  runner.js                       — orchestrator (loads YAML, dispatches AUT + judge, merges scorecard)
   results/<task>/<ts>/            — per-run artifact bundles + scorecard.json
 ```
 

@@ -30,6 +30,7 @@ import Ajv from "ajv";
 import * as artifacts from "./lib/artifacts.js";
 import { runScorers, bandsFromSignals } from "./lib/programmatic-scorers.js";
 import { templateHashFor, listAgentNames } from "./lib/template-hash.js";
+import { resolveBroadInstance } from "./lib/shape-loader.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "..");
@@ -108,26 +109,29 @@ function loadDeepTasks(filter) {
 
 function loadBroadInstances(filter) {
   if (!existsSync(INSTANCES_DIR)) return [];
-  const files = readdirSync(INSTANCES_DIR).filter(f => f.endsWith(".yaml") || f.endsWith(".yml"));
+  const out = [];
+  walkInstancesDir(INSTANCES_DIR, out);
   const instances = [];
-  for (const f of files) {
-    const p = path.join(INSTANCES_DIR, f);
-    const inst = parseYaml(readFileSync(p, "utf-8"));
-    // §5.7: instance schema explicitly forbids any model override.
-    if (Object.prototype.hasOwnProperty.call(inst, "model") ||
-        Object.prototype.hasOwnProperty.call(inst, "model_override")) {
-      throw new Error(`Instance ${f} contains a forbidden 'model' field (model-pinning rule, §5.7)`);
-    }
-    if (!inst.agent_under_test || !inst.shape) {
-      throw new Error(`Instance ${f} missing required field 'agent_under_test' or 'shape'`);
-    }
-    inst.kind = "shape-instance";
-    inst.id = inst.id || `${inst.shape}/${inst.agent_under_test}`;
-    inst._path = p;
-    if (!filter || inst.agent_under_test === filter) instances.push(inst);
+  for (const p of out) {
+    const raw = parseYaml(readFileSync(p, "utf-8"));
+    const job = resolveBroadInstance(raw, p, REPO_ROOT);
+    job.id = raw.id || `${job.shape}/${job.agent_under_test}`;
+    job._path = p;
+    if (!filter || job.agent_under_test === filter) instances.push(job);
   }
   if (filter && !instances.length) throw new Error(`No broad-layer instance matches ${filter}`);
   return instances;
+}
+
+function walkInstancesDir(dir, out) {
+  for (const ent of readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, ent.name);
+    if (ent.isDirectory()) {
+      walkInstancesDir(full, out);
+    } else if (ent.isFile() && (ent.name.endsWith(".yaml") || ent.name.endsWith(".yml"))) {
+      out.push(full);
+    }
+  }
 }
 
 function loadJobs(opts) {
@@ -188,11 +192,13 @@ function doctorMode() {
   const missing = [];
   const have = new Set();
   if (existsSync(INSTANCES_DIR)) {
-    for (const f of readdirSync(INSTANCES_DIR)) {
-      if (!f.endsWith(".yaml") && !f.endsWith(".yml")) continue;
-      const base = f.replace(/\.ya?ml$/, "");
-      have.add(base);
+    let instances = [];
+    try { instances = loadBroadInstances(null); }
+    catch (e) {
+      process.stderr.write(`[DOCTOR] Failed to load instances: ${e.message}\n`);
+      process.exit(2);
     }
+    for (const inst of instances) have.add(inst.agent_under_test);
   }
   for (const a of agents) {
     if (BROAD_LAYER_EXCLUDED.has(a)) continue;

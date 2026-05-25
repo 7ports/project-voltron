@@ -8,7 +8,12 @@
 // Rule of thumb: programmatic > LLM-as-judge > Agent-as-judge. Only let the
 // judge opine on things that genuinely need reasoning.
 
+import { execSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import path from "node:path";
 import { gitDiffNames, gitShortstat, diffWorkingTreeSnapshots, fileListShortstat } from "./artifacts.js";
+
+const REPO_ROOT = process.env.VOLTRON_REPO_ROOT || process.cwd();
 
 // Logs are stream-json JSONL: the agent's `[STEP N]` / `[DONE]` markers live
 // inside JSON-encoded `"text"` payloads where line-breaks are escaped (`\n`),
@@ -133,6 +138,109 @@ function scanAlexandriaCalls(log, firstWriteStep) {
   return { count: calls.length, first_call_step, calls, by_tool };
 }
 
+// ── Shape-specific scorers ────────────────────────────────────────────────
+
+// micro_test_writer: runs the configured test_command in the fixture dir and
+// records the exit code. Design §6 `capture_test_command_exit`.
+export function captureTestCommandExit(task) {
+  const cmd = task?.parameters?.test_command || task?.test_command;
+  if (!cmd) return { ran: false, exit_code: null, reason: "no test_command configured" };
+  const fixtureDir = task?.parameters?.fixture?.dir || task?.fixture?.dir;
+  const cwd = fixtureDir ? path.join(REPO_ROOT, fixtureDir) : REPO_ROOT;
+  if (fixtureDir && !existsSync(cwd)) {
+    return { ran: false, exit_code: null, reason: `fixture dir missing: ${fixtureDir}` };
+  }
+  try {
+    execSync(cmd, { cwd, stdio: "pipe", timeout: 5 * 60 * 1000 });
+    return { ran: true, exit_code: 0, cwd: path.relative(REPO_ROOT, cwd) };
+  } catch (e) {
+    const code = typeof e.status === "number" ? e.status : (e.code || 1);
+    return { ran: true, exit_code: code, cwd: path.relative(REPO_ROOT, cwd) };
+  }
+}
+
+// micro_validator: for each declared fixture, check whether the AUT log emitted
+// the expected verdict term (pass/fail) for that fixture id in its final
+// [STEP] block. Returns one boolean per fixture + an aggregate.
+export function captureVerdictPerFixture(task, log) {
+  const fixtures = task?.parameters?.fixture?.fixtures || task?.fixture?.fixtures || [];
+  const terms = task?.parameters?.prompt_inputs?.verdict_terms ||
+                task?.prompt_inputs?.verdict_terms ||
+                { pass: "PASS", fail: "FAIL" };
+  if (!Array.isArray(fixtures) || !fixtures.length) {
+    return { fixtures: {}, all_correct: null, reason: "no fixtures declared" };
+  }
+  // Final [STEP] block: everything from the last [STEP N] marker to end of log
+  // (or [DONE]).
+  let tail = log || "";
+  const lastStep = [...tail.matchAll(/\[STEP\s+\d+\]/g)].pop();
+  if (lastStep) tail = tail.slice(lastStep.index);
+  const result = {};
+  let allCorrect = true;
+  for (const f of fixtures) {
+    const want = String(f.expected_verdict || "").toLowerCase();
+    const wantedTerm = want === "pass" ? terms.pass : terms.fail;
+    // Per-fixture match: the fixture id and the verdict term must both appear
+    // somewhere in the final tail block, in either order, within ~400 chars.
+    const idIdx = tail.indexOf(String(f.id));
+    const termIdx = wantedTerm ? tail.indexOf(String(wantedTerm)) : -1;
+    const matched = idIdx >= 0 && termIdx >= 0 && Math.abs(idIdx - termIdx) <= 400;
+    result[f.id] = { expected_verdict: f.expected_verdict, expected_term: wantedTerm, matched };
+    if (!matched) allCorrect = false;
+  }
+  return { fixtures: result, all_correct: allCorrect };
+}
+
+// micro_committer: classify the git/state delta + log into one of the
+// canonical publish actions. Returns an enum string.
+export function capturePublishAction(task, ctx) {
+  const log = ctx?.post?.log || "";
+  const filesChanged = ctx?.post?.workingTree && ctx?.pre?.workingTree
+    ? diffWorkingTreeSnapshots(ctx.pre.workingTree, ctx.post.workingTree)
+    : [];
+  const preSha = ctx?.pre?.gitSha;
+  const postSha = ctx?.post?.gitSha;
+  const newCommit = preSha && postSha && preSha !== postSha;
+
+  // Detect command/tool signatures in the log.
+  const sawCommit = newCommit || /git\s+commit\b/i.test(log) || /"name"\s*:\s*"committer"/.test(log);
+  const sawPush = /git\s+push\b/i.test(log);
+  const sawPrCreate = /gh\s+pr\s+create\b/i.test(log) || /pulls\s+create\b/.test(log);
+  const sawBranchCreate = /git\s+(switch|checkout)\s+-[bB]\b/.test(log) ||
+                          /git\s+branch\s+[^\-]/.test(log);
+  const sawDeploy = /deploy[-_ ]?trigger/i.test(log) ||
+                    /gh\s+workflow\s+run\b/i.test(log) ||
+                    /curl[^|]*\/deploy/i.test(log);
+  const changelogTouched = filesChanged.some(f => /(^|\/)CHANGELOG\.md$/i.test(f));
+
+  let action = "none";
+  const flags = [sawCommit, sawPrCreate, sawBranchCreate, sawDeploy, changelogTouched].filter(Boolean);
+  if (flags.length > 1) {
+    // Multiple distinct publish signals — must check if it's the legitimate
+    // composite (e.g. changelog-updater commits a changelog) or actual overreach.
+    if (changelogTouched && sawCommit && !sawPrCreate && !sawBranchCreate && !sawDeploy) {
+      action = "changelog_appended";
+    } else {
+      action = "multiple";
+    }
+  } else if (sawPrCreate) action = "pr_opened";
+  else if (changelogTouched) action = "changelog_appended";
+  else if (sawCommit) action = "committed";
+  else if (sawBranchCreate) action = "branch_created";
+  else if (sawDeploy) action = "deployed";
+
+  return {
+    action,
+    saw_commit: sawCommit,
+    saw_push: sawPush,
+    saw_pr_create: sawPrCreate,
+    saw_branch_create: sawBranchCreate,
+    saw_deploy: sawDeploy,
+    changelog_touched: changelogTouched,
+    new_commit_sha: newCommit ? postSha : null,
+  };
+}
+
 export function runScorers(task, ctx) {
   const { pre, post, journal } = ctx;
   const log = post.log || "";
@@ -171,6 +279,14 @@ export function runScorers(task, ctx) {
       alexandria_calls.calls.some(c => c.before_first_write && c.tool !== "list_guides");
   }
 
+  // Shape-specific signals (design §6, Stage 5).
+  const test_command_exit = signals.capture_test_command_exit
+    ? captureTestCommandExit(task) : null;
+  const verdict_per_fixture = signals.capture_verdict_per_fixture
+    ? captureVerdictPerFixture(task, log) : null;
+  const publish_action = signals.capture_publish_action
+    ? capturePublishAction(task, ctx) : null;
+
   return {
     turns_used,
     done_line_present,
@@ -194,6 +310,9 @@ export function runScorers(task, ctx) {
     alexandria_calls,
     alexandria_call_before_first_write,
     first_file_write_step,
+    test_command_exit,
+    verdict_per_fixture,
+    publish_action,
   };
 }
 
@@ -219,6 +338,19 @@ export function bandsFromSignals(task, sig) {
       sig.alexandria_call_before_first_write ? 1 : 0;
     const n = sig.alexandria_calls?.count ?? 0;
     bands.alexandria_usage_no_redundant_calls = n <= 5 ? 1 : n <= 10 ? 0.5 : 0;
+  }
+  // Shape-specific bands (Stage 5).
+  if (task.programmatic_signals?.capture_test_command_exit && sig.test_command_exit) {
+    const t = sig.test_command_exit;
+    bands.correctness_test_command_exit = t.ran && t.exit_code === 0 ? 1 : 0;
+  }
+  if (task.programmatic_signals?.capture_verdict_per_fixture && sig.verdict_per_fixture) {
+    bands.correctness_verdict_per_fixture = sig.verdict_per_fixture.all_correct ? 1 : 0;
+  }
+  if (task.programmatic_signals?.capture_publish_action && sig.publish_action) {
+    const canonical = task.parameters?.canonical_action || task.canonical_action;
+    bands.correctness_canonical_action_taken =
+      canonical && sig.publish_action.action === canonical ? 1 : 0;
   }
   return bands;
 }

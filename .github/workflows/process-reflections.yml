@@ -1,6 +1,6 @@
 name: Process Voltron Reflections
 
-# Runs on a schedule 3x/week and applies any unprocessed reflection feedback
+# Runs on a schedule 1x/week (Monday) and applies any unprocessed reflection feedback
 # to the agent templates in src/templates.js, then opens a PR for review.
 #
 # Required secret: ANTHROPIC_API_KEY
@@ -8,7 +8,7 @@ name: Process Voltron Reflections
 
 on:
   schedule:
-    - cron: '0 10 * * 1,3,5'   # Mon, Wed, Fri at 10:00 UTC
+    - cron: '0 10 * * 1'       # Monday at 10:00 UTC (weekly)
   workflow_dispatch:             # allow manual trigger from Actions tab
 
 permissions:

@@ -195,7 +195,7 @@ A `[VOLTRON] Auto-updated N file(s)` message appears in context when an update o
 
 ## Self-Improvement
 
-Agents submit post-session reflections via `submit_reflection`. The scrum-master now submits reflections automatically at phase completion, after significant blockers, and at session end. Reflections accumulate in the `reflections/` directory and are automatically processed by a GitHub Actions workflow that runs **Mon/Wed/Fri at 10:00 UTC**:
+Agents submit post-session reflections via `submit_reflection`. The scrum-master now submits reflections automatically at phase completion, after significant blockers, and at session end. Reflections accumulate in the `reflections/` directory and are automatically processed by a GitHub Actions workflow that runs **every Monday at 10:00 UTC**:
 
 1. The `harness-engineer` agent reads all unprocessed reflections
 2. Groups feedback by agent and prioritizes by frequency
@@ -204,6 +204,8 @@ Agents submit post-session reflections via `submit_reflection`. The scrum-master
 5. Opens a PR for human review before changes reach `main`
 
 Once merged, projects with the auto-update hook installed will automatically receive the new templates at the start of their next session. Projects without the hook can pull improvements manually via `check_for_updates`. The workflow can also be triggered manually from the Actions tab. Requires `ANTHROPIC_API_KEY` set as a repository secret.
+
+A second workflow — `.github/workflows/voltron-evals.yml` — runs the **voltron-evals** harness on a monthly cadence (1st of each month at 12:00 UTC) plus on manual `workflow_dispatch`. It executes the full Deep + Broad eval sweep against every agent template, with Opus judging Deep tasks and Haiku/programmatic scoring on Broad instances. A content-hash cache keyed on `src/templates.js` and `voltron-evals/lib/template-hash.js` reuses prior scorecards so that only agents whose templates changed since the last sweep pay the LLM cost. Scorecards are uploaded as a CI artifact.
 
 ## Docker Execution
 

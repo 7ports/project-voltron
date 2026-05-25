@@ -646,7 +646,7 @@ server.tool(
       `1. **Restart Claude Code** — agent files are not hot-reloaded. You must restart for agents to appear in \`@agent\` autocomplete.`,
       `2. **Fill in \`CLAUDE.md\`** with your project name, stack, and current work`,
       `3. **Ensure Docker is running** — agents execute inside Docker containers`,
-      `4. **Invoke the scrum-master:** \`@agent-scrum-master\` to plan your sprint`,
+      `4. **Invoke the scrum-master:** \`/scrum-master\` to plan your sprint (slash command — runs in your main session, not as a subagent)`,
       `5. **For mobile projects:** Note that iOS builds require macOS + Xcode (not Docker)`,
     );
 
@@ -1903,7 +1903,7 @@ server.tool(
       return {
         content: [{
           type: "text",
-          text: "❌ The scrum-master is a dedicated orchestrator that runs in the main Claude Code session, not in Docker. Invoke it via @agent-scrum-master from the Claude Code chat window instead.",
+          text: "❌ The scrum-master is a dedicated orchestrator that runs in the main Claude Code session, not in Docker, and is a slash command (not a subagent). Invoke it via `/scrum-master` from the Claude Code chat window instead.",
         }],
       };
     }

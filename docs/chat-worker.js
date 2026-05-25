@@ -99,9 +99,9 @@ Scaffolded projects include a \`UserPromptSubmit\` hook that checks for template
 1. \`scaffold_project\` for your type (unity/web/fullstack/general)
 2. Fill in CLAUDE.md
 3. Run \`@agent-project-planner\` with requirements (optional but recommended)
-4. Run \`@agent-scrum-master\` to plan and execute
+4. Run \`/scrum-master\` (slash command — runs in your main session) to plan and execute
 
-**Existing project:** Just invoke \`@agent-scrum-master\` with your task or backlog.
+**Existing project:** Just invoke \`/scrum-master\` with your task or backlog.
 
 Be concise. Prefer bullet points and code snippets over long paragraphs.`;
 

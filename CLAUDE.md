@@ -100,16 +100,23 @@ Do not commit code changes without also updating `docs/index.html` and `README.m
 
 ## Agent Team Roles
 
-This project uses Voltron agents (defined in `.claude/agents/`) to develop itself.
+### Orchestrator (slash command — runs in the main Claude Code session)
+
+| Command | File | Purpose |
+|---|---|---|
+| `/scrum-master` | `.claude/commands/scrum-master.md` | Work breakdown, task assignment, sprint coordination |
+
+The scrum-master is a **slash command**, not a subagent. It runs in your main chat session so it can stream real-time agent output, drive the dashboard, and channel communication between you and the specialists. Subagent contexts cannot do any of that.
+
+### Specialist subagents (defined in `.claude/agents/`)
 
 | Agent | File | Purpose |
 |---|---|---|
-| `scrum-master` | `scrum-master.md` | Work breakdown, task assignment, sprint coordination |
 | `project-planner` | `project-planner.md` | Architecture design, research, project planning |
 | `researcher` | `researcher.md` | Deep research, web scraping, information gathering |
 | `harness-engineer` | `harness-engineer.md` | **All Voltron modifications** — agent templates, Dockerfile, MCP server, docs, scripts. Also processes session reflections into template improvements. Delegate ALL Voltron edit tasks here. |
 
-**Invoke with:** `@agent-scrum-master`, `@agent-project-planner`, `@agent-researcher`, `@agent-harness-engineer`
+**Invoke with:** `/scrum-master` (orchestrator), `@agent-project-planner`, `@agent-researcher`, `@agent-harness-engineer` (specialists — usually dispatched by the scrum-master rather than invoked directly).
 
 Docker execution is available via `Dockerfile.voltron` + `scripts/voltron-run.sh`.
 Prerequisites: Docker installed and running.

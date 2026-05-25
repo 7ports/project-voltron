@@ -473,8 +473,8 @@
         <div class="agent-group-label">Core — all projects</div>
         <div class="agent-grid">
           <div class="agent-card">
-            <h3>Scrum Master <span class="invoke">@agent-scrum-master</span></h3>
-            <p>Reads backlogs and project plans, breaks work into agent-sized tasks with dependencies and acceptance criteria. Never implements — only plans and delegates. Uses <a href="https://github.com/gastownhall/beads">beads</a> (<code>bd ready --json</code>) for dependency-aware task orchestration when available.</p>
+            <h3>Scrum Master <span class="invoke">/scrum-master</span> <span style="font-size: 0.7em; opacity: 0.7;">(slash command)</span></h3>
+            <p>Reads backlogs and project plans, breaks work into agent-sized tasks with dependencies and acceptance criteria. Never implements — only plans and delegates. Runs in the <strong>main Claude Code session</strong> (not as a subagent) so it can stream agent output, drive the dashboard, and channel communication directly in your chat. Uses <a href="https://github.com/gastownhall/beads">beads</a> (<code>bd ready --json</code>) for dependency-aware task orchestration when available.</p>
           </div>
           <div class="agent-card">
             <h3>Project Planner <span class="invoke">@agent-project-planner</span></h3>
@@ -667,7 +667,7 @@ node scripts/setup.js</code></pre>
           <div class="step-num">3</div>
           <h3>Develop</h3>
           <p>Fill in CLAUDE.md, then invoke agents:</p>
-          <pre><code>@agent-scrum-master      ← plan your sprint
+          <pre><code>/scrum-master            ← plan your sprint (slash command, main session)
 @agent-fullstack-dev     ← React/TypeScript + Node.js
 @agent-csharp-dev        ← Unity C# scripts
 @agent-devops-engineer   ← CI/CD, Docker, infrastructure</code></pre>
@@ -789,7 +789,7 @@ node scripts/setup.js</code></pre>
           <div class="flow-icon">🎯</div>
           <div>
             <strong>Plan</strong>
-            <span>Invoke <code>@agent-scrum-master</code> with the project plan — it decomposes it into agent-sized tasks with dependencies and acceptance criteria</span>
+            <span>Invoke <code>/scrum-master</code> (slash command, runs in your main session) with the project plan — it decomposes it into agent-sized tasks with dependencies and acceptance criteria</span>
           </div>
         </div>
         <div class="arrow">↓</div>

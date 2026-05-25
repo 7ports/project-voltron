@@ -4,12 +4,17 @@ An MCP server that provides teams of specialized agent templates for Claude Code
 
 ## Agent Teams
 
-### Core (all projects)
+### Orchestrator (slash command — runs in your main Claude Code session)
+
+| Command | Purpose |
+|---|---|
+| **`/scrum-master`** | Reads backlogs, breaks work into agent-sized tasks, assigns to specialists. Never implements. Slash command (not subagent) so it can stream agent output, drive the dashboard, and channel communication directly in your chat. |
+
+### Specialist subagents (core — all projects)
 
 | Agent | Purpose |
 |---|---|
-| **scrum-master** | Reads backlogs, breaks work into agent-sized tasks, assigns to specialists. Never implements. |
-| **project-planner** | Researches tech stacks, designs architecture, defines data models and API contracts, produces comprehensive project plans for scrum-master to decompose. |
+| **project-planner** | Researches tech stacks, designs architecture, defines data models and API contracts, produces comprehensive project plans for the scrum-master to decompose. |
 | **researcher** | Deep research specialist. Finds any information — technical docs, APIs, pricing, competitors, legal text, community consensus — using web search, live page navigation, and structured extraction. |
 
 ### Unity
@@ -174,7 +179,7 @@ Once installed, ask Claude Code:
 1. **Scaffold** — run `scaffold_project` in your project root with your project type
 2. **Configure** — fill in `CLAUDE.md` with your project specifics and set up Docker execution (see scaffold output)
 3. **Research** — for new projects, invoke `@agent-project-planner` to research tech stack and design architecture
-4. **Plan** — invoke `@agent-scrum-master` with the project plan to get a structured work breakdown
+4. **Plan** — invoke `/scrum-master` (slash command, runs in your main session) with the project plan to get a structured work breakdown
 5. **Develop** — invoke specialist agents per the plan; they consult Alexandria for tool setup
 6. **Reflect** — scrum-master automatically submits reflections at phase completion, blockers, and session end; also syncs tool findings to Alexandria
 
@@ -184,8 +189,10 @@ Once installed, ask Claude Code:
 
 **What gets auto-updated:**
 - All agent `.md` files in `.claude/agents/`
+- Slash-command `.md` files in `.claude/commands/` (e.g. `scrum-master.md`)
 - `Dockerfile.voltron` (if it exists — only projects using Docker)
 - `scripts/voltron-run.sh` (if it exists)
+- **v3.11 migration:** projects scaffolded before v3.11 will have `.claude/agents/scrum-master.md` automatically moved to `.claude/commands/scrum-master.md` on next session, then the legacy subagent file is deleted. No manual action required.
 
 **What is NOT auto-updated** (user-customized files):
 - `CLAUDE.md` — contains project-specific context you've filled in

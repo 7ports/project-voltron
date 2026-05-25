@@ -2,7 +2,7 @@
 
 > Buildable design for Voltron's repeatable agent evaluation harness.
 > Builds on `.voltron/phaseA-research.txt`. **DESIGN ONLY** — no code, no template edits.
-> Consumed by `@agent-scrum-master` and `@agent-harness-engineer` for the build phase.
+> Consumed by `/scrum-master` and `@agent-harness-engineer` for the build phase.
 
 ---
 
@@ -1249,4 +1249,4 @@ These are judgment calls that depend on operator preference or carry meaningful 
   - Typical post-baseline monthly sweep (only changed agents re-run): **~$1–3 per sweep**.
   - PR-tier: **~$0.50–1.50 per PR**.
 - Open questions for the build phase are scoped to small implementation details; all blocking design questions are in §11 above for human sign-off.
-- Invoke `@agent-scrum-master` with this plan to generate a work breakdown for the build phase.
+- Invoke `/scrum-master` with this plan to generate a work breakdown for the build phase.

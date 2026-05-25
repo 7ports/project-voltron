@@ -5,7 +5,7 @@
 // Usage: node /path/to/project-voltron/scripts/auto-update-agents.js
 // The hook runs from the project directory (cwd = project root).
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -30,15 +30,30 @@ const currentVersion = pkg.version;
 
 // Project root = cwd (Claude Code hooks run from project root)
 const projectRoot = process.cwd();
-const agentsDir = resolve(projectRoot, ".claude", "agents");
-const scrumMasterPath = resolve(agentsDir, "scrum-master.md");
 
-// Exit silently if this project doesn't have Voltron agents
-if (!existsSync(scrumMasterPath)) {
+// Migrations: templates that moved location across versions. After the new
+// path is written, the old path is removed so legacy installs don't end up
+// registering the same role twice.
+const MIGRATIONS = [
+  // v3.11: scrum-master moved from .claude/agents/ (subagent) to
+  // .claude/commands/ (slash command). Leaving the legacy file in place would
+  // re-register the orchestrator as a subagent, defeating the move.
+  { from: ".claude/agents/scrum-master.md", to: ".claude/commands/scrum-master.md" },
+];
+
+// Detect Voltron presence: either the new orchestrator slash command, or the
+// legacy subagent location (for projects scaffolded before v3.11).
+const scrumMasterNew = resolve(projectRoot, ".claude/commands/scrum-master.md");
+const scrumMasterLegacy = resolve(projectRoot, ".claude/agents/scrum-master.md");
+const scrumMasterPath = existsSync(scrumMasterNew)
+  ? scrumMasterNew
+  : (existsSync(scrumMasterLegacy) ? scrumMasterLegacy : null);
+
+if (!scrumMasterPath) {
   process.exit(0);
 }
 
-// Read installed version from scrum-master.md
+// Read installed version from whichever scrum-master file is present.
 const installedContent = readFileSync(scrumMasterPath, "utf-8");
 const versionMatch = installedContent.match(/\*\*Version:\*\*\s+([\d.]+)/);
 const installedVersion = versionMatch ? versionMatch[1] : null;
@@ -48,21 +63,41 @@ const needsUpdate = installedVersion !== currentVersion;
 let updated = 0;
 const updatedItems = [];
 
-// ── Update agent files (only when version changed) ───────────────────────────
+// ── Update agent / slash-command files (only when version changed) ───────────
 if (needsUpdate) {
   for (const agentKey of AGENT_NAMES) {
     const template = TEMPLATES[agentKey];
     if (!template) continue;
 
-    const agentFilename = template.destination.split("/").pop();
-    const agentPath = resolve(agentsDir, agentFilename);
+    // Honour the template's full destination (relative to projectRoot) so
+    // slash-commands write to .claude/commands/ and subagents to .claude/agents/.
+    const destPath = resolve(projectRoot, template.destination);
+    const destDir = dirname(destPath);
 
-    if (existsSync(agentPath)) {
-      const existing = readFileSync(agentPath, "utf-8");
+    // For migrated templates, write the new file when either (a) the new file
+    // already exists, or (b) the legacy file exists (legacy install — migrate
+    // it). Preserves the "only update files that were originally scaffolded"
+    // rule for non-migrated templates.
+    const migration = MIGRATIONS.find((m) => resolve(projectRoot, m.to) === destPath);
+    const legacyPath = migration ? resolve(projectRoot, migration.from) : null;
+    const shouldWrite = existsSync(destPath) || (legacyPath && existsSync(legacyPath));
+
+    if (shouldWrite) {
+      if (!existsSync(destDir)) mkdirSync(destDir, { recursive: true });
+      const existing = existsSync(destPath) ? readFileSync(destPath, "utf-8") : "";
       if (existing !== template.content) {
-        writeFileSync(agentPath, template.content, "utf-8");
+        writeFileSync(destPath, template.content, "utf-8");
         updated++;
         updatedItems.push(agentKey);
+      }
+      // Remove the legacy file if the migration just completed.
+      if (legacyPath && existsSync(legacyPath)) {
+        try {
+          unlinkSync(legacyPath);
+          updatedItems.push(`migrated: ${migration.from} → ${migration.to}`);
+        } catch {
+          // Non-fatal — file may be locked or permissions issue
+        }
       }
     }
   }

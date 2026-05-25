@@ -189,7 +189,7 @@ console.log('');
 console.log('  Next steps:');
 console.log('  1. Restart Claude Code to load the MCP server and allowlist');
 console.log('  2. In any project: "Scaffold this project with Voltron agents"');
-console.log('  3. Invoke the scrum-master: @agent-scrum-master');
+console.log('  3. Invoke the scrum-master: /scrum-master  (slash command — runs in your main session, not as a subagent)');
 console.log('');
 console.log('  To re-run setup later:  node scripts/setup.js');
 console.log('  To verify from Claude:  mcp__project-voltron__setup_voltron');

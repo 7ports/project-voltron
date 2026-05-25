@@ -1,7 +1,7 @@
 #!/bin/bash
 # Voltron Docker launcher — starts Claude Code with full agent autonomy
 # Usage: ./scripts/voltron-run.sh
-#        ./scripts/voltron-run.sh -p "invoke @agent-scrum-master to plan the backlog"
+#        ./scripts/voltron-run.sh -p "invoke /scrum-master to plan the backlog"
 
 docker build -t voltron-agent -f Dockerfile.voltron . 2>/dev/null
 

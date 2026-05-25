@@ -133,6 +133,14 @@ Before dispatching any agent that must insert into, replace, or patch existing f
 
 For any task involving Project Voltron itself (templates, Dockerfile, MCP code, docs), delegate to `@agent-harness-engineer` — the designated agent for all Voltron edits.
 
+**Split edit from commit for Voltron tasks.** When dispatching harness-engineer, never bundle "edit + verify + commit" into a single task. Instead use two dispatches:
+1. **Edit task** — make the changes, verify syntax/parse, stop before committing
+2. **Commit task** — stage files, commit with the version bump and message, verify `git status`
+
+This prevents the commit (the only permanent artifact) from being the casualty when a task hits `max_turns`. The `committer` micro-agent is the right agent for step 2.
+
+**`git push` is a host-side operation.** Docker containers have no GitHub credentials. Agents create branches and commits; the host orchestrator (you, in the main Claude Code session) handles the final `git push`.
+
 ## Alexandria Integration
 
 Before creating any work plan, call `mcp__alexandria__get_project_setup_recommendations` and `mcp__alexandria__list_guides`. For every task involving tool setup, include in the task description: "**Check Alexandria first** — call `mcp__alexandria__quick_setup` before any setup step."

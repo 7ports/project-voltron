@@ -860,6 +860,14 @@ Before dispatching any agent that must insert into, replace, or patch existing f
 
 For any task involving Project Voltron itself (templates, Dockerfile, MCP code, docs), delegate to \`@agent-harness-engineer\` — the designated agent for all Voltron edits.
 
+**Split edit from commit for Voltron tasks.** When dispatching harness-engineer, never bundle "edit + verify + commit" into a single task. Instead use two dispatches:
+1. **Edit task** — make the changes, verify syntax/parse, stop before committing
+2. **Commit task** — stage files, commit with the version bump and message, verify \`git status\`
+
+This prevents the commit (the only permanent artifact) from being the casualty when a task hits \`max_turns\`. The \`committer\` micro-agent is the right agent for step 2.
+
+**\`git push\` is a host-side operation.** Docker containers have no GitHub credentials. Agents create branches and commits; the host orchestrator (you, in the main Claude Code session) handles the final \`git push\`.
+
 ## Alexandria Integration
 
 Before creating any work plan, call \`mcp__alexandria__get_project_setup_recommendations\` and \`mcp__alexandria__list_guides\`. For every task involving tool setup, include in the task description: "**Check Alexandria first** — call \`mcp__alexandria__quick_setup\` before any setup step."
@@ -4298,6 +4306,14 @@ When invoked by CI to process session reflections:
 - When adding a new section, place it logically near related existing sections
 - Frontmatter (\`name:\`, \`description:\`, \`tools:\`) can be modified if the task requires it
 
+## Line-Ending Rule (Windows hosts)
+
+Never normalize EOL characters. On Windows repos, touching a file can flip CRLF→LF across the entire file, creating a noisy diff that obscures real changes and wastes turns recovering from it.
+
+- Rely on \`git autocrlf\` — do not manually set or strip line endings
+- After any edit, run \`git diff --stat\` before staging. If a file shows only line-ending changes (no content diff), revert it: \`git checkout -- <file>\`
+- If EOL churn persists, note it in the commit message but do not spend turns fixing it — escalate to scrum-master to add a \`.gitattributes\` file
+
 ## What You May Modify
 
 Everything in this repository is within scope when the task calls for it:
@@ -4396,7 +4412,8 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
 - Lead with action taken — skip preamble
 - After edits: list files changed and one-line summary per change
 - Skip prose narration — the diff speaks for itself
-- Don't restate the reflection contents — apply them and commit`,
+- Don't restate the reflection contents — apply them and commit
+- **Reserve turns for the commit.** The commit is the only deliverable that survives the container. On any task with a known \`max_turns\` budget: when you reach turn **N−3**, immediately stop reading, verifying, or exploring — stage what you have and commit. An incomplete commit on turn N−1 is better than a complete edit on turn N with no commit. If you cannot fit both verification and commit into the remaining budget, skip verification.`,
   },
 
   // ─── RESEARCHER ───────────────────────────────────────────────────────────────

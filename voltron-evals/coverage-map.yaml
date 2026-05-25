@@ -1,0 +1,693 @@
+# voltron-evals/coverage-map.yaml
+#
+# Stage-5 deliverable: per-agent → shape coverage map (design §3.5).
+# `tools/generate-instances.js` reads this file and emits one instance YAML
+# per agent under `voltron-evals/instances/<shape>/<agent>.yaml`.
+#
+# The 70 non-judge templates in src/templates.js are distributed across the
+# six Broad-layer shapes shipped in Stage 4:
+#
+#   tier1_coordinator      7   planning artifacts, no source edits
+#   tier2_submanager       11  must dispatch ≥ floor micro-agents
+#   micro_test_writer      1   produces a test file that exits 0
+#   micro_validator        23  read-only verdict emitters (validators + inspects)
+#   micro_committer        5   exactly one publish action, no side effects
+#   micro_single_file_edit 23  exact-diff single-file edits
+#   ─────────────────────  ─
+#   TOTAL                  70  (+ 1 excluded: voltron-judge)
+#
+# Each agent entry supplies the `parameters` block the instance YAML will
+# carry. Fixtures may not exist yet — Stage 6/7 fills those in. The shape
+# loader interpolates `prompt_inputs` into the AUT prompt at dispatch time;
+# the runner stays shape-agnostic.
+
+shapes:
+
+  # ── Tier-1 coordinators ─────────────────────────────────────────────────
+  tier1_coordinator:
+    extends: "voltron-evals/shapes/tier1_coordinator.yaml"
+    agents:
+
+      scrum-master:
+        note: "Stub only — graded via Track B postmortem (design §8)."
+        prompt_inputs:
+          request_summary: "Given the 3-card backlog in BACKLOG.md, decompose into a sprint plan with owners and beads parent/children."
+          expected_artifact_kind: "work_plan_table"
+          artifact_anchors: ["| Task |", "| Owner |", "| Bead |"]
+        fixture: { dir: "voltron-evals/lib/fixtures/instances/scrum-master", seed_files: ["BACKLOG.md"] }
+        expected_files: ["WORKPLAN.md"]
+        expected_beads_floor: 3
+
+      code-analyst:
+        prompt_inputs:
+          request_summary: "Analyze the module at src/lib/ and produce a structural report."
+          expected_artifact_kind: "research_summary"
+          artifact_anchors: ["## Module:", "### Exports", "### Dependencies"]
+        fixture: { dir: "voltron-evals/lib/fixtures/instances/code-analyst", seed_files: ["src/lib/index.ts"] }
+        expected_files: ["docs/analysis/module-report.md"]
+
+      doc-writer:
+        prompt_inputs:
+          request_summary: "Write a README section explaining the project's eval harness."
+          expected_artifact_kind: "doc_section"
+          artifact_anchors: ["## Eval Harness", "### Running"]
+        fixture: { dir: "voltron-evals/lib/fixtures/instances/doc-writer", seed_files: ["README.md"] }
+        expected_files: ["README.md"]
+
+      researcher:
+        prompt_inputs:
+          request_summary: "Research current best practices for prompt caching with Anthropic's Claude API and produce a brief."
+          expected_artifact_kind: "research_summary"
+          artifact_anchors: ["## Sources", "## Findings"]
+        fixture: { dir: "voltron-evals/lib/fixtures/instances/researcher", seed_files: [] }
+        expected_files: ["docs/research/prompt-caching.md"]
+
+      adr-writer:
+        prompt_inputs:
+          request_summary: "Write an ADR for the decision to ship eval harness in this repo rather than a separate package."
+          expected_artifact_kind: "adr_file"
+          artifact_anchors: ["# ADR", "## Status", "## Decision", "## Consequences"]
+        fixture: { dir: "voltron-evals/lib/fixtures/instances/adr-writer", seed_files: ["docs/adr/0000-template.md"] }
+        expected_files: ["docs/adr/0001-eval-harness-colocation.md"]
+
+      api-doc-generator:
+        prompt_inputs:
+          request_summary: "Generate API reference for the routes registered in server/src/index.ts."
+          expected_artifact_kind: "doc_section"
+          artifact_anchors: ["## Endpoints", "### GET", "### POST"]
+        fixture: { dir: "voltron-evals/lib/fixtures/instances/api-doc-generator", seed_files: ["server/src/index.ts"] }
+        expected_files: ["docs/api.md"]
+
+      diagram-maker:
+        prompt_inputs:
+          request_summary: "Produce a Mermaid sequence diagram of the eval harness dispatch flow."
+          expected_artifact_kind: "doc_section"
+          artifact_anchors: ["```mermaid", "sequenceDiagram"]
+        fixture: { dir: "voltron-evals/lib/fixtures/instances/diagram-maker", seed_files: [] }
+        expected_files: ["docs/diagrams/eval-dispatch.md"]
+
+  # ── Tier-2 sub-managers ─────────────────────────────────────────────────
+  tier2_submanager:
+    extends: "voltron-evals/shapes/tier2_submanager.yaml"
+    agents:
+
+      project-planner:
+        prompt_inputs:
+          task_summary: "Design the data model + API contract for a new commenting feature on the eval results dashboard."
+          acceptance_signals:
+            - "docs/design/comments.md exists with schema + endpoints"
+            - "at least one beads issue created for implementation"
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/project-planner"
+          expected_dispatch_targets: ["researcher", "adr-writer"]
+        dispatch_floor: 2
+
+      scene-architect:
+        prompt_inputs:
+          task_summary: "Compose a Unity scene that includes a player prefab + a UI canvas + an event manager — using your micro-agents."
+          acceptance_signals:
+            - "Assets/Scenes/Main.unity references the three components"
+            - "no direct file edits by scene-architect itself"
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/scene-architect"
+          expected_dispatch_targets: ["csharp-script-writer", "asset-manager"]
+        dispatch_floor: 2
+
+      csharp-dev:
+        prompt_inputs:
+          task_summary: "Add a new MonoBehaviour `Health` (field + Damage method) plus a unit test, dispatching csharp-script-writer + csharp-member-adder + test-writer."
+          acceptance_signals:
+            - "Assets/Scripts/Health.cs exists with the Damage method"
+            - "Assets/Tests/HealthTests.cs exists"
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/csharp-dev"
+          expected_dispatch_targets: ["csharp-script-writer", "csharp-member-adder", "test-writer"]
+        dispatch_floor: 2
+
+      shader-artist:
+        prompt_inputs:
+          task_summary: "Add a new URP shader graph + a material that uses it; document the new render pipeline asset's reference."
+          acceptance_signals:
+            - "Assets/Shaders/NewEffect.shadergraph exists"
+            - "Assets/Materials/NewEffect.mat references the shader"
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/shader-artist"
+          expected_dispatch_targets: ["asset-manager", "csharp-script-writer"]
+        dispatch_floor: 2
+
+      build-validator:
+        prompt_inputs:
+          task_summary: "Run typecheck + lint + Play Mode smoke and produce a single combined verdict, dispatching the appropriate validators."
+          acceptance_signals:
+            - "final [STEP] block contains PASS/FAIL per validator"
+            - "no source edits"
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/build-validator"
+          expected_dispatch_targets: ["typecheck-runner", "lint-runner", "test-runner"]
+        dispatch_floor: 2
+
+      asset-manager:
+        prompt_inputs:
+          task_summary: "Reorganize Assets/ folder structure per the project's naming convention and update affected manifest references."
+          acceptance_signals:
+            - "Assets/ folder layout matches docs/conventions.md"
+            - "no manual file edits — all moves via micro-agents"
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/asset-manager"
+          expected_dispatch_targets: ["unity-manifest-editor", "yaml-patcher"]
+        dispatch_floor: 2
+
+      fullstack-dev:
+        prompt_inputs:
+          task_summary: "Add a typed util `useDebounce` AND a vitest spec AND run typecheck."
+          acceptance_signals:
+            - "client/src/hooks/useDebounce.ts created"
+            - "client/src/hooks/useDebounce.test.ts created"
+            - "typecheck-runner reports PASS"
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/fullstack-dev"
+          expected_dispatch_targets: ["function-writer", "test-writer", "typecheck-runner"]
+        dispatch_floor: 2
+
+      devops-engineer:
+        prompt_inputs:
+          task_summary: "Add a new GitHub Actions workflow that runs the eval harness on PR, plus a docker-compose service for local replay."
+          acceptance_signals:
+            - ".github/workflows/eval-replay.yml created"
+            - "docker-compose.yml updated with a `replay` service"
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/devops-engineer"
+          expected_dispatch_targets: ["ci-workflow-writer", "docker-compose-editor"]
+        dispatch_floor: 2
+
+      ui-designer:
+        prompt_inputs:
+          task_summary: "Add CSS variables for a new dark-mode palette AND apply them to the dashboard layout component."
+          acceptance_signals:
+            - "client/src/styles/tokens.css contains new --color-dark-* variables"
+            - "Dashboard component CSS references the new tokens"
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/ui-designer"
+          expected_dispatch_targets: ["design-token-writer", "css-writer"]
+        dispatch_floor: 2
+
+      qa-tester:
+        prompt_inputs:
+          task_summary: "Set up an a11y audit + a Lighthouse run for the dashboard and produce a combined report."
+          acceptance_signals:
+            - "docs/qa/dashboard-audit.md contains both a11y + lighthouse sections"
+            - "audits ran without source edits"
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/qa-tester"
+          expected_dispatch_targets: ["accessibility-auditor", "lighthouse-runner"]
+        dispatch_floor: 2
+
+      harness-engineer:
+        prompt_inputs:
+          task_summary: "Process pending reflections, apply two surgical template edits, bump the version, and commit — using your micro-agents."
+          acceptance_signals:
+            - "src/templates.js modified for the targeted templates"
+            - "package.json version bumped"
+            - "commit made via the committer micro-agent"
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/harness-engineer"
+          expected_dispatch_targets: ["file-patch-runner", "readme-section-writer", "committer"]
+        dispatch_floor: 3
+
+  # ── Test writers ────────────────────────────────────────────────────────
+  micro_test_writer:
+    extends: "voltron-evals/shapes/micro_test_writer.yaml"
+    agents:
+      test-writer:
+        prompt_inputs:
+          implementation_path: "src/utils/slugify.ts"
+          test_path: "src/utils/slugify.test.ts"
+          behaviour_spec: "Strips non-alphanumerics, lowercases, hyphenates whitespace, collapses consecutive hyphens."
+          framework_hint: "vitest"
+        fixture: { dir: "voltron-evals/lib/fixtures/instances/test-writer", seed_files: ["src/utils/slugify.ts", "package.json"] }
+        expected_files: ["src/utils/slugify.test.ts"]
+        test_command: "npx vitest run --reporter=basic src/utils/slugify.test.ts"
+
+  # ── Validators + inspectors ─────────────────────────────────────────────
+  micro_validator:
+    extends: "voltron-evals/shapes/micro_validator.yaml"
+    agents:
+
+      typecheck-runner:
+        prompt_inputs:
+          command_hint: "npx tsc --noEmit"
+          verdict_terms: { pass: "PASS", fail: "FAIL" }
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/typecheck-runner"
+          fixtures:
+            - { id: "clean",  dir: "voltron-evals/lib/fixtures/instances/typecheck-runner/clean",  expected_verdict: "pass" }
+            - { id: "broken", dir: "voltron-evals/lib/fixtures/instances/typecheck-runner/broken", expected_verdict: "fail" }
+
+      test-runner:
+        prompt_inputs:
+          command_hint: "npm test"
+          verdict_terms: { pass: "PASS", fail: "FAIL" }
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/test-runner"
+          fixtures:
+            - { id: "passing", dir: "voltron-evals/lib/fixtures/instances/test-runner/passing", expected_verdict: "pass" }
+            - { id: "failing", dir: "voltron-evals/lib/fixtures/instances/test-runner/failing", expected_verdict: "fail" }
+
+      lint-runner:
+        prompt_inputs:
+          command_hint: "npx eslint ."
+          verdict_terms: { pass: "PASS", fail: "FAIL" }
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/lint-runner"
+          fixtures:
+            - { id: "clean",  dir: "voltron-evals/lib/fixtures/instances/lint-runner/clean",  expected_verdict: "pass" }
+            - { id: "issues", dir: "voltron-evals/lib/fixtures/instances/lint-runner/issues", expected_verdict: "fail" }
+
+      build-runner:
+        prompt_inputs:
+          command_hint: "npm run build"
+          verdict_terms: { pass: "PASS", fail: "FAIL" }
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/build-runner"
+          fixtures:
+            - { id: "builds",   dir: "voltron-evals/lib/fixtures/instances/build-runner/builds",   expected_verdict: "pass" }
+            - { id: "broken",   dir: "voltron-evals/lib/fixtures/instances/build-runner/broken",   expected_verdict: "fail" }
+
+      schema-validator:
+        prompt_inputs:
+          command_hint: "Validate the JSON payload against the schema."
+          verdict_terms: { pass: "VALID", fail: "INVALID" }
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/schema-validator"
+          fixtures:
+            - { id: "valid",   dir: "voltron-evals/lib/fixtures/instances/schema-validator/valid",   expected_verdict: "pass" }
+            - { id: "invalid", dir: "voltron-evals/lib/fixtures/instances/schema-validator/invalid", expected_verdict: "fail" }
+
+      url-route-matcher:
+        prompt_inputs:
+          command_hint: "Check that every frontend fetch URL has a matching backend route."
+          verdict_terms: { pass: "ALL_MATCHED", fail: "MISMATCH" }
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/url-route-matcher"
+          fixtures:
+            - { id: "matched",  dir: "voltron-evals/lib/fixtures/instances/url-route-matcher/matched",  expected_verdict: "pass" }
+            - { id: "mismatch", dir: "voltron-evals/lib/fixtures/instances/url-route-matcher/mismatch", expected_verdict: "fail" }
+
+      accessibility-auditor:
+        prompt_inputs:
+          command_hint: "Run an a11y audit (axe-cli or pa11y) against the served page."
+          verdict_terms: { pass: "A11Y_PASS", fail: "A11Y_FAIL" }
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/accessibility-auditor"
+          fixtures:
+            - { id: "compliant", dir: "voltron-evals/lib/fixtures/instances/accessibility-auditor/compliant", expected_verdict: "pass" }
+            - { id: "violations", dir: "voltron-evals/lib/fixtures/instances/accessibility-auditor/violations", expected_verdict: "fail" }
+
+      lighthouse-runner:
+        prompt_inputs:
+          command_hint: "Run a Lighthouse audit against the served page."
+          verdict_terms: { pass: "LH_PASS", fail: "LH_FAIL" }
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/lighthouse-runner"
+          fixtures:
+            - { id: "fast", dir: "voltron-evals/lib/fixtures/instances/lighthouse-runner/fast", expected_verdict: "pass" }
+            - { id: "slow", dir: "voltron-evals/lib/fixtures/instances/lighthouse-runner/slow", expected_verdict: "fail" }
+
+      security-scanner:
+        prompt_inputs:
+          command_hint: "npm audit --audit-level=high"
+          verdict_terms: { pass: "NO_HIGH_VULN", fail: "VULNERABLE" }
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/security-scanner"
+          fixtures:
+            - { id: "clean",  dir: "voltron-evals/lib/fixtures/instances/security-scanner/clean",  expected_verdict: "pass" }
+            - { id: "vulnerable", dir: "voltron-evals/lib/fixtures/instances/security-scanner/vulnerable", expected_verdict: "fail" }
+
+      coverage-runner:
+        prompt_inputs:
+          command_hint: "npx vitest run --coverage"
+          verdict_terms: { pass: "MEETS_THRESHOLD", fail: "BELOW_THRESHOLD" }
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/coverage-runner"
+          fixtures:
+            - { id: "covered",   dir: "voltron-evals/lib/fixtures/instances/coverage-runner/covered",   expected_verdict: "pass" }
+            - { id: "uncovered", dir: "voltron-evals/lib/fixtures/instances/coverage-runner/uncovered", expected_verdict: "fail" }
+
+      dep-reader:
+        prompt_inputs:
+          command_hint: "Read package.json / requirements.txt and report the dependency set."
+          verdict_terms: { pass: "FOUND", fail: "NOT_FOUND" }
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/dep-reader"
+          fixtures:
+            - { id: "has-deps",    dir: "voltron-evals/lib/fixtures/instances/dep-reader/has-deps",    expected_verdict: "pass" }
+            - { id: "no-manifest", dir: "voltron-evals/lib/fixtures/instances/dep-reader/no-manifest", expected_verdict: "fail" }
+
+      route-lister:
+        prompt_inputs:
+          command_hint: "List every registered HTTP route in the codebase."
+          verdict_terms: { pass: "ROUTES_LISTED", fail: "NO_ROUTES" }
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/route-lister"
+          fixtures:
+            - { id: "has-routes", dir: "voltron-evals/lib/fixtures/instances/route-lister/has-routes", expected_verdict: "pass" }
+            - { id: "no-routes",  dir: "voltron-evals/lib/fixtures/instances/route-lister/no-routes",  expected_verdict: "fail" }
+
+      schema-inspector:
+        prompt_inputs:
+          command_hint: "Inspect Prisma schema / SQL migrations and report the schema model."
+          verdict_terms: { pass: "SCHEMA_READ", fail: "SCHEMA_MISSING" }
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/schema-inspector"
+          fixtures:
+            - { id: "present", dir: "voltron-evals/lib/fixtures/instances/schema-inspector/present", expected_verdict: "pass" }
+            - { id: "missing", dir: "voltron-evals/lib/fixtures/instances/schema-inspector/missing", expected_verdict: "fail" }
+
+      log-tailer:
+        prompt_inputs:
+          command_hint: "Tail recent log output and report the last N lines + any error counts."
+          verdict_terms: { pass: "LOGS_READ", fail: "NO_LOGS" }
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/log-tailer"
+          fixtures:
+            - { id: "with-logs", dir: "voltron-evals/lib/fixtures/instances/log-tailer/with-logs", expected_verdict: "pass" }
+            - { id: "empty",     dir: "voltron-evals/lib/fixtures/instances/log-tailer/empty",     expected_verdict: "fail" }
+
+      test-lister:
+        prompt_inputs:
+          command_hint: "Enumerate every test file and its top-level `describe`/`it` block."
+          verdict_terms: { pass: "TESTS_FOUND", fail: "NO_TESTS" }
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/test-lister"
+          fixtures:
+            - { id: "has-tests", dir: "voltron-evals/lib/fixtures/instances/test-lister/has-tests", expected_verdict: "pass" }
+            - { id: "no-tests",  dir: "voltron-evals/lib/fixtures/instances/test-lister/no-tests",  expected_verdict: "fail" }
+
+      lint-reader:
+        prompt_inputs:
+          command_hint: "Run the linter in check-only mode and report the issue set."
+          verdict_terms: { pass: "CLEAN", fail: "ISSUES" }
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/lint-reader"
+          fixtures:
+            - { id: "clean",  dir: "voltron-evals/lib/fixtures/instances/lint-reader/clean",  expected_verdict: "pass" }
+            - { id: "issues", dir: "voltron-evals/lib/fixtures/instances/lint-reader/issues", expected_verdict: "fail" }
+
+      type-error-reader:
+        prompt_inputs:
+          command_hint: "npx tsc --noEmit and summarize errors."
+          verdict_terms: { pass: "NO_TYPE_ERRORS", fail: "TYPE_ERRORS" }
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/type-error-reader"
+          fixtures:
+            - { id: "clean",  dir: "voltron-evals/lib/fixtures/instances/type-error-reader/clean",  expected_verdict: "pass" }
+            - { id: "errors", dir: "voltron-evals/lib/fixtures/instances/type-error-reader/errors", expected_verdict: "fail" }
+
+      git-state-reader:
+        prompt_inputs:
+          command_hint: "Read git log + status + diff and produce a concise state summary."
+          verdict_terms: { pass: "REPO_READ", fail: "NOT_A_REPO" }
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/git-state-reader"
+          fixtures:
+            - { id: "repo",     dir: "voltron-evals/lib/fixtures/instances/git-state-reader/repo",     expected_verdict: "pass" }
+            - { id: "non-repo", dir: "voltron-evals/lib/fixtures/instances/git-state-reader/non-repo", expected_verdict: "fail" }
+
+      api-shape-probe:
+        prompt_inputs:
+          command_hint: "Fetch the live endpoint and report its response shape."
+          verdict_terms: { pass: "SHAPE_DOCUMENTED", fail: "UNREACHABLE" }
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/api-shape-probe"
+          fixtures:
+            - { id: "reachable",   dir: "voltron-evals/lib/fixtures/instances/api-shape-probe/reachable",   expected_verdict: "pass" }
+            - { id: "unreachable", dir: "voltron-evals/lib/fixtures/instances/api-shape-probe/unreachable", expected_verdict: "fail" }
+
+      bundle-sizer:
+        prompt_inputs:
+          command_hint: "Analyze build output and report bundle sizes per chunk."
+          verdict_terms: { pass: "WITHIN_BUDGET", fail: "OVER_BUDGET" }
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/bundle-sizer"
+          fixtures:
+            - { id: "small", dir: "voltron-evals/lib/fixtures/instances/bundle-sizer/small", expected_verdict: "pass" }
+            - { id: "large", dir: "voltron-evals/lib/fixtures/instances/bundle-sizer/large", expected_verdict: "fail" }
+
+      dead-code-finder:
+        prompt_inputs:
+          command_hint: "Find unused exports, unimported files, and unreachable code."
+          verdict_terms: { pass: "NO_DEAD_CODE", fail: "DEAD_CODE" }
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/dead-code-finder"
+          fixtures:
+            - { id: "clean", dir: "voltron-evals/lib/fixtures/instances/dead-code-finder/clean", expected_verdict: "pass" }
+            - { id: "dead",  dir: "voltron-evals/lib/fixtures/instances/dead-code-finder/dead",  expected_verdict: "fail" }
+
+      stringer-baseline-builder:
+        prompt_inputs:
+          command_hint: "stringer scan and save the baseline."
+          verdict_terms: { pass: "BASELINE_WRITTEN", fail: "SCAN_FAILED" }
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/stringer-baseline-builder"
+          fixtures:
+            - { id: "scanable", dir: "voltron-evals/lib/fixtures/instances/stringer-baseline-builder/scanable", expected_verdict: "pass" }
+            - { id: "broken",   dir: "voltron-evals/lib/fixtures/instances/stringer-baseline-builder/broken",   expected_verdict: "fail" }
+
+      stringer-delta-reader:
+        prompt_inputs:
+          command_hint: "Read stringer baseline and report what changed since."
+          verdict_terms: { pass: "DELTA_READ", fail: "BASELINE_MISSING" }
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/stringer-delta-reader"
+          fixtures:
+            - { id: "with-baseline", dir: "voltron-evals/lib/fixtures/instances/stringer-delta-reader/with-baseline", expected_verdict: "pass" }
+            - { id: "missing",       dir: "voltron-evals/lib/fixtures/instances/stringer-delta-reader/missing",       expected_verdict: "fail" }
+
+  # ── Publish-family ──────────────────────────────────────────────────────
+  micro_committer:
+    extends: "voltron-evals/shapes/micro_committer.yaml"
+    agents:
+
+      committer:
+        canonical_action: "commit"
+        prompt_inputs:
+          commit_message_hint: "feat(util): add slugify utility"
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/committer"
+          fixture_remote_url: "/tmp/voltron-evals-fake-remote.git"
+
+      pr-opener:
+        canonical_action: "pr_opened"
+        prompt_inputs:
+          pr_title: "feat(util): add slugify utility"
+          pr_body_hint: "Adds a pure slugify util + tests."
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/pr-opener"
+          fixture_remote_url: "/tmp/voltron-evals-fake-remote.git"
+
+      branch-manager:
+        canonical_action: "branch_created"
+        prompt_inputs:
+          branch_name: "feat/slugify"
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/branch-manager"
+
+      deploy-trigger:
+        canonical_action: "deployed"
+        prompt_inputs:
+          target_env: "staging"
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/deploy-trigger"
+          fixture_remote_url: "/tmp/voltron-evals-fake-remote.git"
+
+      changelog-updater:
+        canonical_action: "changelog_appended"
+        prompt_inputs:
+          entry_summary: "Add slugify utility."
+          section: "Added"
+        fixture:
+          dir: "voltron-evals/lib/fixtures/instances/changelog-updater"
+          changelog_path: "CHANGELOG.md"
+
+  # ── Single-file edit micro-agents ───────────────────────────────────────
+  micro_single_file_edit:
+    extends: "voltron-evals/shapes/micro_single_file_edit.yaml"
+    agents:
+
+      route-adder:
+        prompt_inputs:
+          target_file: "server/src/index.ts"
+          verb_spec: "Add a `GET /metrics` route returning JSON with the current request count."
+          anchor: "// VOLTRON_EVAL_ANCHOR: register routes here"
+        fixture: { dir: "voltron-evals/lib/fixtures/instances/route-adder", seed_files: ["server/src/index.ts"] }
+        expected_files: ["server/src/index.ts"]
+
+      component-scaffolder:
+        prompt_inputs:
+          target_file: "client/src/components/UserBadge.tsx"
+          verb_spec: "Scaffold a `UserBadge` React component with `name: string` and `avatarUrl?: string` props."
+          signature: "function UserBadge(props: { name: string; avatarUrl?: string }): JSX.Element"
+        fixture: { dir: "voltron-evals/lib/fixtures/instances/component-scaffolder", seed_files: ["client/src/components/.gitkeep"] }
+        expected_files: ["client/src/components/UserBadge.tsx"]
+
+      migration-writer:
+        prompt_inputs:
+          target_file: "server/migrations/2026-05-23-add-users.sql"
+          verb_spec: "Write a forward+reverse SQL migration adding a `users` table (id, email, created_at)."
+        fixture: { dir: "voltron-evals/lib/fixtures/instances/migration-writer", seed_files: ["server/migrations/.gitkeep"] }
+        expected_files: ["server/migrations/2026-05-23-add-users.sql"]
+
+      config-editor:
+        prompt_inputs:
+          target_file: "tsconfig.json"
+          verb_spec: "Set `compilerOptions.strict = true` without touching any other field."
+          anchor: "\"compilerOptions\": {"
+        fixture: { dir: "voltron-evals/lib/fixtures/instances/config-editor", seed_files: ["tsconfig.json"] }
+        expected_files: ["tsconfig.json"]
+
+      fixture-writer:
+        prompt_inputs:
+          target_file: "tests/fixtures/users.json"
+          verb_spec: "Write a fixture file containing three sample User records with stable IDs."
+        fixture: { dir: "voltron-evals/lib/fixtures/instances/fixture-writer", seed_files: ["tests/fixtures/.gitkeep"] }
+        expected_files: ["tests/fixtures/users.json"]
+
+      type-definer:
+        prompt_inputs:
+          target_file: "client/src/types/User.ts"
+          verb_spec: "Add a TypeScript `User` interface with id (number), email (string), and createdAt (Date)."
+          signature: "export interface User { id: number; email: string; createdAt: Date }"
+        fixture: { dir: "voltron-evals/lib/fixtures/instances/type-definer", seed_files: ["client/src/types/.gitkeep"] }
+        expected_files: ["client/src/types/User.ts"]
+
+      env-var-setter:
+        prompt_inputs:
+          target_file: ".env.example"
+          verb_spec: "Add a new variable `STRIPE_WEBHOOK_SECRET=` (placeholder value)."
+          anchor: "# Add new env vars below this line"
+        fixture: { dir: "voltron-evals/lib/fixtures/instances/env-var-setter", seed_files: [".env.example"] }
+        expected_files: [".env.example"]
+
+      dockerfile-editor:
+        prompt_inputs:
+          target_file: "Dockerfile"
+          verb_spec: "Add a `RUN apt-get install -y curl` layer immediately after the base image."
+          anchor: "FROM "
+        fixture: { dir: "voltron-evals/lib/fixtures/instances/dockerfile-editor", seed_files: ["Dockerfile"] }
+        expected_files: ["Dockerfile"]
+
+      yaml-patcher:
+        prompt_inputs:
+          target_file: ".github/workflows/ci.yml"
+          verb_spec: "Bump `node-version` from `18` to `20` in the matrix block."
+        fixture: { dir: "voltron-evals/lib/fixtures/instances/yaml-patcher", seed_files: [".github/workflows/ci.yml"] }
+        expected_files: [".github/workflows/ci.yml"]
+
+      readme-section-writer:
+        prompt_inputs:
+          target_file: "README.md"
+          verb_spec: "Add a new `## Troubleshooting` section with three FAQ entries; preserve the rest of the file verbatim."
+          anchor: "## Contributing"
+        fixture: { dir: "voltron-evals/lib/fixtures/instances/readme-section-writer", seed_files: ["README.md"] }
+        expected_files: ["README.md"]
+
+      function-writer:
+        prompt_inputs:
+          target_file: "src/utils/slugify.ts"
+          verb_spec: "Add and export a pure function `slugify(input: string): string` that strips non-alphanumerics, lowercases, and hyphenates."
+          signature: "export function slugify(input: string): string"
+        fixture: { dir: "voltron-evals/lib/fixtures/instances/function-writer", seed_files: ["src/utils/.gitkeep"] }
+        expected_files: ["src/utils/slugify.ts"]
+
+      middleware-writer:
+        prompt_inputs:
+          target_file: "server/src/middleware/rate-limit.ts"
+          verb_spec: "Add an Express middleware that rate-limits to 60 req/min per IP."
+          signature: "export function rateLimit(opts?: { maxPerMin?: number }): RequestHandler"
+        fixture: { dir: "voltron-evals/lib/fixtures/instances/middleware-writer", seed_files: ["server/src/middleware/.gitkeep"] }
+        expected_files: ["server/src/middleware/rate-limit.ts"]
+
+      store-slice-writer:
+        prompt_inputs:
+          target_file: "client/src/store/userSlice.ts"
+          verb_spec: "Add a Zustand store slice tracking the current user with `setUser`/`clearUser` actions."
+        fixture: { dir: "voltron-evals/lib/fixtures/instances/store-slice-writer", seed_files: ["client/src/store/.gitkeep"] }
+        expected_files: ["client/src/store/userSlice.ts"]
+
+      css-writer:
+        prompt_inputs:
+          target_file: "client/src/components/UserBadge.module.css"
+          verb_spec: "Add base styles for `.userBadge` (flex, gap 8px, padding 4px 8px) and an `.avatar` rule."
+        fixture: { dir: "voltron-evals/lib/fixtures/instances/css-writer", seed_files: ["client/src/components/.gitkeep"] }
+        expected_files: ["client/src/components/UserBadge.module.css"]
+
+      design-token-writer:
+        prompt_inputs:
+          target_file: "client/src/styles/tokens.css"
+          verb_spec: "Add `--color-accent-500: #4f46e5;` and `--space-3: 0.75rem;` to the `:root` block."
+          anchor: ":root {"
+        fixture: { dir: "voltron-evals/lib/fixtures/instances/design-token-writer", seed_files: ["client/src/styles/tokens.css"] }
+        expected_files: ["client/src/styles/tokens.css"]
+
+      csharp-script-writer:
+        prompt_inputs:
+          target_file: "Assets/Scripts/Health.cs"
+          verb_spec: "Create a MonoBehaviour `Health` with public int currentHealth + a Damage(int) method."
+          signature: "public class Health : MonoBehaviour"
+        fixture: { dir: "voltron-evals/lib/fixtures/instances/csharp-script-writer", seed_files: ["Assets/Scripts/.gitkeep"] }
+        expected_files: ["Assets/Scripts/Health.cs"]
+
+      csharp-member-adder:
+        prompt_inputs:
+          target_file: "Assets/Scripts/Health.cs"
+          verb_spec: "Add a public `Heal(int amount)` method to the Health class, clamping currentHealth to a configurable max."
+          anchor: "public void Damage("
+        fixture: { dir: "voltron-evals/lib/fixtures/instances/csharp-member-adder", seed_files: ["Assets/Scripts/Health.cs"] }
+        expected_files: ["Assets/Scripts/Health.cs"]
+
+      unity-manifest-editor:
+        prompt_inputs:
+          target_file: "Packages/manifest.json"
+          verb_spec: "Add `com.unity.inputsystem` at version `1.7.0` to the dependencies block."
+        fixture: { dir: "voltron-evals/lib/fixtures/instances/unity-manifest-editor", seed_files: ["Packages/manifest.json"] }
+        expected_files: ["Packages/manifest.json"]
+
+      ci-workflow-writer:
+        prompt_inputs:
+          target_file: ".github/workflows/lint.yml"
+          verb_spec: "Create a CI workflow that runs `npm run lint` on every push to main."
+        fixture: { dir: "voltron-evals/lib/fixtures/instances/ci-workflow-writer", seed_files: [".github/workflows/.gitkeep"] }
+        expected_files: [".github/workflows/lint.yml"]
+
+      docker-compose-editor:
+        prompt_inputs:
+          target_file: "docker-compose.yml"
+          verb_spec: "Add a `redis` service using image `redis:7-alpine` exposing port 6379."
+        fixture: { dir: "voltron-evals/lib/fixtures/instances/docker-compose-editor", seed_files: ["docker-compose.yml"] }
+        expected_files: ["docker-compose.yml"]
+
+      test-config-writer:
+        prompt_inputs:
+          target_file: "vitest.config.ts"
+          verb_spec: "Create a Vitest config that enables globals, sets `environment: 'jsdom'`, and includes `src/**/*.test.ts`."
+        fixture: { dir: "voltron-evals/lib/fixtures/instances/test-config-writer", seed_files: ["package.json"] }
+        expected_files: ["vitest.config.ts"]
+
+      mock-writer:
+        prompt_inputs:
+          target_file: "tests/mocks/db.ts"
+          verb_spec: "Write a mock `db` object exposing `findUser(id) => Promise<User|null>` and `insertUser(user) => Promise<User>`."
+        fixture: { dir: "voltron-evals/lib/fixtures/instances/mock-writer", seed_files: ["tests/mocks/.gitkeep"] }
+        expected_files: ["tests/mocks/db.ts"]
+
+      file-patch-runner:
+        prompt_inputs:
+          target_file: "scripts/v999-bump-version.py"
+          verb_spec: "Apply the supplied Python script verbatim to bump package.json from 3.x.y to 3.(x+1).0."
+        fixture: { dir: "voltron-evals/lib/fixtures/instances/file-patch-runner", seed_files: ["package.json"] }
+        expected_files: ["package.json"]
+
+# Agents intentionally NOT mapped:
+excluded:
+  - name: voltron-judge
+    reason: "Anti-self-grading guard (§2.3, §7.3). Reviewed by humans via change control."

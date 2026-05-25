@@ -1,0 +1,82 @@
+# voltron-evals/shapes/micro_validator.yaml
+#
+# Broad-layer SHAPE. Covers validator/runner micro-agents that execute a
+# command and classify the result without editing source: build-validator,
+# typecheck-runner, lint-runner, test-runner, schema-validator, url-route-
+# matcher, accessibility-auditor, lighthouse-runner, security-scanner,
+# coverage-runner. TODO(stage-5): wire instance generator.
+
+id: "micro_validator"
+kind: "broad"
+description: |
+  Given paired fixtures (one intentionally passing, one intentionally failing)
+  and a verdict spec, did the validator-style agent correctly classify each
+  and emit [DONE] with the right verdict words — without mutating any source?
+rubric: "voltron-evals/rubrics/shapes/micro_validator.md"
+rubric_version_expected: "1.0.0"
+
+parameters:
+  agent_under_test:
+    type: "string"
+    required: true
+    description: "Validator template name (e.g. typecheck-runner, lint-runner)."
+  prompt_inputs:
+    type: "object"
+    required: true
+    description: |
+      Required keys: `verdict_terms` (object: `{ pass: "PASS"|"OK"|…,
+      fail: "FAIL"|"ERROR"|… }` — the literal terms the AUT must emit per
+      fixture in its final [STEP] block), `command_hint` (the validator
+      command the AUT is expected to run, e.g. `npx tsc --noEmit`). The
+      runner does NOT prescribe how the AUT runs the command — only what it
+      must REPORT.
+  fixture:
+    type: "object"
+    required: true
+    description: |
+      Required keys: `fixtures` (array of `{ id, dir, expected_verdict }`
+      objects; at minimum one entry with `expected_verdict: "pass"` and one
+      with `expected_verdict: "fail"`). Each `dir` is copied into a separate
+      scratch subdir; the agent is told to validate each in turn.
+  expected_files:
+    type: "array<string>"
+    required: false
+    default: []
+    description: |
+      Validators must not write files. Default empty; any non-empty value here
+      is suspicious and should be reviewed in the instance.
+  forbidden_files:
+    type: "array<string>"
+    required: false
+    default: "ALL paths under any fixture dir"
+    description: |
+      Validators are READ-ONLY. The `source_diff_empty` scorer asserts every
+      fixture dir's git status is clean post-run.
+  max_turns:
+    type: "integer"
+    required: false
+    default: 10
+
+programmatic_signals:
+  capture_turn_count: true
+  capture_files_changed: true
+  detect_micro_agent_dispatch: false
+  capture_beads_snapshot: false
+  require_done_line: true
+  check_doc_updates: false
+  capture_alexandria_calls: false
+  # Shape-specific: verdict-string match per fixture (see §6 scorer table).
+  capture_verdict_per_fixture: true     # TODO(stage-5): wire in scorers lib
+
+applies_to:
+  category: "micro-agent-validate"
+  tier: 3
+  must_not_dispatch: true
+  must_not_write: true
+
+notes: |
+  Scoring is programmatic-only. The two-fixture design (one passing, one
+  failing) catches validators that always report PASS (false negatives on
+  real bugs) and validators that always report FAIL (overzealous noise).
+  No semantic interpretation of the command output is required — only that
+  the agent's emitted verdict matches the fixture's `expected_verdict`.

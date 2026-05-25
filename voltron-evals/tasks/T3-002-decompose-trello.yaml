@@ -1,0 +1,63 @@
+id: "T3-002"
+tier: 3
+category: "orchestration-no-code"
+agent_under_test: "code-analyst"
+max_turns: 30
+project_type: "general"
+
+prompt: |
+  You are given a 3-card Trello backlog and must produce a complete work plan WITHOUT modifying
+  any source files. Coordinate with doc-writer to render the plan as Markdown.
+
+  Backlog:
+    1. Add CSV export to the reports page (web, T2-sized).
+    2. Fix race condition in the websocket reconnect logic (web, T2-sized, has a known reflection).
+    3. Document the new /health endpoint added in T1-001 (docs, T1-sized).
+
+  Deliverables (write only to the run scratch dir, never to project files):
+    - A work plan Markdown table with columns: card, tier, agent_under_test, dependencies,
+      acceptance_criteria_summary.
+    - A list of beads issues to create (with titles, types, and dependency edges).
+    - A dashboard registration step (which `update_progress` calls to emit, in order).
+
+  Do NOT dispatch any code-writing agent. Do NOT edit source files. This task scores planning
+  artifacts only.
+
+acceptance_criteria:
+  - id: "ac_1"
+    text: "A work plan Markdown table with the required five columns is produced."
+    type: "judged"
+  - id: "ac_2"
+    text: "Beads creation list has dependency edges that are acyclic and well-formed."
+    type: "judged"
+  - id: "ac_3"
+    text: "No source files were modified during the run (git diff --stat is empty)."
+    type: "programmatic"
+  - id: "ac_4"
+    text: "Dashboard registration includes at least one update_progress call per card."
+    type: "judged"
+  - id: "ac_5"
+    text: "Run emitted [DONE] within the 30-turn budget."
+    type: "programmatic"
+  - id: "ac_6"
+    text: "Journal entries record session_start and at least one dispatch event."
+    type: "programmatic"
+  - id: "ac_7"
+    text: "Plan correctly assigns tiers (1 to card 3; 2 to cards 1 and 2)."
+    type: "judged"
+
+rubric: "voltron-evals/rubrics/T3-002.md"
+rubric_version_expected: "1.0.0"
+
+programmatic_signals:
+  capture_turn_count: true
+  capture_files_changed: true
+  detect_micro_agent_dispatch: true
+  capture_beads_snapshot: true
+  require_done_line: true
+  check_doc_updates: false
+
+notes: |
+  Tier-3 orchestration test with zero code changes expected. The runner stubs scrum-master by
+  injecting the 3-card backlog as the prompt; the AUT pair (code-analyst + doc-writer) is graded
+  on the produced work plan. Files-changed scorer should report empty diff for a pass.

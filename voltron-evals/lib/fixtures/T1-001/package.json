@@ -1,0 +1,13 @@
+{
+  "name": "voltron-evals-fixture-t1-001",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Fixture for T1-001 benchmark task — route-adder must insert GET /health at the anchor.",
+  "main": "server/src/index.ts",
+  "scripts": {
+    "//": "no scripts; the fixture is read-only for the benchmark"
+  },
+  "dependencies": {
+    "express": "^4.18.0"
+  }
+}

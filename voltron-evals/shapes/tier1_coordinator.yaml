@@ -1,0 +1,93 @@
+# voltron-evals/shapes/tier1_coordinator.yaml
+#
+# Broad-layer SHAPE. Covers Tier-1 coordinators whose job is orchestration
+# artifacts (plans, beads, ADRs, dashboards, docs) WITHOUT source-code edits:
+# scrum-master, code-analyst, doc-writer, researcher, adr-writer,
+# api-doc-generator, diagram-maker. TODO(stage-5): wire instance generator.
+#
+# Note: scrum-master's instance is a stub (Track B postmortem, see design §8);
+# the runner skips dispatch and emits a stub scorecard. All other instances
+# dispatch normally.
+
+id: "tier1_coordinator"
+kind: "broad"
+description: |
+  Given a small backlog / inspection request, did the coordinator produce
+  the required planning or documentation artifacts (work plan table, beads
+  parent/children, ADR file, doc section, dashboard URL surfaced) WITHOUT
+  touching source code?
+rubric: "voltron-evals/rubrics/shapes/tier1_coordinator.md"
+rubric_version_expected: "1.0.0"
+
+parameters:
+  agent_under_test:
+    type: "string"
+    required: true
+    description: "Tier-1 coordinator template name. Includes scrum-master (stub-only instance per Track B)."
+  prompt_inputs:
+    type: "object"
+    required: true
+    description: |
+      Required keys: `request_summary` (1–3 sentences describing the planning
+      ask — e.g. "decompose this 3-card backlog into a sprint plan"),
+      `expected_artifact_kind` (one of: `work_plan_table | beads_graph |
+      adr_file | doc_section | dashboard_entry | research_summary`), and
+      `artifact_anchors` (array of literal substrings the produced artifact
+      MUST contain — e.g. for a work plan table: `["| Task |", "| Owner |"]`).
+  fixture:
+    type: "object"
+    required: true
+    description: |
+      Required keys: `dir` (workspace seed with the inputs the coordinator
+      reads — e.g. a 3-card backlog JSON for scrum-master, an existing
+      module to analyze for code-analyst, a README skeleton for doc-writer),
+      `seed_files`. The fixture's source-code surface MUST be non-empty so
+      the `source_diff_empty` scorer has something meaningful to compare.
+  source_globs:
+    type: "array<string>"
+    required: false
+    default: ["src/**", "server/**", "client/**", "lib/**", "**/*.py", "**/*.ts", "**/*.tsx", "**/*.js", "**/*.cs"]
+    description: |
+      Glob set the `source_diff_empty` scorer treats as "source code".
+      Coordinator-produced artifacts (work plan markdown, ADR files,
+      generated docs) are scoped OUTSIDE these globs — see expected_files.
+  expected_files:
+    type: "array<string>"
+    required: true
+    description: |
+      Paths the run MUST create or modify. Typically a single artifact
+      (e.g. `docs/adr/0001-foo.md`, `WORKPLAN.md`, `docs/api.md`).
+      `expected_files_match` enforces set equality.
+  expected_beads_floor:
+    type: "integer"
+    required: false
+    default: 0
+    description: |
+      For coordinators that should create beads as part of planning
+      (scrum-master stub, project-planner-adjacent). Non-zero values
+      enable the `beads_created >= floor` criterion in the rubric.
+  max_turns:
+    type: "integer"
+    required: false
+    default: 15
+
+programmatic_signals:
+  capture_turn_count: true
+  capture_files_changed: true
+  detect_micro_agent_dispatch: true        # advisory — coordinators MAY dispatch (e.g. doc-writer → readme-section-writer)
+  capture_beads_snapshot: true             # planners typically leave beads breadcrumbs
+  require_done_line: true
+  check_doc_updates: false
+  capture_alexandria_calls: false
+
+applies_to:
+  category: "coordinator-planning"
+  tier: 1
+  must_not_edit_source: true               # the load-bearing constraint
+
+notes: |
+  Scoring is programmatic-only. Coordinators are evaluated on planning
+  artifact QUALITY (artifact_anchors literal presence) and on what they
+  DIDN'T do (no source edits). Correctness weight is zero on this shape —
+  coordinators don't write production code, so a "correctness" score has no
+  meaning. The decomposition dimension dominates.

@@ -81,6 +81,7 @@ Dispatched by sub-managers for single-verb, single-file tasks. Each does one thi
 | Agent | Purpose |
 |---|---|
 | **harness-engineer** | Owns all modifications to Project Voltron itself — agent templates, Dockerfile, MCP server code, docs, and scripts. Invoked by scrum-master for any Voltron change, and by CI to process session reflections into targeted template improvements. |
+| **voltron-judge** | Agent-as-a-Judge for the `voltron-evals` harness. Inspects a single agent run's artifacts (log, git diff, beads snapshot, journal, reflection) against a pinned rubric and emits a per-criterion, evidence-cited scorecard JSON. Inspect-only: no Write/Edit/`run_agent_in_docker` in its tools list. Runs on Sonnet to mitigate self-preference when grading Opus-tier agents. |
 
 ## Installation
 
@@ -194,7 +195,7 @@ A `[VOLTRON] Auto-updated N file(s)` message appears in context when an update o
 
 ## Self-Improvement
 
-Agents submit post-session reflections via `submit_reflection`. The scrum-master now submits reflections automatically at phase completion, after significant blockers, and at session end. Reflections accumulate in the `reflections/` directory and are automatically processed by a GitHub Actions workflow that runs **Mon/Wed/Fri at 10:00 UTC**:
+Agents submit post-session reflections via `submit_reflection`. The scrum-master now submits reflections automatically at phase completion, after significant blockers, and at session end. Reflections accumulate in the `reflections/` directory and are automatically processed by a GitHub Actions workflow that runs **every Monday at 10:00 UTC**:
 
 1. The `harness-engineer` agent reads all unprocessed reflections
 2. Groups feedback by agent and prioritizes by frequency
@@ -203,6 +204,8 @@ Agents submit post-session reflections via `submit_reflection`. The scrum-master
 5. Opens a PR for human review before changes reach `main`
 
 Once merged, projects with the auto-update hook installed will automatically receive the new templates at the start of their next session. Projects without the hook can pull improvements manually via `check_for_updates`. The workflow can also be triggered manually from the Actions tab. Requires `ANTHROPIC_API_KEY` set as a repository secret.
+
+A second workflow — `.github/workflows/voltron-evals.yml` — runs the **voltron-evals** harness on a monthly cadence (1st of each month at 12:00 UTC) plus on manual `workflow_dispatch`. It executes the full Deep + Broad eval sweep against every agent template, with Opus judging Deep tasks and Haiku/programmatic scoring on Broad instances. A content-hash cache keyed on `src/templates.js` and `voltron-evals/lib/template-hash.js` reuses prior scorecards so that only agents whose templates changed since the last sweep pay the LLM cost. Scorecards are uploaded as a CI artifact.
 
 ## Docker Execution
 
@@ -272,6 +275,66 @@ The scrum-master tracks agent task progress using built-in MCP tools. When a wor
 - `generate_dashboard` — produces a standalone HTML file at `.voltron/dashboard.html` (auto-refreshes every 5 seconds)
 
 Progress data is persisted in `.voltron/progress.json`.
+
+## Eval Harness (`voltron-evals/`)
+
+Voltron grades itself. The `voltron-evals/` directory contains a small Node harness that runs benchmark tasks against any dispatchable agent, captures the run artifacts, and dispatches a new internal `voltron-judge` agent to score the run against a pinned, versioned rubric.
+
+**Two-layer design:**
+
+- **Deep** — hand-authored T1/T2/T3 tasks that exercise a specific agent end-to-end against a fixture. Each task has a paired rubric and a `voltron-judge` scorecard with quoted file:line evidence.
+- **Broad** — agent-template-driven coverage. Each agent declares a "shape" (input contract + dispatch expectation + acceptance signal); the runner enumerates one instance per shape × agent and judges with a mix of programmatic signals and a Haiku judge. Currently 70 generated Broad instances.
+
+**Run it locally:**
+
+```bash
+node voltron-evals/runner.js --tier=pr           # PR-tier: all Tier-1 Deep + 10-instance Broad sample (fast)
+node voltron-evals/runner.js --tier=all          # full Deep + Broad sweep
+node voltron-evals/runner.js --tier=deep         # Deep only
+node voltron-evals/runner.js --tier=broad        # Broad only
+node voltron-evals/runner.js --task=T1-001       # one specific task
+node voltron-evals/runner.js --doctor            # validate schemas, rubrics, shapes, instance enumeration (no LLM)
+```
+
+**Full design spec:** [`voltron-evals/DESIGN.md`](voltron-evals/DESIGN.md) — covers the two-layer architecture, shape contract, judge routing (Opus for Deep, Haiku for Broad), content-hash caching keyed on `src/templates.js`, and the rubric-pinning protocol.
+
+**CI cadence:** `.github/workflows/voltron-evals.yml` runs the full sweep on the **1st of each month at 12:00 UTC**, plus on manual `workflow_dispatch`. The content-hash cache means only agents whose templates changed since the last sweep pay the LLM cost; scorecards are uploaded as a CI artifact.
+
+**Layout:**
+
+```
+voltron-evals/
+  DESIGN.md                       — full design spec (architecture, shapes, caching, judge routing)
+  README.md                       — quick-start
+  schemas/task.schema.json        — JSON Schema for task YAMLs
+  shapes/                         — Broad-layer shape definitions (input / dispatch / acceptance)
+  tasks/                          — hand-authored Deep task definitions
+  instances/                      — generated Broad instances (one per agent × shape)
+  rubrics/                        — pinned, versioned rubrics (rubric_version frontmatter)
+  lib/artifacts.js                — capture helpers (git diff, bd list, log tail)
+  lib/programmatic-scorers.js     — deterministic no-LLM signals (turns, [DONE], dispatch grep, …)
+  lib/template-hash.js            — content-hash key for scorecard caching
+  lib/fixtures/                   — per-task fixtures the AUT operates on
+  runner.js                       — orchestrator (loads YAML, dispatches AUT + judge, merges scorecard)
+  results/<task>/<ts>/            — per-run artifact bundles + scorecard.json
+```
+
+**How a run works:**
+
+1. Runner loads the task YAML and validates against `schemas/task.schema.json`.
+2. Runner snapshots pre-state (`git rev-parse HEAD`, `bd list --json`, `reflections/` listing).
+3. Runner dispatches the AUT via `run_agent_in_docker` with the task prompt and `max_turns` budget.
+4. Runner snapshots post-state, tails the AUT's log, captures any new reflection.
+5. Programmatic scorers run first — turn count, `[DONE]` presence, budget utilization, files changed, sub-dispatch grep, beads diff. These are injected into the judge prompt as raw measurements the judge cannot disagree with.
+6. Runner dispatches `voltron-judge` (model: Sonnet by default) with the rubric and artifact paths. The judge emits a fenced ```json``` scorecard block with per-criterion verdicts (`MET` / `UNMET` / `PARTIAL` / `CANNOT_ASSESS`) and quoted file:line evidence.
+7. Runner parses the fenced JSON, merges with programmatic signals, and writes `voltron-evals/results/<task>/<ts>/scorecard.json`.
+8. Scorecard is mirrored into `reflections/<ts>-eval-<task>.json` wrapped in the standard reflection envelope — so the existing `harness-engineer` self-improvement loop picks up failing criteria as actionable template-edit suggestions.
+
+**Rubric pinning:** each task YAML names a rubric path and a `rubric_version_expected` (semver). The runner refuses to grade if the rubric's `rubric_version` frontmatter does not match — this prevents silent drift between catalog edits and the rubric weights used to score.
+
+**Anti-loop guard:** reflections produced by this harness (`project_name: voltron-eval-harness`) must NOT be used by `harness-engineer` to modify the `voltron-judge` template. That would let the judge tune itself out of detecting failures. Human change-control only on `voltron-judge`.
+
+**Adding a task:** drop a YAML in `tasks/`, write a rubric Markdown with `rubric_version: 1.0.0` frontmatter, optionally add fixtures under `lib/fixtures/<task-id>/`, and run `node voltron-evals/runner.js --task=<id>`.
 
 ## License
 

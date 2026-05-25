@@ -1,0 +1,93 @@
+id: "T3-001"
+kind: "deep"
+tier: 3
+category: "fullstack-multi-file-feature"
+agent_under_test: "fullstack-dev"
+max_turns: 45
+project_type: "web"
+
+prompt: |
+  Build the Stripe webhook signature verification + retryable dispatcher feature
+  across the existing server. The fixture already contains a stub webhook handler
+  and a small library directory; you must extend it across five files.
+
+  Deliverables (five files in total):
+    1. server/src/routes/webhooks.ts — implement Stripe signature verification
+       keyed off STRIPE_WEBHOOK_SECRET. Reject missing/invalid signatures with
+       HTTP 400. Hand the verified payload to the retry helper.
+    2. server/src/lib/retry.ts — a generic `withRetry(fn, opts)` helper with
+       exponential backoff and a max-attempts cap. Pure module, no Express
+       coupling.
+    3. server/src/lib/retry.test.ts — an integration test that exercises the
+       retry helper against a flaky fake (succeeds on the 3rd attempt) AND
+       a permanently-failing fake (exhausts attempts and surfaces the error).
+    4. CHANGELOG.md — add an "Added" entry describing the new feature.
+    5. README.md — update the endpoint table to mention /stripe/webhook with
+       signature verification.
+
+  Decompose this as a sub-manager. Required workflow:
+    - Plan the phases up front and emit a [STEP] line naming each phase
+      (verification, retry helper, tests, docs, commit).
+    - Create one parent beads issue and at least three child issues with
+      dependency edges that match the phase plan (verification blocks retry
+      integration; tests block commit; etc.).
+    - Dispatch micro-agents for the actual writing: function-writer (or
+      middleware-writer) for the verification, function-writer for the retry
+      helper, test-writer for the integration test, readme-section-writer for
+      the README, changelog-updater for CHANGELOG.
+    - The final commit MUST go through the `committer` micro-agent (per the
+      2026-05-20 reflection — fullstack-dev should NOT run `git commit`
+      directly).
+
+acceptance_criteria:
+  - id: "ac_1"
+    text: "All five expected files are present in files_changed: webhooks.ts, retry.ts, retry.test.ts, CHANGELOG.md, README.md."
+    type: "programmatic"
+  - id: "ac_2"
+    text: "server/src/routes/webhooks.ts implements signature verification keyed on STRIPE_WEBHOOK_SECRET and rejects invalid signatures with HTTP 400."
+    type: "judged"
+  - id: "ac_3"
+    text: "server/src/lib/retry.ts exports withRetry with exponential backoff and a max-attempts cap."
+    type: "judged"
+  - id: "ac_4"
+    text: "server/src/lib/retry.test.ts covers both the eventual-success and exhausted-attempts cases."
+    type: "judged"
+  - id: "ac_5"
+    text: "A parent beads issue with at least three children and matching dependency edges was created during the run."
+    type: "programmatic"
+  - id: "ac_6"
+    text: "The final commit was performed by dispatching the `committer` micro-agent (not by fullstack-dev running git commit directly)."
+    type: "judged"
+  - id: "ac_7"
+    text: "fullstack-dev dispatched at least three distinct micro-agents during the run."
+    type: "programmatic"
+  - id: "ac_8"
+    text: "CHANGELOG.md has a new entry describing the feature."
+    type: "judged"
+  - id: "ac_9"
+    text: "README.md endpoint table mentions /stripe/webhook with signature verification."
+    type: "programmatic"
+  - id: "ac_10"
+    text: "Run emitted [DONE] within the 45-turn budget."
+    type: "programmatic"
+
+rubric: "voltron-evals/rubrics/T3-001.md"
+rubric_version_expected: "1.0.0"
+fixtures: "voltron-evals/lib/fixtures/T3-001"
+
+programmatic_signals:
+  capture_turn_count: true
+  capture_files_changed: true
+  detect_micro_agent_dispatch: true
+  capture_beads_snapshot: true
+  require_done_line: true
+  check_doc_updates: false
+  capture_alexandria_calls: false
+
+notes: |
+  Tier-3 multi-file fullstack feature. The grade is jointly anchored on (a) the
+  five-file diff being complete and shaped right, (b) the phase decomposition
+  matching the beads dependency graph the AUT actually creates, and (c) the
+  commit-via-`committer` check from the 2026-05-20 reflection. This is the
+  flagship test of "did the sub-manager actually drive the dispatch graph, or
+  did it shortcut and edit/commit directly?" — see design §3.2 and §4.2.

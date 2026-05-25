@@ -1,0 +1,62 @@
+name: Voltron Evals
+
+# Monthly authoritative sweep of the voltron-evals harness (design §7.4, §7.5).
+# Runs the full Deep + Broad pipeline on the 1st of each month at 12:00 UTC,
+# with Opus judging Deep tasks and Haiku/programmatic scoring Broad instances.
+# Content-hash cache (§6.1, §7.6) reuses prior scorecards for unchanged
+# templates, so typical post-baseline sweeps re-run only the agents that
+# actually changed since last pass.
+#
+# Required secret: ANTHROPIC_API_KEY
+
+on:
+  schedule:
+    - cron: '0 12 1 * *'   # 1st of each month at 12:00 UTC
+  workflow_dispatch:        # allow manual trigger from Actions tab
+
+permissions:
+  contents: read
+
+jobs:
+  full-sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install repo dependencies
+        run: npm install
+
+      # Cache the results/ tree across runs. Key includes the template-hash
+      # helper itself plus src/templates.js, so any agent-template change or
+      # hash-logic change invalidates the cache and forces a fresh sweep.
+      # Per §7.6: the cache is the same results/ tree the runner consults
+      # via content-hash — Actions cache simply persists it between CI runs.
+      - name: Restore voltron-evals results cache
+        uses: actions/cache@v4
+        with:
+          path: voltron-evals/results
+          key: voltron-evals-results-${{ hashFiles('src/templates.js', 'voltron-evals/lib/template-hash.js') }}
+          restore-keys: |
+            voltron-evals-results-
+
+      - name: Run full eval sweep
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: node voltron-evals/runner.js --tier=all --cache=on
+
+      - name: Upload eval results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: voltron-evals-results
+          path: voltron-evals/results/
+          if-no-files-found: warn
+          retention-days: 90

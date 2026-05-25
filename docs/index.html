@@ -296,12 +296,13 @@
       <h1>Project Voltron</h1>
       <p>Specialized agent teams for Claude Code, served via MCP. Scaffold Unity, web, or general projects with battle-tested subagent templates — 51 micro-agents, Alexandria-aware, self-improving, and auto-updating.</p>
       <div class="badge-row">
-        <span class="badge">v3.8.5</span>
+        <span class="badge">v3.10.0</span>
         <span class="badge">MCP Server</span>
         <span class="badge">Unity</span>
         <span class="badge">Web / Fullstack</span>
         <span class="badge">Mobile</span>
-        <span class="badge">63 Agents</span>
+        <span class="badge">64 Agents</span>
+        <span class="badge">Eval Harness</span>
         <span class="badge">MIT License</span>
       </div>
     </div>
@@ -833,8 +834,8 @@ node scripts/setup.js</code></pre>
         </div>
         <div class="loop-arrow">↓</div>
         <div class="loop-node">
-          <strong>GitHub Actions runs Mon/Wed/Fri</strong>
-          <span>The <code>harness-engineer</code> agent groups feedback by agent, prioritizes by frequency, applies targeted template edits, and opens a PR</span>
+          <strong>GitHub Actions runs every Monday</strong>
+          <span>The <code>harness-engineer</code> agent groups feedback by agent, prioritizes by frequency, applies targeted template edits, and opens a PR. A separate monthly workflow (<code>voltron-evals.yml</code>) runs the full eval sweep with content-hash caching.</span>
         </div>
         <div class="loop-arrow">↓</div>
         <div class="loop-node">
@@ -847,6 +848,64 @@ node scripts/setup.js</code></pre>
           <span>the <code>UserPromptSubmit</code> hook detects the version mismatch and silently rewrites all installed agent files in place — no manual steps needed</span>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- Eval Harness -->
+  <section>
+    <div class="container">
+      <h2>Eval Harness (v3.10.0)</h2>
+      <p class="section-sub">Voltron grades itself. The <code>voltron-evals/</code> directory is a small Node harness that runs benchmark tasks against any dispatchable agent, captures the run artifacts (log, git diff, beads snapshot, journal, reflection), and dispatches a new internal agent — <code>voltron-judge</code> — to score the run against a pinned, versioned rubric. Scorecards are mirrored into <code>reflections/</code>, so the existing <code>harness-engineer</code> self-improvement loop picks up failing criteria as actionable, evidence-cited suggestions for template edits.</p>
+
+      <p class="section-sub" style="margin-top:16px;"><strong>Two-layer design:</strong> <em>Deep</em> tasks are hand-authored T1/T2/T3 fixtures that exercise one agent end-to-end with a paired Opus-graded rubric. <em>Broad</em> coverage is template-driven: each agent declares a "shape" (input contract + dispatch expectation + acceptance signal); the runner enumerates one instance per shape × agent and judges with programmatic signals plus a Haiku judge. Ships with 70 generated Broad instances. Full design spec: <a href="https://github.com/7ports/project-voltron/blob/main/voltron-evals/DESIGN.md"><code>voltron-evals/DESIGN.md</code></a>.</p>
+
+      <p class="section-sub" style="margin-top:16px;"><strong>Run locally:</strong> <code>node voltron-evals/runner.js --tier=pr</code> (fast PR-tier: all Tier-1 Deep + a 10-instance Broad sample), <code>--tier=all</code> (full sweep), <code>--tier=deep</code> / <code>--tier=broad</code>, or <code>--doctor</code> to validate schemas / rubrics / shape resolution without dispatching agents.</p>
+
+      <p class="section-sub" style="margin-top:16px;"><strong>CI cadence:</strong> <code>.github/workflows/voltron-evals.yml</code> runs the full Deep + Broad sweep on the <strong>1st of each month at 12:00 UTC</strong> plus on manual <code>workflow_dispatch</code>. A content-hash cache keyed on <code>src/templates.js</code> + <code>voltron-evals/lib/template-hash.js</code> reuses prior scorecards so only agents whose templates changed pay the LLM cost; scorecards are uploaded as a CI artifact.</p>
+
+      <div class="flow">
+        <div class="flow-step">
+          <div class="flow-icon">📋</div>
+          <div>
+            <strong>Task catalog</strong>
+            <span>Deep tasks live as one YAML per benchmark in <code>voltron-evals/tasks/</code>; Broad shapes live in <code>voltron-evals/shapes/</code> with generated instances under <code>voltron-evals/instances/</code>. Each pins the agent under test, max-turns budget, prompt, acceptance criteria, and a path to a versioned rubric.</span>
+          </div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-step">
+          <div class="flow-icon">🐳</div>
+          <div>
+            <strong>Runner dispatches the AUT</strong>
+            <span><code>node voltron-evals/runner.js --tier=pr</code> or <code>--task=&lt;id&gt;</code> calls <code>run_agent_in_docker</code> on the agent under test, then captures the run's log file, <code>git diff</code>, <code>bd list --json</code> snapshot, journal entries, and any reflection it produced.</span>
+          </div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-step">
+          <div class="flow-icon">📏</div>
+          <div>
+            <strong>Programmatic scorers run first</strong>
+            <span>Deterministic signals — turn count, <code>[DONE]</code> presence, budget utilization, files changed, sub-agent dispatch grep, beads diff — are computed by Node and injected into the judge prompt so the LLM cannot disagree with raw measurements.</span>
+          </div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-step">
+          <div class="flow-icon">⚖️</div>
+          <div>
+            <strong><code>voltron-judge</code> emits a scorecard</strong>
+            <span>The judge runs on Sonnet (cheaper than Opus and farther from the agents-under-test on the model-family axis, mitigating self-preference). Inspect-only: it has Read/Bash/Glob/Grep but no Write, Edit, or <code>run_agent_in_docker</code>. Output is a single fenced JSON block with per-criterion verdicts (MET / UNMET / PARTIAL / CANNOT_ASSESS) and quoted file:line evidence.</span>
+          </div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-step">
+          <div class="flow-icon">🔁</div>
+          <div>
+            <strong>Mirrored into <code>reflections/</code></strong>
+            <span>Every scorecard is wrapped in the standard reflection envelope and dropped in <code>reflections/&lt;ts&gt;-eval-&lt;task-id&gt;.json</code> with <code>processed: false</code>. The existing <code>harness-engineer</code> pipeline groups by agent, prioritizes by frequency, and opens template-improvement PRs — no pipeline changes needed.</span>
+          </div>
+        </div>
+      </div>
+
+      <p class="section-sub" style="margin-top:24px;">Anti-loop safety: reflections produced by the harness (those tagged <code>project_name: voltron-eval-harness</code>) must <strong>not</strong> be used by <code>harness-engineer</code> to modify the <code>voltron-judge</code> template — that would let the judge tune itself out of detecting failures. Human change-control only on <code>voltron-judge</code>.</p>
     </div>
   </section>
 
@@ -884,7 +943,7 @@ node scripts/setup.js</code></pre>
     <div class="container">
       <p>
         <a href="https://github.com/7ports/project-voltron">GitHub</a> &middot;
-        v3.8.5 &middot;
+        v3.10.0 &middot;
         MIT License &middot;
         Built by <a href="https://github.com/7ports">7ports</a>
       </p>

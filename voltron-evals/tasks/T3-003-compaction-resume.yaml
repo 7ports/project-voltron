@@ -1,0 +1,81 @@
+id: "T3-003"
+kind: "deep"
+tier: 3
+category: "compaction-resume-robustness"
+agent_under_test: "harness-engineer"
+max_turns: 45
+project_type: "general"
+
+prompt: |
+  Your previous session was compacted mid-task. You do NOT have the prior
+  conversation in context; you only have on-disk breadcrumbs in
+  `.voltron/logs/` and the simulated `bd ready` state captured at
+  `.voltron/beads-state.md`. Do NOT ask the user what to do — recover state
+  from those artifacts and complete the next incomplete bead.
+
+  Step-by-step expectations:
+    1. FIRST, read `.voltron/logs/2026-05-20T19-30-17-compaction.md` to see
+       what the previous session was doing and where it left off.
+    2. Read `.voltron/beads-state.md` to see the current beads ready queue
+       and which bead is in-progress. The in-progress bead's notes section
+       describes the remaining work in concrete terms.
+    3. Resume the in-progress bead. The remaining work is a single,
+       well-scoped edit to `src/templates.js` (described in the bead notes).
+       Apply the edit using the existing harness-engineer workflow.
+    4. After applying the edit, close the in-progress bead in the simulated
+       state by appending a "CLOSED:" line to `.voltron/beads-state.md` with
+       the bead id and a one-sentence completion summary.
+    5. Submit a reflection that explicitly mentions the compaction-recovery
+       flow: which file you read first, which bead you resumed, and the fact
+       that you did not need to re-prompt the user.
+
+  Do NOT re-ask the user any clarifying questions. The whole point of this
+  task is the recovery-without-user-input path. If the breadcrumbs are
+  ambiguous, make a reasonable choice and document the choice in your
+  reflection rather than blocking on a human.
+
+acceptance_criteria:
+  - id: "ac_1"
+    text: ".voltron/logs/2026-05-20T19-30-17-compaction.md was read in an early [STEP] line (before any file edits)."
+    type: "programmatic"
+  - id: "ac_2"
+    text: ".voltron/beads-state.md was read before resuming work."
+    type: "programmatic"
+  - id: "ac_3"
+    text: "The agent did NOT emit any 'I need clarification' / 'please confirm' style question to the user."
+    type: "judged"
+  - id: "ac_4"
+    text: "The in-progress bead identified in .voltron/beads-state.md was acted on (the described src/templates.js edit was applied)."
+    type: "judged"
+  - id: "ac_5"
+    text: ".voltron/beads-state.md gained a 'CLOSED:' line referencing the resumed bead id."
+    type: "programmatic"
+  - id: "ac_6"
+    text: "A reflection was submitted and it explicitly mentions compaction / the recovery flow."
+    type: "judged"
+  - id: "ac_7"
+    text: "Any Voltron file changes respect the doc-update rule (docs/index.html + README.md updated alongside src/)."
+    type: "judged"
+  - id: "ac_8"
+    text: "Run emitted [DONE] within the 45-turn budget."
+    type: "programmatic"
+
+rubric: "voltron-evals/rubrics/T3-003.md"
+rubric_version_expected: "1.0.0"
+fixtures: "voltron-evals/lib/fixtures/T3-003"
+
+programmatic_signals:
+  capture_turn_count: true
+  capture_files_changed: true
+  detect_micro_agent_dispatch: false
+  capture_beads_snapshot: true
+  require_done_line: true
+  check_doc_updates: true
+  capture_alexandria_calls: false
+
+notes: |
+  Borrowed from the 2026-05-20 compaction-resume reflection. The fixture seeds a
+  pre-compaction log and a simulated bd state so the run is reproducible without
+  needing an actual SQLite bd database. The dominant rubric signals are: did the
+  agent read the breadcrumbs FIRST, did it avoid re-asking the user, and did it
+  honor the doc-update rule when touching src/. See design §3.2 and §4.2.

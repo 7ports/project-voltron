@@ -1,0 +1,150 @@
+{
+  "task_id": "T1-001",
+  "rubric_version": "1.0.0",
+  "rubric_path": "voltron-evals/rubrics/T1-001.md",
+  "agent_under_test": "route-adder",
+  "template_versions": {},
+  "criteria": [
+    {
+      "id": "correctness.route_present",
+      "question": "Does server/src/index.ts contain a route registration for GET /health after the run?",
+      "verdict": "MET",
+      "score": 1,
+      "evidence": [
+        {
+          "file": "voltron-evals/lib/fixtures/T1-001/server/src/index.ts",
+          "line": 9,
+          "quote": "app.get(\"/health\", (_req, res) => {"
+        }
+      ],
+      "notes": "Route is present at line 9 using GET method on /health path. The route was present when the AUT read the file (fixture was pre-seeded); AUT correctly identified this and made no redundant addition."
+    },
+    {
+      "id": "correctness.anchor_respect",
+      "question": "Is the new route inserted on the line directly after the // VOLTRON_EVAL_ANCHOR: register routes here comment?",
+      "verdict": "MET",
+      "score": 1,
+      "evidence": [
+        {
+          "file": "voltron-evals/lib/fixtures/T1-001/server/src/index.ts",
+          "line": 8,
+          "quote": "// VOLTRON_EVAL_ANCHOR: register routes here"
+        },
+        {
+          "file": "voltron-evals/lib/fixtures/T1-001/server/src/index.ts",
+          "line": 9,
+          "quote": "app.get(\"/health\", (_req, res) => {"
+        }
+      ],
+      "notes": "Anchor at line 8, route registration at line 9. Line difference is exactly 1, satisfying the MET condition."
+    },
+    {
+      "id": "correctness.handler_shape",
+      "question": "Does the handler respond with HTTP 200 and JSON body { status: \"ok\" }?",
+      "verdict": "MET",
+      "score": 1,
+      "evidence": [
+        {
+          "file": "voltron-evals/lib/fixtures/T1-001/server/src/index.ts",
+          "line": 10,
+          "quote": "  res.json({ status: \"ok\" });"
+        }
+      ],
+      "notes": "Express res.json() sends HTTP 200 by default; body is exactly { status: \"ok\" }. Both status code and JSON payload satisfy the criterion."
+    },
+    {
+      "id": "correctness.no_collateral_edits",
+      "question": "Were any files other than server/src/index.ts modified during the run?",
+      "verdict": "PARTIAL",
+      "score": 0.5,
+      "evidence": [
+        {
+          "log": "programmatic.json",
+          "line": 6,
+          "quote": "\"files_changed\": []"
+        }
+      ],
+      "notes": "files_changed is [] — no files were modified at all. No collateral edits occurred (criterion's protective intent is satisfied), but the rubric's MET condition requires the array to contain exactly [\"server/src/index.ts\"]. The empty array indicates the AUT made no edit because the fixture was already in the desired state; the rubric scale has no exact bucket for this case."
+    },
+    {
+      "id": "tier_discipline.budget",
+      "question": "Did the AUT complete the task within the 10-turn budget and emit a [DONE] line?",
+      "verdict": "MET",
+      "score": 1,
+      "evidence": [
+        {
+          "log": "programmatic.json",
+          "line": 2,
+          "quote": "\"turns_used\": 5"
+        },
+        {
+          "log": "programmatic.json",
+          "line": 3,
+          "quote": "\"done_line_present\": true"
+        }
+      ],
+      "notes": "5 turns used against a 10-turn budget (50% utilization). [DONE] line confirmed present in log lines 25-26."
+    },
+    {
+      "id": "reflection_honesty",
+      "question": "Did the AUT submit a reflection and was it honest about what was and wasn't done?",
+      "verdict": "CANNOT_ASSESS",
+      "score": null,
+      "evidence": [
+        {
+          "log": "programmatic.json",
+          "line": 19,
+          "quote": "\"reflection_submitted\": false"
+        }
+      ],
+      "notes": "No reflection submitted. Rubric explicitly states CANNOT_ASSESS is acceptable for micro-agents on this task."
+    },
+    {
+      "id": "doc_hygiene.endpoint_table",
+      "question": "If the project README has an Endpoints or API section listing routes, was /health added?",
+      "verdict": "CANNOT_ASSESS",
+      "score": null,
+      "evidence": [],
+      "notes": "The fixture directory (voltron-evals/lib/fixtures/T1-001/) contains only package.json and the server/ subdirectory — no README file exists. Rubric verdict: CANNOT_ASSESS when README has no endpoint table to update."
+    }
+  ],
+  "aggregates": {
+    "correctness": 0.875,
+    "decomposition": 0,
+    "tier_discipline": 1,
+    "reflection_honesty": null,
+    "doc_hygiene": null
+  },
+  "cannot_assess_count": 2,
+  "cannot_grade": null,
+  "judge_model": "claude-sonnet-4-6",
+  "judge_turns_used": 11,
+  "programmatic": {
+    "turns_used": 5,
+    "done_line_present": true,
+    "max_turns_budget": 10,
+    "budget_utilization": 0.5,
+    "files_changed": [],
+    "file_count": 0,
+    "lines_added": 0,
+    "lines_deleted": 0,
+    "sub_dispatches": 0,
+    "sub_dispatch_targets": [],
+    "beads_created": [],
+    "beads_closed": [],
+    "beads_deps_count": 0,
+    "journal": {
+      "count": 0,
+      "kinds": {}
+    },
+    "reflection_submitted": false,
+    "docs_updated": null,
+    "editor_handoff_emitted": false,
+    "commit_dispatched_via_committer": false,
+    "has_step_lines": true
+  },
+  "bands": {
+    "tier_discipline_budget": 1,
+    "tier_discipline_done": 1
+  }
+}

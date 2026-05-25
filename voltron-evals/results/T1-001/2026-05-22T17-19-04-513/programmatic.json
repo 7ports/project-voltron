@@ -1,0 +1,24 @@
+{
+  "turns_used": 5,
+  "done_line_present": true,
+  "max_turns_budget": 10,
+  "budget_utilization": 0.5,
+  "files_changed": [],
+  "file_count": 0,
+  "lines_added": 0,
+  "lines_deleted": 0,
+  "sub_dispatches": 0,
+  "sub_dispatch_targets": [],
+  "beads_created": [],
+  "beads_closed": [],
+  "beads_deps_count": 0,
+  "journal": {
+    "count": 0,
+    "kinds": {}
+  },
+  "reflection_submitted": false,
+  "docs_updated": null,
+  "editor_handoff_emitted": false,
+  "commit_dispatched_via_committer": false,
+  "has_step_lines": true
+}

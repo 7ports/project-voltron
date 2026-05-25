@@ -1,0 +1,83 @@
+id: "T2-002"
+kind: "deep"
+tier: 2
+category: "unity-webgl-bug-fix"
+agent_under_test: "csharp-dev"
+max_turns: 30
+project_type: "unity"
+
+prompt: |
+  Assets/Scripts/SaveManager.cs in this Unity project throws
+  PlatformNotSupportedException at runtime when the WebGL build runs the Save()
+  path. The current implementation calls System.IO.File.WriteAllText directly,
+  which the WebGL player does not support (no synchronous filesystem; the
+  browser sandbox blocks it).
+
+  Fix the bug by gating the file-write path on
+  `Application.platform != RuntimePlatform.WebGLPlayer` and routing the WebGL
+  branch to PlayerPrefs (or an equivalent in-memory fallback already used
+  elsewhere in the codebase). Do NOT remove the desktop/standalone path — it
+  must keep working for non-WebGL platforms.
+
+  Additional rules for this slice:
+    1. This task runs the FILE-ONLY slice of csharp-dev in Docker. Do NOT
+       attempt to dispatch `build-validator` — the Unity Editor is not present
+       in this environment and the build-validator slice is marked
+       `skip_in_ci: true` (see notes). Instead, write a handoff JSON block at
+       the end of your run naming `build-validator` as the next agent and the
+       exact validation task it should perform.
+    2. The reflection you submit MUST mention the WebGL platform constraint
+       explicitly so a downstream reader understands why the fix is shaped
+       this way.
+    3. Do not introduce any other banned-on-WebGL APIs in the fix
+       (`System.Threading.Thread.Sleep`, `System.Net.Sockets.*`,
+       `System.Diagnostics.Process.Start`, blocking I/O, etc.).
+
+acceptance_criteria:
+  - id: "ac_1"
+    text: "Assets/Scripts/SaveManager.cs references Application.platform and RuntimePlatform.WebGLPlayer in the gating branch."
+    type: "programmatic"
+  - id: "ac_2"
+    text: "The WebGL branch uses PlayerPrefs (or an equivalent in-memory fallback) instead of System.IO.File."
+    type: "judged"
+  - id: "ac_3"
+    text: "The non-WebGL branch still performs the file-write so desktop/standalone builds keep working."
+    type: "judged"
+  - id: "ac_4"
+    text: "No banned-on-WebGL APIs (Thread.Sleep, Process.Start, blocking sockets) appear in the fix."
+    type: "programmatic"
+  - id: "ac_5"
+    text: "csharp-dev did NOT dispatch build-validator during the Docker run (the slice is skipped in CI)."
+    type: "programmatic"
+  - id: "ac_6"
+    text: "A handoff JSON block naming build-validator as the next agent is present in the run output."
+    type: "judged"
+  - id: "ac_7"
+    text: "The submitted reflection mentions the WebGL platform constraint."
+    type: "judged"
+  - id: "ac_8"
+    text: "Run emitted [DONE] within the 30-turn budget."
+    type: "programmatic"
+
+rubric: "voltron-evals/rubrics/T2-002.md"
+rubric_version_expected: "1.0.0"
+fixtures: "voltron-evals/lib/fixtures/T2-002"
+
+programmatic_signals:
+  capture_turn_count: true
+  capture_files_changed: true
+  detect_micro_agent_dispatch: true
+  capture_beads_snapshot: false
+  require_done_line: true
+  check_doc_updates: false
+  capture_alexandria_calls: false
+
+notes: |
+  Borrowed from the 2026-04-04 Unity WebGL reflection. csharp-dev + build-validator
+  are designed as a pair, but in Docker we can only exercise the file-only csharp-dev
+  slice — the build-validator slice (which needs the Unity Editor) is tracked as
+  `skip_in_ci: true` and surfaced via the AUT's handoff JSON block. The judge MUST
+  treat dispatch of build-validator as a NEGATIVE signal here, not a positive one:
+  csharp-dev should know its environment and hand off rather than fail mid-dispatch.
+  Ground truth for "what build-validator would have asserted" is the documented WebGL
+  banned-API list in csharp-dev.md / build-validator.md.

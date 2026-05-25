@@ -1,0 +1,9 @@
+{
+  "name": "voltron-evals-fixture-t2-002",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Fixture for T2-002 — csharp-dev must gate System.IO.File on Application.platform != RuntimePlatform.WebGLPlayer.",
+  "scripts": {
+    "//": "no scripts; the fixture is read-only seed state for the benchmark"
+  }
+}

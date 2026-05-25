@@ -1,0 +1,14 @@
+{
+  "timestamp": "2026-05-25T17:02:52.919Z",
+  "project_name": "project-voltron",
+  "project_type": "unknown",
+  "session_summary": "Triaged 3 open PRs. Detected duplicate reflection-processing in #33/#34 by file-list + diff comparison — both touched the exact same 9 files including the same 3 reflection JSONs and the same regions of src/templates.js. Picked #33 (broader guidance) and closed #34 with a clear comment so the human record stays intact. Then rebased PR #35 onto post-#33 main. Conflict resolution rules kept main's #33 template additions AND our v3.10.0 changes — never downgraded version, never unprocessed reflections. Force-with-lease push, then merged. Final main: 90767e9.",
+  "agents_used": [
+    "scrum-master",
+    "harness-engineer",
+    "committer"
+  ],
+  "agent_feedback": [],
+  "overall_notes": "PR-sweep workflow: gh pr list --json → diff overlap analysis → merge order plan → execute. Did not need micro-agent for the merge itself (gh CLI is the right level). Only the conflict resolution required a sub-agent.",
+  "processed": false
+}

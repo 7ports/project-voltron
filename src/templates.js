@@ -183,7 +183,7 @@ Before completing any task, run these checks:
 |---|---|---|
 | \`/scrum-master\` | \`.claude/commands/scrum-master.md\` | Work breakdown, task assignment, sprint coordination, dispatch to specialists |
 
-**Why a slash command, not a subagent:** the scrum-master must run in your main chat session so it can stream real-time agent output, drive the dashboard via Chrome MCP, and channel communication between you and the specialist agents. Subagent contexts cannot do any of that. Always invoke with \`/scrum-master\`.
+**Why a slash command, not a subagent:** the scrum-master must run in your main chat session so it can stream real-time agent output and channel communication between you and the specialist agents. Subagent contexts cannot do any of that. Always invoke with \`/scrum-master\`.
 
 ### Specialist subagents (defined in \`.claude/agents/\`)
 
@@ -448,7 +448,7 @@ npm run dev:server         # Backend dev server (if applicable)
 |---|---|---|
 | \`/scrum-master\` | \`.claude/commands/scrum-master.md\` | Work breakdown, task assignment, sprint coordination, dispatch to specialists |
 
-**Why a slash command, not a subagent:** the scrum-master must run in your main chat session so it can stream real-time agent output, drive the dashboard via Chrome MCP, and channel communication between you and the specialist agents. Subagent contexts cannot do any of that. Always invoke with \`/scrum-master\`.
+**Why a slash command, not a subagent:** the scrum-master must run in your main chat session so it can stream real-time agent output and channel communication between you and the specialist agents. Subagent contexts cannot do any of that. Always invoke with \`/scrum-master\`.
 
 ### Specialist subagents (defined in \`.claude/agents/\`)
 
@@ -652,7 +652,7 @@ Verify all three by running \`mcp__project-voltron__setup_voltron\` — it hard-
 |---|---|---|
 | \`/scrum-master\` | \`.claude/commands/scrum-master.md\` | Work breakdown, task assignment, sprint coordination, dispatch to specialists |
 
-**Why a slash command, not a subagent:** the scrum-master must run in your main chat session so it can stream real-time agent output, drive the dashboard via Chrome MCP, and channel communication between you and the specialist agents. Subagent contexts cannot do any of that. Always invoke with \`/scrum-master\`.
+**Why a slash command, not a subagent:** the scrum-master must run in your main chat session so it can stream real-time agent output and channel communication between you and the specialist agents. Subagent contexts cannot do any of that. Always invoke with \`/scrum-master\`.
 
 ### Specialist subagents (defined in \`.claude/agents/\`)
 
@@ -747,7 +747,7 @@ If the session included any tool setup, API integration, or platform-specific di
     tags: ["core"],
     model: "opus",
     content: `---
-description: Orchestrator — reads backlogs/plans, decomposes into agent-sized tasks, dispatches specialists via run_agent_in_docker, tracks via beads + dashboard. Runs in the main Claude Code session.
+description: Orchestrator — reads backlogs/plans, decomposes into agent-sized tasks, dispatches specialists via run_agent_in_docker, tracks via beads. Runs in the main Claude Code session.
 argument-hint: [backlog description, "tackle <list> cards", or a project plan path]
 ---
 
@@ -848,10 +848,9 @@ Do not ask the user to re-explain the task. Recover state from the files above a
 You are a **dedicated orchestrator** that runs in the main Claude Code chat session — **never inside Docker**. This is by design:
 
 - Running in the main session lets you show real-time agent output in the chat window
-- You can open and navigate the progress dashboard via Chrome MCP tools
 - You channel all communication between the user and the specialist agents
 - If asked to run yourself inside Docker, refuse: "I must run in the main Claude Code session. Invoke me via \`/scrum-master\` from the chat window."
-- If you find yourself being spawned via the \`Agent\` tool as a subagent: STOP and tell the user "Scrum-master is a slash command, not a subagent. Re-invoke via \`/scrum-master\` from the main chat window so I can orchestrate with full session tools and visibility." The main session has \`run_agent_in_docker\`, Chrome MCP, and dashboard visibility that a subagent context cannot replicate.
+- If you find yourself being spawned via the \`Agent\` tool as a subagent: STOP and tell the user "Scrum-master is a slash command, not a subagent. Re-invoke via \`/scrum-master\` from the main chat window so I can orchestrate with full session tools and visibility." The main session has \`run_agent_in_docker\` and tool visibility that a subagent context cannot replicate.
 
 Specialist agents run inside Docker containers. You stay outside and orchestrate them.
 
@@ -1195,17 +1194,7 @@ Windows users need git bash or WSL for that script — alternatively, grab a bin
 
 ## Progress Tracking
 
-After producing the work plan table and bead graph, register every task: call \`update_progress(task_id, agent, "queued", description, phase)\` for each, then \`generate_dashboard\`. Both systems run in parallel — **beads** is authoritative for what runs next, **Voltron progress** drives the visual dashboard.
-
-### Opening the Dashboard in Chrome
-
-Every \`update_progress\`/\`generate_dashboard\` response includes a \`Dashboard:\` line with a \`file://\` URL.
-
-**First time:** \`tabs_context_mcp(createIfEmpty:true)\` → \`tabs_create_mcp()\` (save \`tabId\`) → \`navigate(url, tabId)\`.
-**Subsequent updates:** \`navigate(url, savedTabId)\` — reuse the same tab, don't create a new one each time.
-**Fallback** (Chrome MCP unavailable or navigate blocked): print the URL and remind the user at each phase transition.
-
-Refresh the dashboard after: initial registration, every phase boundary, every agent completion/failure.
+After producing the work plan table and bead graph, register every task: call \`update_progress(task_id, agent, "queued", description, phase)\` for each. Both systems run in parallel — **beads** is authoritative for what runs next, **Voltron progress** provides a quick textual summary via \`get_progress\`.
 
 ### Execution Loop (bd ready → run → close → repeat)
 
@@ -1215,7 +1204,7 @@ Refresh the dashboard after: initial registration, every phase boundary, every a
 1. \`bd ready --json\` — get IDs of runnable tasks
 2. For each ready task (same message = parallel): \`update_progress(in_progress)\` + \`run_agent_in_docker(agent, task)\`
 3. On completion: **success** → \`bd close bd-XXXX\` + \`update_progress(completed)\`; **failure** → \`bd update --status blocked\` + \`update_progress(failed)\` + \`bd dep tree <id>\` to show cascade impact
-5. Refresh dashboard tab, return to step 1
+4. Return to step 1
 
 Stop when \`bd ready --json\` returns empty. Run \`bd stats\` to surface any blocked tasks.
 
@@ -1361,10 +1350,10 @@ Always end your response with:
 2. A summary of total tasks and phases
 3. The critical path highlighted
 4. Any blockers or questions that need human input before work can start
-5. **Initialize the bead graph** (see Bead Graph Initialization above) and **register all tasks** in the Voltron progress system (\`update_progress\` status \`"queued"\` for each), then **open the dashboard in Chrome**
+5. **Initialize the bead graph** (see Bead Graph Initialization above) and **register all tasks** in the Voltron progress system (\`update_progress\` status \`"queued"\` for each)
 6. At session end, run \`bd stats\` and include the output in the \`session_summary\` field of \`submit_reflection\`
 
-Steps 5 and 6 are not optional — the bead graph enforces dependencies, the dashboard gives the user live visibility, and the stats surface any tasks that didn't complete.
+Steps 5 and 6 are not optional — the bead graph enforces dependencies and the stats surface any tasks that didn't complete.
 
 ## Reflection Protocol
 
@@ -1392,7 +1381,7 @@ Call \`mcp__project-voltron__append_journal\` at these moments during every sess
 | Handoff issued | \`handoff\` | "Handing off to lint-runner: ESLint config needs updating for new rule." |
 | Session ends | \`session_recap\` | "Shipped: /health endpoint + tests. Skipped: load-test (needs infra)." |
 
-Set \`actor\` to \`"scrum-master"\`. Write entries in plain language — assume a non-developer will read the journal. The dashboard's journal panel renders today's entries automatically when \`generate_dashboard\` is called.
+Set \`actor\` to \`"scrum-master"\`. Write entries in plain language — assume a non-developer will read the journal.
 
 ## Progress Reporting
 
@@ -9591,7 +9580,6 @@ export const VOLTRON_GITIGNORE_ENTRIES = [
   "",
   "# Voltron — ephemeral runtime artifacts",
   ".voltron/logs/",
-  ".voltron/dashboard.html",
   ".voltron/progress.json",
   ".voltron/screenshots/staged/",
 ];

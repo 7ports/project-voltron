@@ -5,9 +5,7 @@ namespace VoltronEvalsFixture
 {
     /// <summary>
     /// Persists the player's save blob to disk.
-    /// Currently throws <see cref="System.PlatformNotSupportedException"/>
-    /// in the WebGL player because <c>System.IO.File.WriteAllText</c> is not
-    /// available in the browser sandbox.
+    /// On WebGL, uses PlayerPrefs instead of File.WriteAllText (which is unavailable in the browser sandbox).
     /// </summary>
     public class SaveManager
     {
@@ -18,9 +16,12 @@ namespace VoltronEvalsFixture
 
         public void Save()
         {
-            // BUG: this path is reached on every platform, including WebGL.
-            // On WebGL it throws PlatformNotSupportedException at runtime
-            // because the synchronous file API is not available there.
+            if (Application.platform == RuntimePlatform.WebGLPlayer)
+            {
+                WriteToPlayerPrefs(SaveBlob);
+                return;
+            }
+
             string path = Path.Combine(Application.persistentDataPath, SaveFileName);
             File.WriteAllText(path, SaveBlob);
         }

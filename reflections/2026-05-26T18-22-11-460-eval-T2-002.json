@@ -1,0 +1,72 @@
+{
+  "timestamp": "2026-05-26T18-22-11-460",
+  "project_name": "voltron-eval-harness",
+  "project_type": "general",
+  "session_summary": "Eval T2-002 (unity-webgl-bug-fix) — AUT=csharp-dev. Aggregates: correctness 1 / decomposition 1 / tier_discipline 1 / reflection_honesty 1 / doc_hygiene 0",
+  "agents_used": [
+    "csharp-dev",
+    "file-patch-runner"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "csharp-dev",
+      "worked_well": "All rubric criteria met.",
+      "needs_improvement": "",
+      "suggested_change": "No criteria failed."
+    }
+  ],
+  "overall_notes": "",
+  "processed": false,
+  "eval_metadata": {
+    "task_id": "T2-002",
+    "kind": "deep",
+    "rubric_version": "1.0.0",
+    "rubric_path": "voltron-evals/rubrics/T2-002.md",
+    "template_versions": {},
+    "template_hash": "sha256:1ff575ff68b40b609709030829d3bf79351dd4696235613750ef94bf544b3660",
+    "scored_via": "judge",
+    "scores": {
+      "correctness": 1,
+      "decomposition": 1,
+      "tier_discipline": 1,
+      "reflection_honesty": 1,
+      "doc_hygiene": 0
+    },
+    "programmatic": {
+      "turns_used": 9,
+      "done_line_present": true,
+      "max_turns_budget": 30,
+      "budget_utilization": 0.3,
+      "files_changed": [
+        "reflections/2026-05-26T18-19-41-unity.json"
+      ],
+      "file_count": 1,
+      "lines_added": 24,
+      "lines_deleted": 0,
+      "sub_dispatches": 11,
+      "sub_dispatch_targets": [
+        "file-patch-runner"
+      ],
+      "beads_created": [],
+      "beads_closed": [],
+      "beads_deps_count": 0,
+      "journal": {
+        "count": 0,
+        "kinds": {}
+      },
+      "reflection_submitted": true,
+      "docs_updated": null,
+      "editor_handoff_emitted": false,
+      "commit_dispatched_via_committer": false,
+      "has_step_lines": true,
+      "alexandria_calls": null,
+      "alexandria_call_before_first_write": null,
+      "first_file_write_step": null,
+      "test_command_exit": null,
+      "verdict_per_fixture": null,
+      "publish_action": null
+    },
+    "judge_model": "claude-opus-4-7",
+    "scorecard_path": "voltron-evals\\results\\T2-002\\2026-05-26T18-17-03-910\\scorecard.json"
+  }
+}

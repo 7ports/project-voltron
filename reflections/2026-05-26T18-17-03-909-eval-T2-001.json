@@ -1,0 +1,79 @@
+{
+  "timestamp": "2026-05-26T18-17-03-909",
+  "project_name": "voltron-eval-harness",
+  "project_type": "general",
+  "session_summary": "Eval T2-001 (fullstack-feature) — AUT=fullstack-dev. Aggregates: correctness 0.625 / decomposition 0.5 / tier_discipline 1 / reflection_honesty null / doc_hygiene null",
+  "agents_used": [
+    "fullstack-dev",
+    "function-writer",
+    "test-writer",
+    "typecheck-runner"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "fullstack-dev",
+      "worked_well": "",
+      "needs_improvement": "correctness.generic_signature: Generic TArgs is threaded through callback args and returned function args, but the callback's return type is hardcoded to `void` rather than preserved via a second type parameter — fits PARTIAL ('generic declared but not threaded through return'). | correctness.typecheck_clean: Sub-Manager report admits the typecheck step never ran — TS compiler and tsconfig were absent. Task explicitly required tsc --noEmit to confirm clean typecheck; this requirement was not satisfied. | decomposition.beads_graph: beads-pre and beads-post are byte-identical (diff -q returned no output); no new issues, no dependency edges, no journal entries.",
+      "suggested_change": "Address: correctness.generic_signature (PARTIAL); correctness.typecheck_clean (UNMET); decomposition.beads_graph (UNMET)"
+    }
+  ],
+  "overall_notes": "",
+  "processed": false,
+  "eval_metadata": {
+    "task_id": "T2-001",
+    "kind": "deep",
+    "rubric_version": "1.0.0",
+    "rubric_path": "voltron-evals/rubrics/T2-001.md",
+    "template_versions": {
+      "fullstack-dev": "unknown"
+    },
+    "template_hash": "sha256:f0f7a0675d4f5ee9245aa495d0c33dec0a7af881c352698a289435dbb6b921b1",
+    "scored_via": "judge",
+    "scores": {
+      "correctness": 0.625,
+      "decomposition": 0.5,
+      "tier_discipline": 1,
+      "reflection_honesty": null,
+      "doc_hygiene": null
+    },
+    "programmatic": {
+      "turns_used": 8,
+      "done_line_present": true,
+      "max_turns_budget": 30,
+      "budget_utilization": 0.26666666666666666,
+      "files_changed": [
+        "client/src/hooks/useDebounce.test.ts",
+        "client/src/hooks/useDebounce.ts"
+      ],
+      "file_count": 2,
+      "lines_added": 0,
+      "lines_deleted": 0,
+      "sub_dispatches": 14,
+      "sub_dispatch_targets": [
+        "function-writer",
+        "test-writer",
+        "typecheck-runner"
+      ],
+      "beads_created": [],
+      "beads_closed": [],
+      "beads_deps_count": 2,
+      "journal": {
+        "count": 0,
+        "kinds": {}
+      },
+      "reflection_submitted": false,
+      "docs_updated": null,
+      "editor_handoff_emitted": false,
+      "commit_dispatched_via_committer": false,
+      "has_step_lines": true,
+      "alexandria_calls": null,
+      "alexandria_call_before_first_write": null,
+      "first_file_write_step": null,
+      "test_command_exit": null,
+      "verdict_per_fixture": null,
+      "publish_action": null
+    },
+    "judge_model": "claude-opus-4-7",
+    "scorecard_path": "voltron-evals\\results\\T2-001\\2026-05-26T18-11-28-843\\scorecard.json"
+  }
+}

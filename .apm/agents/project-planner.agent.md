@@ -164,7 +164,7 @@ Structure the document as:
 You create the blueprint. The scrum-master decomposes it into agent-sized tasks.
 
 After saving the plan document, tell the user:
-> Plan saved to [path]. Invoke `@agent-scrum-master` with this plan to generate a work breakdown.
+> Plan saved to [path]. Invoke `/scrum-master` with this plan to generate a work breakdown.
 
 Do **not** attempt task decomposition yourself — that is the scrum-master's responsibility. Your phases and deliverables give the scrum-master the structure it needs to create a detailed work plan.
 

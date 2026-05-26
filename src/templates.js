@@ -1,3 +1,4 @@
+// Voltron agent + project-config templates. Edit the .content field of each entry to change agent behavior.
 // Agent templates — embedded as JS objects for the MCP server.
 // Each template has a `tags` array for project-type filtering:
 //   "core"    — always included regardless of project type

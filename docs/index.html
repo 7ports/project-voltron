@@ -343,7 +343,7 @@
           <div class="flow-icon">✅</div>
           <div>
             <strong>Output returned to scrum-master</strong>
-            <span>Scrum-master reviews the result, updates progress, and proceeds to the next task. Dashboard auto-refreshes every 5 seconds to reflect each transition.</span>
+            <span>Scrum-master reviews the result, updates progress, and proceeds to the next task.</span>
           </div>
         </div>
       </div>
@@ -404,11 +404,11 @@
     </div>
   </section>
 
-  <!-- Progress Dashboard -->
+  <!-- Progress Tracking -->
   <section>
     <div class="container">
-      <h2>Progress Dashboard</h2>
-      <p class="section-sub">Monitor agent work in real time. The scrum-master tracks every task, and a live HTML dashboard auto-refreshes every 5 seconds.</p>
+      <h2>Progress Tracking</h2>
+      <p class="section-sub">Monitor agent work in real time. The scrum-master tracks every task and surfaces status updates in the chat window.</p>
 
       <div class="flow">
         <div class="flow-step">
@@ -416,14 +416,6 @@
           <div>
             <strong>Automatic tracking</strong>
             <span>Scrum-master calls <code>update_progress</code> before and after each agent invocation — status, phase, and notes are recorded to <code>.voltron/progress.json</code></span>
-          </div>
-        </div>
-        <div class="arrow">↓</div>
-        <div class="flow-step">
-          <div class="flow-icon">🌐</div>
-          <div>
-            <strong>Live dashboard</strong>
-            <span>Every progress update regenerates <code>.voltron/dashboard.html</code> — a self-contained page with phase timelines, status badges, and agent cards. Auto-opens in your browser on the first update.</span>
           </div>
         </div>
         <div class="arrow">↓</div>
@@ -447,15 +439,11 @@
           <tbody>
             <tr>
               <td><code>update_progress</code></td>
-              <td>Log a task status change (queued, in_progress, completed, failed, blocked). Auto-regenerates the HTML dashboard.</td>
+              <td>Log a task status change (queued, in_progress, completed, failed, blocked).</td>
             </tr>
             <tr>
               <td><code>get_progress</code></td>
               <td>View a formatted progress summary or detailed task table in the chat window.</td>
-            </tr>
-            <tr>
-              <td><code>generate_dashboard</code></td>
-              <td>Manually regenerate the standalone HTML dashboard at a custom path.</td>
             </tr>
           </tbody>
         </table>
@@ -474,7 +462,7 @@
         <div class="agent-grid">
           <div class="agent-card">
             <h3>Scrum Master <span class="invoke">/scrum-master</span> <span style="font-size: 0.7em; opacity: 0.7;">(slash command)</span></h3>
-            <p>Reads backlogs and project plans, breaks work into agent-sized tasks with dependencies and acceptance criteria. Never implements — only plans and delegates. Runs in the <strong>main Claude Code session</strong> (not as a subagent) so it can stream agent output, drive the dashboard, and channel communication directly in your chat. Uses <a href="https://github.com/gastownhall/beads">beads</a> (<code>bd ready --json</code>) for dependency-aware task orchestration when available.</p>
+            <p>Reads backlogs and project plans, breaks work into agent-sized tasks with dependencies and acceptance criteria. Never implements — only plans and delegates. Runs in the <strong>main Claude Code session</strong> (not as a subagent) so it can stream agent output and channel communication directly in your chat. Uses <a href="https://github.com/gastownhall/beads">beads</a> (<code>bd ready --json</code>) for dependency-aware task orchestration when available.</p>
           </div>
           <div class="agent-card">
             <h3>Project Planner <span class="invoke">@agent-project-planner</span></h3>
@@ -744,11 +732,7 @@ node scripts/setup.js</code></pre>
           </tr>
           <tr>
             <td><code>get_progress</code></td>
-            <td>View current agent task progress as a formatted dashboard in the chat window</td>
-          </tr>
-          <tr>
-            <td><code>generate_dashboard</code></td>
-            <td>Generate a standalone HTML dashboard from progress data at <code>.voltron/dashboard.html</code></td>
+            <td>View current agent task progress in the chat window</td>
           </tr>
         </tbody>
       </table>

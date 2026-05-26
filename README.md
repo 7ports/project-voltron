@@ -8,7 +8,7 @@ An MCP server that provides teams of specialized agent templates for Claude Code
 
 | Command | Purpose |
 |---|---|
-| **`/scrum-master`** | Reads backlogs, breaks work into agent-sized tasks, assigns to specialists. Never implements. Slash command (not subagent) so it can stream agent output, drive the dashboard, and channel communication directly in your chat. |
+| **`/scrum-master`** | Reads backlogs, breaks work into agent-sized tasks, assigns to specialists. Never implements. Slash command (not subagent) so it can stream agent output and channel communication directly in your chat. |
 
 ### Specialist subagents (core — all projects)
 
@@ -161,8 +161,7 @@ See [Project Alexandria](https://github.com/7ports/project-alexandria) for setup
 | `start_agent_in_docker` | Non-blocking agent launch; returns container_name and log_path immediately for polling |
 | `get_agent_output` | Poll a running agent container for live log output; shows last N lines in chat |
 | `update_progress` | Update agent task progress (called by scrum-master before/after each agent invocation) |
-| `get_progress` | View current agent task progress as a formatted dashboard |
-| `generate_dashboard` | Generate a standalone HTML dashboard from progress data |
+| `get_progress` | View current agent task progress in the chat window |
 
 ## Usage
 
@@ -273,13 +272,12 @@ Voltron assigns each agent a default model tier based on its role. Sub-managers 
 
 **Override:** Pass `model: "sonnet"` or `model: "opus"` to `run_agent_in_docker` / `start_agent_in_docker` to retry a micro-agent at a higher tier. Sub-managers are instructed to do this automatically when output is unsatisfactory. The `list_templates` tool shows each agent's default model tier.
 
-## Progress Visualization
+## Progress Tracking
 
-The scrum-master tracks agent task progress using built-in MCP tools. When a work plan is created, the scrum-master immediately registers all tasks as "queued" — this triggers the **live dashboard** to auto-open in the user's browser.
+The scrum-master tracks agent task progress using built-in MCP tools. When a work plan is created, the scrum-master immediately registers all tasks as "queued" and then updates their status as agents are dispatched and finish.
 
-- `update_progress` — logs task status changes (queued, in_progress, completed, failed, blocked); auto-regenerates the dashboard HTML on every call
-- `get_progress` — returns a formatted dashboard in the chat window
-- `generate_dashboard` — produces a standalone HTML file at `.voltron/dashboard.html` (auto-refreshes every 5 seconds)
+- `update_progress` — logs task status changes (queued, in_progress, completed, failed, blocked)
+- `get_progress` — returns a formatted progress summary or detailed task table in the chat window
 
 Progress data is persisted in `.voltron/progress.json`.
 

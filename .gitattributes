@@ -1,0 +1,50 @@
+# Default: detect text vs binary, normalize EOL to LF in index, native in working tree
+* text=auto
+
+# Source files — explicit for clarity and to avoid heuristic surprises
+*.js       text
+*.mjs      text
+*.cjs      text
+*.json     text
+*.md       text
+*.html     text
+*.css      text
+*.yml      text
+*.yaml     text
+*.txt      text
+
+# Shell scripts MUST be LF in the working tree — Docker/Linux refuses CRLF shebangs
+*.sh       text eol=lf
+Dockerfile text eol=lf
+Dockerfile.* text eol=lf
+
+# Windows-only artifacts (none today, but future-proof the rule)
+*.bat      text eol=crlf
+*.cmd      text eol=crlf
+*.ps1      text eol=crlf
+
+# Voltron reflections — JSON files written by Docker agents, must round-trip cleanly
+reflections/*.json text eol=lf
+
+# Lock files — leave to git's defaults but mark explicitly text to suppress heuristics
+package-lock.json text
+
+# Binary safelist (no binaries currently committed, but lock the rule in)
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
+*.woff  binary
+*.woff2 binary
+*.ttf  binary
+*.eot  binary
+*.zip  binary
+*.gz   binary
+*.tar  binary
+*.db   binary
+
+# Never normalize generated diffs / patches
+*.patch -text
+*.diff  -text

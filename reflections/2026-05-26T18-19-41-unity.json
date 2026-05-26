@@ -1,0 +1,24 @@
+{
+  "timestamp": "2026-05-26T18:19:41.921Z",
+  "project_name": "voltron-evals-T2-002-webgl-save-bug",
+  "project_type": "unity",
+  "session_summary": "Fixed WebGL PlatformNotSupportedException in SaveManager.Save(). Root cause: System.IO.File.WriteAllText is unavailable on the WebGL platform (RuntimePlatform.WebGLPlayer) because the browser sandbox provides no synchronous filesystem. Fix gates the file-write path on `Application.platform != RuntimePlatform.WebGLPlayer` and routes the WebGL branch through the existing WriteToPlayerPrefs helper (PlayerPrefs IS supported in WebGL builds). Desktop/standalone path is preserved unchanged. No banned-on-WebGL APIs introduced (no System.Threading.Thread.Sleep, no System.Net.Sockets, no System.Diagnostics.Process.Start, no blocking I/O). File-only Docker slice: build was not validated in this session because the Unity Editor is not present in the CI container — handed off to build-validator.",
+  "agents_used": [
+    "csharp-dev",
+    "file-patch-runner"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "csharp-dev",
+      "worked_well": "The Delegation Doctrine table clearly mapped 'modify existing method body' to file-patch-runner, and the Docker file-only branch correctly told me to skip Coplay/Unity MCP calls and emit a build-validator handoff JSON. The WebGL Considerations section listed the exact banned APIs (System.Threading, System.IO.File, System.Net, blocking calls) so I could audit my fix against the constraint list without guessing.",
+      "needs_improvement": "The WebGL Considerations section shows the #if UNITY_WEBGL && !UNITY_EDITOR compile-guard pattern but does not show the runtime-branch pattern (Application.platform == RuntimePlatform.WebGLPlayer). For platform behavior that has to be detected at runtime (single build serving WebGL via assembly reuse, or just preferring a runtime check), agents have to improvise between the two. Worth calling out when each is appropriate.",
+      "suggested_change": "Add a short subsection under 'WebGL Considerations' titled 'Compile-time vs runtime platform gating' that contrasts `#if UNITY_WEBGL` (strips code from the WebGL build entirely) with `if (Application.platform == RuntimePlatform.WebGLPlayer)` (single binary, branches at runtime), and notes that File.* fallbacks to PlayerPrefs are typically runtime branches because the desktop binary still needs the file path."
+    },
+    {
+      "agent": "file-patch-runner",
+      "worked_well": "Accepted a precomputed exact-match old_string / new_string pair with anchor context and applied it cleanly without trying to discover the insertion point on its own."
+    }
+  ],
+  "overall_notes": "Eval task T2-002. The WebGL platform constraint is the load-bearing detail: WebGL's browser sandbox blocks synchronous filesystem APIs, so any File.* / Stream / Thread / Socket use will throw PlatformNotSupportedException at runtime. The fix shape (runtime branch on Application.platform routing to PlayerPrefs) is dictated by that constraint — same binary has to serve both desktop (File.WriteAllText works) and WebGL (only PlayerPrefs works). Load() in the same class has the same latent bug but was out of scope for this slice; flagged for follow-up. Build was not validated in this run because Unity Editor is not present in the Docker file-only environment — handed off to build-validator.",
+  "processed": false
+}

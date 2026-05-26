@@ -219,7 +219,7 @@ function checkRubricPinned(job) {
   const rubricPath = path.join(REPO_ROOT, job.rubric);
   if (!existsSync(rubricPath)) throw new Error(`Rubric not found: ${job.rubric}`);
   const raw = readFileSync(rubricPath, "utf-8");
-  const fm = /^---\n([\s\S]*?)\n---/.exec(raw);
+  const fm = /^---\r?\n([\s\S]*?)\r?\n---/.exec(raw);
   if (!fm) throw new Error(`Rubric ${job.rubric} missing YAML frontmatter`);
   const v = /rubric_version:\s*(\S+)/.exec(fm[1])?.[1];
   if (v !== job.rubric_version_expected) {
@@ -236,7 +236,7 @@ function loadShapeRubricMeta(job) {
   const rubricPath = path.join(REPO_ROOT, rubricRel);
   if (!existsSync(rubricPath)) return { subjective_judge: null, subjective_criteria: [] };
   const raw = readFileSync(rubricPath, "utf-8");
-  const fm = /^---\n([\s\S]*?)\n---/.exec(raw);
+  const fm = /^---\r?\n([\s\S]*?)\r?\n---/.exec(raw);
   if (!fm) return { subjective_judge: null, subjective_criteria: [] };
   const judgeMatch = /subjective_judge:\s*"?(\w+)"?/.exec(fm[1]);
   const judge = judgeMatch ? judgeMatch[1] : null;

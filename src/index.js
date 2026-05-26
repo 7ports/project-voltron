@@ -6,7 +6,7 @@ import { z } from "zod";
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { execSync, spawn, exec as execCb } from "node:child_process";
 import { promisify } from "node:util";
@@ -1318,12 +1318,8 @@ server.tool(
     progress.updated_at = now;
     await fs.writeFile(progressFile, JSON.stringify(progress, null, 2));
 
-    // Regenerate dashboard HTML
-    const dashPath = await regenerateDashboard();
-    const dashHint = dashboardUrl(dashPath) ? `\nDashboard: ${dashboardUrl(dashPath)}` : "";
-
     return {
-      content: [{ type: "text", text: `Progress updated: task ${task_id} (${agent}) → ${status}${dashHint}` }],
+      content: [{ type: "text", text: `Progress updated: task ${task_id} (${agent}) → ${status}` }],
     };
   }
 );
@@ -1332,7 +1328,7 @@ server.tool(
 
 server.tool(
   "get_progress",
-  "View current agent task progress as a formatted dashboard.",
+  "View current agent task progress as a formatted summary.",
   {
     format: z.enum(["summary", "detailed"]).optional().describe("Output format (default: summary)"),
   },
@@ -1354,7 +1350,7 @@ server.tool(
 
     const phases = [...new Set(tasks.map((t) => t.phase).filter(Boolean))];
 
-    let output = `# Voltron Progress Dashboard\n\n`;
+    let output = `# Voltron Progress\n\n`;
     output += `**Last updated:** ${progress.updated_at || "never"}\n\n`;
     output += `## Summary\n\n`;
     output += `| Status | Count |\n|--------|-------|\n`;
@@ -1404,142 +1400,6 @@ server.tool(
     }
 
     return { content: [{ type: "text", text: output }] };
-  }
-);
-
-// ─── Dashboard HTML generator (shared by update_progress and generate_dashboard)
-
-function buildDashboardHtml(progress, journalContent = null) {
-  const journalDate = new Date().toISOString().slice(0, 10);
-  const journalHtml = journalContent
-    ? `<h2 class="section-title">Session Journal — ${journalDate}</h2><div class="journal">${
-        journalContent
-          .split("\n")
-          .filter(Boolean)
-          .map(l => `<div class="journal-line">${l.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>").replace(/`(.+?)`/g,"<code>$1</code>")}</div>`)
-          .join("")
-      }</div>`
-    : "";
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta http-equiv="refresh" content="5">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Voltron Progress Dashboard</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f1117; color: #e1e4e8; padding: 2rem; }
-  h1 { color: #58a6ff; margin-bottom: 0.5rem; }
-  .updated { color: #8b949e; font-size: 0.85rem; margin-bottom: 2rem; }
-  .stats { display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
-  .stat { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1rem 1.5rem; min-width: 120px; }
-  .stat-value { font-size: 2rem; font-weight: 700; }
-  .stat-label { color: #8b949e; font-size: 0.85rem; }
-  .stat.in_progress .stat-value { color: #d29922; }
-  .stat.completed .stat-value { color: #3fb950; }
-  .stat.failed .stat-value { color: #f85149; }
-  .stat.blocked .stat-value { color: #f85149; }
-  .stat.queued .stat-value { color: #8b949e; }
-  table { width: 100%; border-collapse: collapse; margin-bottom: 2rem; }
-  th { text-align: left; padding: 0.75rem; border-bottom: 2px solid #30363d; color: #8b949e; font-size: 0.85rem; text-transform: uppercase; }
-  td { padding: 0.75rem; border-bottom: 1px solid #21262d; }
-  .badge { padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
-  .badge.queued { background: #30363d; color: #8b949e; }
-  .badge.in_progress { background: #3d2e00; color: #d29922; }
-  .badge.completed { background: #0d2818; color: #3fb950; }
-  .badge.failed { background: #3d1114; color: #f85149; }
-  .badge.blocked { background: #3d1114; color: #f85149; }
-  .phase-header { color: #58a6ff; font-size: 1.1rem; margin: 1.5rem 0 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid #30363d; }
-  .section-title { color: #58a6ff; font-size: 1.1rem; margin: 1.5rem 0 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid #30363d; }
-  .journal { background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 1rem; margin-bottom: 2rem; font-size: 0.85rem; line-height: 1.6; max-height: 300px; overflow-y: auto; }
-  .journal-line { padding: 0.15rem 0; border-bottom: 1px solid #21262d; }
-  .journal-line:last-child { border-bottom: none; }
-  .journal code { background: #161b22; padding: 0.1rem 0.3rem; border-radius: 4px; font-size: 0.8rem; }
-</style>
-</head>
-<body>
-<h1>Voltron Progress Dashboard</h1>
-<div class="updated">Last updated: ${progress.updated_at || "never"} (auto-refreshes every 5s)</div>
-${journalHtml}
-<div class="stats" id="stats"></div>
-<div id="phases"></div>
-<script>
-const data = ${JSON.stringify(progress)};
-const tasks = data.tasks || [];
-const counts = { queued: 0, in_progress: 0, completed: 0, failed: 0, blocked: 0 };
-tasks.forEach(t => counts[t.status] = (counts[t.status] || 0) + 1);
-const statsEl = document.getElementById('stats');
-for (const [s, c] of Object.entries(counts)) {
-  if (c > 0) statsEl.innerHTML += '<div class="stat ' + s + '"><div class="stat-value">' + c + '</div><div class="stat-label">' + s.replace('_', ' ') + '</div></div>';
-}
-const phases = [...new Set(tasks.map(t => t.phase).filter(Boolean))];
-const phasesEl = document.getElementById('phases');
-phases.forEach(phase => {
-  const pTasks = tasks.filter(t => t.phase === phase);
-  let html = '<div class="phase-header">' + phase + '</div><table><tr><th>#</th><th>Task</th><th>Agent</th><th>Status</th></tr>';
-  pTasks.forEach(t => { html += '<tr><td>' + t.task_id + '</td><td>' + t.description + '</td><td>' + t.agent + '</td><td><span class="badge ' + t.status + '">' + t.status.replace('_', ' ') + '</span></td></tr>'; });
-  html += '</table>';
-  phasesEl.innerHTML += html;
-});
-</script>
-</body>
-</html>`;
-}
-
-// Regenerate the HTML dashboard. Returns the file path on success, null if no
-// progress data exists. Browser opening is handled by the scrum-master agent
-// via Chrome MCP tools — this function only writes the file.
-async function regenerateDashboard() {
-  const projectRoot = detectProjectRoot(undefined).root;
-  const progressFile = path.join(projectRoot, ".voltron", "progress.json");
-  const outFile = path.join(projectRoot, ".voltron", "dashboard.html");
-  try {
-    const progress = JSON.parse(await fs.readFile(progressFile, "utf-8"));
-    const dateStr = new Date().toISOString().slice(0, 10);
-    let journalContent = null;
-    try { journalContent = await fs.readFile(path.join(projectRoot, ".voltron", "journal", `${dateStr}.md`), "utf-8"); } catch { /* no journal yet */ }
-    await fs.writeFile(outFile, buildDashboardHtml(progress, journalContent));
-    return outFile;
-  } catch {
-    return null;
-  }
-}
-
-function dashboardUrl(filePath) {
-  return filePath ? pathToFileURL(filePath).href : null;
-}
-
-// ─── Tool: generate_dashboard ──────────────────────────────────────────────
-
-server.tool(
-  "generate_dashboard",
-  "Generate a standalone HTML dashboard from progress data.",
-  {
-    output_path: z.string().optional().describe("Output file path (default: .voltron/dashboard.html)"),
-  },
-  async ({ output_path }) => {
-    const projectRoot = detectProjectRoot(undefined).root;
-    const progressFile = path.join(projectRoot, ".voltron", "progress.json");
-    const outFile = output_path || path.join(projectRoot, ".voltron", "dashboard.html");
-
-    let progress;
-    try {
-      progress = JSON.parse(await fs.readFile(progressFile, "utf-8"));
-    } catch {
-      return { content: [{ type: "text", text: "No progress data found. Use update_progress first." }] };
-    }
-
-    await fs.mkdir(path.dirname(outFile), { recursive: true });
-    const dateStr = new Date().toISOString().slice(0, 10);
-    let journalContent = null;
-    try { journalContent = await fs.readFile(path.join(projectRoot, ".voltron", "journal", `${dateStr}.md`), "utf-8"); } catch { /* no journal yet */ }
-    await fs.writeFile(outFile, buildDashboardHtml(progress, journalContent));
-
-    const fileUrl = dashboardUrl(outFile);
-    return {
-      content: [{ type: "text", text: `Dashboard generated at ${outFile}\nDashboard: ${fileUrl}\nAuto-refreshes every 5 seconds. Open in Chrome or any browser to monitor agent progress live.` }],
-    };
   }
 );
 
@@ -1980,10 +1840,7 @@ server.tool(
       return { content: [{ type: "text", text: imageResult.error }] };
     }
 
-    // 8. Regenerate dashboard to show this agent as active
-    await regenerateDashboard();
-
-    // 9. Set up log infrastructure — each run gets a named container + a live log file
+    // 8. Set up log infrastructure — each run gets a named container + a live log file
     const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const safeAgentName = agent_name.replace(/[^a-z0-9]/g, '-');
     const containerName = `voltron-${safeAgentName}-${ts}`;
@@ -2246,8 +2103,6 @@ server.tool(
     });
 
     await fs.unlink(tmpFile).catch(() => {});
-    const dashPath = await regenerateDashboard();
-    const dashLine = dashboardUrl(dashPath) ? `\n\nDashboard: ${dashboardUrl(dashPath)}` : "";
     const logLine = `\n\nLog: \`.voltron/logs/${logFilename}\``;
 
     // Extract progress breadcrumbs into a trail section so the orchestrator
@@ -2282,7 +2137,7 @@ server.tool(
               `### Output Tail\n\`\`\`\n${tail}\n\`\`\``,
               result.stderr ? `### Stderr\n\`\`\`\n${result.stderr}\n\`\`\`` : "",
               result.error?.message ? `**Error:** ${result.error.message}` : "",
-            ].filter(Boolean).join("\n\n") + logLine + dashLine,
+            ].filter(Boolean).join("\n\n") + logLine,
           },
         ],
       };
@@ -2296,7 +2151,7 @@ server.tool(
             `## Agent ${agent_name} completed ✅`,
             trailSection,
             `### Full Output\n${result.stdout}`,
-          ].filter(Boolean).join("\n\n") + logLine + dashLine,
+          ].filter(Boolean).join("\n\n") + logLine,
         },
       ],
     };

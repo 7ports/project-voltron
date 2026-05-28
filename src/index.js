@@ -8,9 +8,10 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { execSync, spawn, exec as execCb } from "node:child_process";
+import { execSync, spawn, exec as execCb, execFile as execFileCb } from "node:child_process";
 import { promisify } from "node:util";
 const exec = promisify(execCb);
+const execFileAsync = promisify(execFileCb);
 import os from "node:os";
 import {
   TEMPLATES,
@@ -125,10 +126,12 @@ async function checkDockerAvailable() {
 // overhead on every agent launch.
 async function ensureVoltronImage(cwd, dockerfilePath) {
   try {
-    const imageTimeStr = execSync(
-      'docker image inspect voltron-agent --format "{{.Metadata.LastTagTime}}"',
-      { encoding: "utf-8", stdio: "pipe" }
-    ).trim();
+    const { stdout: imageTimeRaw } = await execFileAsync(
+      "docker",
+      ["image", "inspect", "voltron-agent", "--format", "{{.Metadata.LastTagTime}}"],
+      { encoding: "utf-8" }
+    );
+    const imageTimeStr = imageTimeRaw.trim();
     const dockerfileStat = await fs.stat(dockerfilePath);
     if (imageTimeStr && new Date(imageTimeStr) > dockerfileStat.mtime) {
       return { ok: true, built: false };
@@ -2143,6 +2146,7 @@ server.tool(
       };
     }
 
+    const successTail = allOutputLines.slice(-80).join("\n");
     return {
       content: [
         {
@@ -2150,7 +2154,7 @@ server.tool(
           text: [
             `## Agent ${agent_name} completed ✅`,
             trailSection,
-            `### Full Output\n${result.stdout}`,
+            `### Output Tail (last 80 lines — full output in log)\n\`\`\`\n${successTail}\n\`\`\``,
           ].filter(Boolean).join("\n\n") + logLine,
         },
       ],

@@ -887,7 +887,96 @@ Launch specialist agents using \`mcp__project-voltron__run_agent_in_docker\` (bl
 - Review output before marking complete — check for errors or incomplete work
 - **Never use the \`Agent\` tool** — always use \`run_agent_in_docker\`
 
-**Parallel execution:** Call \`run_agent_in_docker\` for all dependency-free tasks in the same response — containers start simultaneously. Mark parallelizable tasks in the work plan. Sequential ordering only when task B genuinely needs task A's output.
+**Parallel execution — MANDATORY emission rule:**
+
+Multiple \`run_agent_in_docker\` tool_use blocks for dependency-free tasks MUST be emitted within ONE assistant message to run concurrently. Emitting them across separate assistant turns serializes them — this is the parallel-dispatch regression root-caused in \`docs/parallel-dispatch-investigation.md\` (commit d84274d, voltron-ufu lineage). The Claude Code main session does NOT batch tool calls aggressively the way a subagent context does; you must batch them explicitly.
+
+**Mental model:** treat \`bd ready --json\`'s output as a SET, not a sequence. Read all ready IDs, then emit one \`run_agent_in_docker\` tool_use block per ID — all in your VERY NEXT assistant message — and let the MCP server fan them out to parallel containers.
+
+**Correct vs Incorrect:**
+
+✅ CORRECT — one assistant message, N tool_use blocks (parallel):
+\`\`\`
+Assistant turn:
+  tool_use: run_agent_in_docker(agent="csharp-dev",    task="...")
+  tool_use: run_agent_in_docker(agent="shader-artist", task="...")
+  tool_use: run_agent_in_docker(agent="asset-manager", task="...")
+→ all three containers start within ~1 second of each other
+\`\`\`
+
+❌ INCORRECT — N assistant messages, 1 tool_use block each (sequential):
+\`\`\`
+Assistant turn 1: tool_use: run_agent_in_docker(agent="csharp-dev", ...)
+   ← waits for full tool_result before next turn
+Assistant turn 2: tool_use: run_agent_in_docker(agent="shader-artist", ...)
+   ← waits for full tool_result before next turn
+Assistant turn 3: tool_use: run_agent_in_docker(agent="asset-manager", ...)
+→ each agent's [entry] timestamp lags the previous one's [exit] by ~2 seconds. Total wall time = sum of individual durations.
+\`\`\`
+
+**Post-hoc verification:** After any dispatch wave intended to be parallel, run \`grep '\\[entry\\]' .voltron/logs/<agent>-*.log\`. If two agents' \`[entry]\` timestamps differ by ~1 full dispatch-duration (often 2–5 minutes), the dispatch was sequential — investigate which assistant-turn boundary split them. If they differ by <30 seconds, dispatch was parallel and working correctly.
+
+Sequential ordering only when task B genuinely needs task A's output. Mark parallelizable tasks explicitly in the work plan table — and when in doubt, default to parallel (the Docker daemon, MCP server, and Voltron handler are all parallel-safe; the only failure mode is the dispatcher, which is what this rule fixes).
+
+### Parallel Dispatch Contract (read carefully — main-session vs subagent semantics)
+
+This contract exists because the scrum-master moved from a **subagent** context to a **slash command** (main Claude Code session) in commit d84274d (v3.11.0). The two contexts batch tool calls differently:
+
+- **Subagent context (before d84274d):** the harness aggressively batched dependency-free tool calls into a single assistant message. Parallel dispatch was emergent — no explicit instruction needed.
+- **Main session context (after d84274d, current):** the harness does NOT batch unless explicitly told to. Unless the model emits multiple \`tool_use\` blocks in one message, each call goes in its own assistant turn — and assistant turns are serial.
+
+Root-cause analysis with log evidence: \`docs/parallel-dispatch-investigation.md\`. Bead lineage: \`voltron-ufu\` (investigation) → \`voltron-5qw\` (P1: enforce parallel emission) → \`voltron-cl3\` (P3: document the contract).
+
+#### The single-message emission pattern (the contract)
+
+When two or more beads are returned by \`bd ready --json\` and none of them depends on another:
+
+1. Collect ALL ready bead IDs into a local list (do not iterate yet)
+2. In your **very next assistant message**, emit one \`run_agent_in_docker\` \`tool_use\` block per bead — all in the same message, with no intervening tool_result waits
+3. Wait for the MCP server to return all tool_results together
+4. Process each result, close/blocked each bead, loop back to step 1
+
+If you find yourself thinking *"let me dispatch the first one and then dispatch the second one once it's done"* — STOP. That phrasing is exactly the failure mode. Dispatch ALL of them in ONE message.
+
+#### Literal example — three independent beads
+
+\`\`\`
+[bd ready --json returns three beads: voltron-100, voltron-101, voltron-102]
+
+Your next assistant message should contain THREE run_agent_in_docker tool_use blocks:
+
+  tool_use #1: run_agent_in_docker(agent="csharp-dev",    task="...")  # for voltron-100
+  tool_use #2: run_agent_in_docker(agent="shader-artist", task="...")  # for voltron-101
+  tool_use #3: run_agent_in_docker(agent="asset-manager", task="...")  # for voltron-102
+
+All three containers start within ~1 second of each other and run concurrently. The MCP server returns all three tool_results to your NEXT assistant turn together — you then close/blocked each bead in a single follow-up message.
+\`\`\`
+
+\`update_progress(in_progress)\` calls for those same beads may be bundled into the SAME outgoing message as the dispatches, or into the message just before — either works. The non-negotiable part is that the \`run_agent_in_docker\` calls themselves are in one message.
+
+#### Post-hoc verification
+
+After any dispatch wave intended to be parallel, verify it was actually parallel:
+
+\`\`\`bash
+grep '\\[entry\\]' .voltron/logs/<agentA>-*.log .voltron/logs/<agentB>-*.log
+\`\`\`
+
+Decision rule:
+- \`[entry]\` timestamps within ~30 seconds of each other → parallel (correct)
+- \`[entry]\` timestamps differ by ~1 full dispatch-duration (often 2–5 minutes) → sequential (regression — file a bead linked to \`voltron-5qw\` with the offending session ID and log paths)
+
+#### Common misreadings of the Execution Loop
+
+The Execution Loop below is written as a numbered list. A natural reading is *"do step 2 once per ready task"* — implying a sequential \`for\` loop over the tool_use emissions themselves. That reading is WRONG. The correct reading: gather all ready tasks (step 1), emit ALL their dispatches in ONE assistant message (step 2), wait for all to complete, then process each result (step 3). Steps 2 and 3 are batched, not iterated.
+
+If you see the phrasing *"for each ready task"* anywhere in the loop, interpret it as *"for each ready task, allocate one \`tool_use\` block in the SAME outgoing message"* — NOT *"for each ready task, send a separate message"*.
+
+#### When sequential dispatch is correct
+
+Sequential dispatch is only correct when task B's agent needs task A's output (or A's commits) as input. The work-plan table should mark these explicitly with a "depends on" column or arrow. If two tasks have no such dependency, they MUST be parallelized.
+
+When in doubt, default to parallel. The Docker daemon, MCP server, and Voltron handler are all parallel-safe (confirmed in \`docs/parallel-dispatch-investigation.md\` §A and §B). The only known failure mode is the dispatcher — which is what this contract is designed to prevent.
 
 ### Progress Visibility
 
@@ -1202,9 +1291,9 @@ After producing the work plan table and bead graph, register every task: call \`
 \`bd ready --json\` is the authoritative signal — never manually reason about what's unblocked.
 
 **Each iteration:**
-1. \`bd ready --json\` — get IDs of runnable tasks
-2. For each ready task (same message = parallel): \`update_progress(in_progress)\` + \`run_agent_in_docker(agent, task)\`
-3. On completion: **success** → \`bd close bd-XXXX\` + \`update_progress(completed)\`; **failure** → \`bd update --status blocked\` + \`update_progress(failed)\` + \`bd dep tree <id>\` to show cascade impact
+1. \`bd ready --json\` — collect IDs of ALL runnable tasks into a single list. Do not iterate yet.
+2. **Emit ALL \`run_agent_in_docker\` tool_use blocks in ONE assistant message — same message = parallel.** In your VERY NEXT assistant message, emit one \`run_agent_in_docker(agent, task)\` block per ready bead (plus one \`update_progress(in_progress)\` per bead, either in the same message or the one just before). All dispatches go in a single outgoing message — do NOT emit them across separate assistant turns; that serializes the dispatch (see "Parallel Dispatch Contract" above and \`docs/parallel-dispatch-investigation.md\`). Worked example: if step 1 returns three IDs, your dispatch message contains exactly THREE \`run_agent_in_docker\` tool_use blocks, not one. If only one ID came back, emit one — but the rule is *"one message, N blocks"*, where N is whatever step 1 returned.
+3. On completion (tool_results arrive together): **success** → \`bd close bd-XXXX\` + \`update_progress(completed)\`; **failure** → \`bd update --status blocked\` + \`update_progress(failed)\` + \`bd dep tree <id>\` to show cascade impact
 4. Return to step 1
 
 Stop when \`bd ready --json\` returns empty. Run \`bd stats\` to surface any blocked tasks.

@@ -887,32 +887,45 @@ Launch specialist agents using \`mcp__project-voltron__run_agent_in_docker\` (bl
 - Review output before marking complete — check for errors or incomplete work
 - **Never use the \`Agent\` tool** — always use \`run_agent_in_docker\`
 
-**Parallel execution — MANDATORY emission rule:**
+**Parallel execution — MANDATORY rule:**
 
-Multiple \`run_agent_in_docker\` tool_use blocks for dependency-free tasks MUST be emitted within ONE assistant message to run concurrently. Emitting them across separate assistant turns serializes them — this is the parallel-dispatch regression root-caused in \`docs/parallel-dispatch-investigation.md\` (commit d84274d, voltron-ufu lineage). The Claude Code main session does NOT batch tool calls aggressively the way a subagent context does; you must batch them explicitly.
+Whenever \`bd ready --json\` returns more than one ready ID (and the IDs are dependency-free), dispatch them via a SINGLE \`run_agent_in_docker_batch\` call — one batch entry per ready ID. The batch tool fans out internally to N parallel Docker containers and bypasses the main-session tool-call serializer (root cause: \`docs/parallel-dispatch-investigation.md\`; mitigation: \`docs/run-agents-batch-design.md\`).
 
-**Mental model:** treat \`bd ready --json\`'s output as a SET, not a sequence. Read all ready IDs, then emit one \`run_agent_in_docker\` tool_use block per ID — all in your VERY NEXT assistant message — and let the MCP server fan them out to parallel containers.
+**Decision rule:**
+- 1 ready ID → \`run_agent_in_docker\` (singleton).
+- 2–8 ready IDs → \`run_agent_in_docker_batch\` with one entry per ID.
+- 9+ ready IDs → multiple sequential \`run_agent_in_docker_batch\` calls, batching up to 8 per call (the schema cap). Do not emit nine single-call \`tool_use\` blocks in one message — that recreates the regression.
+
+The pre-batch multi-\`tool_use\` emission pattern is the FALLBACK ONLY. Use it only if \`run_agent_in_docker_batch\` is unavailable (e.g. on an older voltron-agent image). Confirm availability with \`list_templates\`-style inspection at session start if uncertain.
+
+**Mental model:** treat \`bd ready --json\`'s output as a SET, not a sequence. Read all ready IDs, then emit ONE \`run_agent_in_docker_batch\` tool_use with one \`dispatches\` entry per ID — and let the MCP server fan them out to parallel containers.
 
 **Correct vs Incorrect:**
 
-✅ CORRECT — one assistant message, N tool_use blocks (parallel):
+✅ CORRECT — one assistant message, one \`run_agent_in_docker_batch\` tool_use:
 \`\`\`
 Assistant turn:
-  tool_use: run_agent_in_docker(agent="csharp-dev",    task="...")
-  tool_use: run_agent_in_docker(agent="shader-artist", task="...")
-  tool_use: run_agent_in_docker(agent="asset-manager", task="...")
-→ all three containers start within ~1 second of each other
+  tool_use: run_agent_in_docker_batch({
+    dispatches: [
+      { agent_name: "csharp-dev",    task: "..." },
+      { agent_name: "shader-artist", task: "..." },
+      { agent_name: "asset-manager", task: "..." }
+    ]
+  })
+→ all three containers start within ~1 second of each other; one tool result returns when all three exit.
 \`\`\`
 
-❌ INCORRECT — N assistant messages, 1 tool_use block each (sequential):
+❌ INCORRECT — N tool_use blocks emitted across separate assistant turns (sequential):
 \`\`\`
 Assistant turn 1: tool_use: run_agent_in_docker(agent="csharp-dev", ...)
-   ← waits for full tool_result before next turn
+   ← waits for tool_result before next turn
 Assistant turn 2: tool_use: run_agent_in_docker(agent="shader-artist", ...)
-   ← waits for full tool_result before next turn
+   ← waits for tool_result before next turn
 Assistant turn 3: tool_use: run_agent_in_docker(agent="asset-manager", ...)
-→ each agent's [entry] timestamp lags the previous one's [exit] by ~2 seconds. Total wall time = sum of individual durations.
+→ each agent's [entry] lags the previous [exit] by ~2 seconds. Wall time = sum of individual durations.
 \`\`\`
+
+⚠ ACCEPTABLE FALLBACK — when \`run_agent_in_docker_batch\` is unavailable: one assistant message, N \`run_agent_in_docker\` tool_use blocks. The main-session serializer empirically delivers SEQUENTIAL behavior here too (see voltron-ufu lineage); use only as last resort.
 
 **Post-hoc verification:** After any dispatch wave intended to be parallel, run \`grep '\\[entry\\]' .voltron/logs/<agent>-*.log\`. If two agents' \`[entry]\` timestamps differ by ~1 full dispatch-duration (often 2–5 minutes), the dispatch was sequential — investigate which assistant-turn boundary split them. If they differ by <30 seconds, dispatch was parallel and working correctly.
 
@@ -927,32 +940,49 @@ This contract exists because the scrum-master moved from a **subagent** context 
 
 Root-cause analysis with log evidence: \`docs/parallel-dispatch-investigation.md\`. Bead lineage: \`voltron-ufu\` (investigation) → \`voltron-5qw\` (P1: enforce parallel emission) → \`voltron-cl3\` (P3: document the contract).
 
-#### The single-message emission pattern (the contract)
+#### The batch-dispatch contract (current — preferred)
 
-When two or more beads are returned by \`bd ready --json\` and none of them depends on another:
+When \`bd ready --json\` returns 2 or more dependency-free IDs:
 
 1. Collect ALL ready bead IDs into a local list (do not iterate yet)
-2. In your **very next assistant message**, emit one \`run_agent_in_docker\` \`tool_use\` block per bead — all in the same message, with no intervening tool_result waits
-3. Wait for the MCP server to return all tool_results together
-4. Process each result, close/blocked each bead, loop back to step 1
+2. In your very next assistant message, emit ONE \`run_agent_in_docker_batch\` tool_use with one entry in \`dispatches\` per bead
+3. Wait for the single batch tool_result; parse the per-dispatch summary table to find failures
+4. Close successes, mark failures blocked, loop back to step 1
 
-If you find yourself thinking *"let me dispatch the first one and then dispatch the second one once it's done"* — STOP. That phrasing is exactly the failure mode. Dispatch ALL of them in ONE message.
+The batch tool is the primary path because it is empirically immune to the main-session serializer (verified Tier-B 2026-05-28 — multi-block emission still serialized despite explicit prompting). The MCP server fans the call out internally to N parallel Docker containers under one \`tool_use\`, so the main-session's per-turn tool-call FIFO is bypassed by construction.
 
-#### Literal example — three independent beads
+#### Literal example — three independent beads (batch)
 
 \`\`\`
 [bd ready --json returns three beads: voltron-100, voltron-101, voltron-102]
 
-Your next assistant message should contain THREE run_agent_in_docker tool_use blocks:
+Your next assistant message should contain ONE run_agent_in_docker_batch tool_use:
 
-  tool_use #1: run_agent_in_docker(agent="csharp-dev",    task="...")  # for voltron-100
-  tool_use #2: run_agent_in_docker(agent="shader-artist", task="...")  # for voltron-101
-  tool_use #3: run_agent_in_docker(agent="asset-manager", task="...")  # for voltron-102
+  tool_use: run_agent_in_docker_batch({
+    dispatches: [
+      { agent_name: "csharp-dev",    task: "..." },  # for voltron-100
+      { agent_name: "shader-artist", task: "..." },  # for voltron-101
+      { agent_name: "asset-manager", task: "..." }   # for voltron-102
+    ]
+  })
 
-All three containers start within ~1 second of each other and run concurrently. The MCP server returns all three tool_results to your NEXT assistant turn together — you then close/blocked each bead in a single follow-up message.
+All three containers start within ~1 second of each other and run concurrently. The MCP server returns a single batch tool_result with a top-of-body summary table (one row per dispatch) plus N per-dispatch sections — close/blocked each bead based on that table in a single follow-up message.
 \`\`\`
 
-\`update_progress(in_progress)\` calls for those same beads may be bundled into the SAME outgoing message as the dispatches, or into the message just before — either works. The non-negotiable part is that the \`run_agent_in_docker\` calls themselves are in one message.
+\`update_progress(in_progress)\` calls for those same beads may be bundled into the SAME outgoing message as the batch dispatch, or into the message just before — either works. The non-negotiable part is that the dispatches themselves go through ONE \`run_agent_in_docker_batch\` call.
+
+For 9+ ready IDs, slice the list into chunks of at most 8 and emit one \`run_agent_in_docker_batch\` call per chunk — sequentially, not in parallel; the schema cap exists for laptop-safety reasons (Docker daemon contention above ~8 containers).
+
+#### Multi-block emission (fallback — historical contract)
+
+Use only when \`run_agent_in_docker_batch\` is unavailable (e.g. an older voltron-agent image that predates the batch tool). In that case the contract reverts to the original multi-block emission pattern:
+
+1. Collect ALL ready bead IDs into a local list
+2. In your very next assistant message, emit one \`run_agent_in_docker\` \`tool_use\` block per bead — all in the same message, with no intervening tool_result waits
+3. Wait for the MCP server to return all tool_results together
+4. Process each result, close/blocked each bead, loop back to step 1
+
+Empirically this fallback path still tends to serialize on the main-session client (Tier-B FAIL on 2026-05-28); verify post-hoc via the \`[entry]\` timestamp grep below. If you see sequential timings, file a bead and route the next wave through \`run_agent_in_docker_batch\` instead.
 
 #### Post-hoc verification
 
@@ -1292,7 +1322,7 @@ After producing the work plan table and bead graph, register every task: call \`
 
 **Each iteration:**
 1. \`bd ready --json\` — collect IDs of ALL runnable tasks into a single list. Do not iterate yet.
-2. **Emit ALL \`run_agent_in_docker\` tool_use blocks in ONE assistant message — same message = parallel.** In your VERY NEXT assistant message, emit one \`run_agent_in_docker(agent, task)\` block per ready bead (plus one \`update_progress(in_progress)\` per bead, either in the same message or the one just before). All dispatches go in a single outgoing message — do NOT emit them across separate assistant turns; that serializes the dispatch (see "Parallel Dispatch Contract" above and \`docs/parallel-dispatch-investigation.md\`). Worked example: if step 1 returns three IDs, your dispatch message contains exactly THREE \`run_agent_in_docker\` tool_use blocks, not one. If only one ID came back, emit one — but the rule is *"one message, N blocks"*, where N is whatever step 1 returned.
+2. **Emit ONE \`run_agent_in_docker_batch\` tool_use covering ALL ready IDs in your very next assistant message — batch = parallel, automatic.** Each entry in \`dispatches\` maps to one bead. If only one ID came back, use the singleton \`run_agent_in_docker\` for that one. (Companion \`update_progress(in_progress)\` calls may be batched into the same outgoing message or the one just before.) If \`run_agent_in_docker_batch\` is unavailable on this Voltron version, fall back to one \`run_agent_in_docker\` tool_use per ID in a single message — and verify post-hoc that they actually parallelized.
 3. On completion (tool_results arrive together): **success** → \`bd close bd-XXXX\` + \`update_progress(completed)\`; **failure** → \`bd update --status blocked\` + \`update_progress(failed)\` + \`bd dep tree <id>\` to show cascade impact
 4. Return to step 1
 
@@ -1860,6 +1890,24 @@ Default chains for common tasks. Dispatch via \`run_agent_in_docker\`.
 | Add method to existing .cs | csharp-member-adder → build-runner |
 | Add/remove Unity package | unity-manifest-editor → build-runner |
 
+### Parallel Sub-Chain Dispatch (Docker side)
+
+Editor operations (Coplay MCP calls) run synchronously through the Agent tool and CANNOT be batched. But the Docker-side work scene-architect delegates — C# edits, asset folder structure, manifest edits — is parallel-eligible.
+
+When you need to dispatch multiple independent sub-manager tasks in the same wave (e.g., "csharp-dev adds a Controller, asset-manager scaffolds the textures folder, shader-artist patches the shader file"), batch them:
+
+\`\`\`
+tool_use: run_agent_in_docker_batch({
+  dispatches: [
+    { agent_name: "csharp-dev",       task: "[full task description for sub-manager, including the micro-agent chain to compose]" },
+    { agent_name: "asset-manager",    task: "[task — scaffold Assets/Textures/Enemies/ with the four PNG slots described in the work plan]" },
+    { agent_name: "shader-artist",    task: "[task — patch Shaders/Toon.shader to add the rim-light pass — file edits only, not Editor preview]" }
+  ]
+})
+\`\`\`
+
+**Rule of thumb:** Editor work goes through Agent tool, one at a time. File-only Docker work goes through \`run_agent_in_docker_batch\` whenever 2+ independent tasks are in flight.
+
 **You are the sub-manager for Unity scene composition.** You orchestrate Unity Editor operations via Unity MCP; for any C# script work that comes up while you're wiring scenes, you dispatch \`csharp-dev\` (which itself dispatches Tier-3 micro-agents) — you do not write scripts yourself. Use the Composition Recipes above to dispatch the right chain for each task, own the validation gate (build-runner, Play Mode smoke test), and report the verified result back to scrum-master. The hierarchy conventions described below define what your dispatched scene operations must produce — your job is to verify their output matches before reporting completion.
 
 ## Environment Check (Run Before Anything Else)
@@ -2104,6 +2152,35 @@ Default chains for common tasks. Dispatch via \`run_agent_in_docker\`.
 | Add method or field to existing class | csharp-member-adder → build-runner |
 | Add/remove Unity package | unity-manifest-editor → build-runner |
 | Bulk multi-file refactor | file-patch-runner → build-runner |
+
+### Parallel Sub-Chain Dispatch
+
+When you need to run multiple independent recipes in the same wave (e.g., the user asks for "three new MonoBehaviours: PlayerMover, EnemySpawner, ScoreManager"), dispatch all three writers in ONE \`run_agent_in_docker_batch\` call rather than serially. The chains' validators (build-runner, test-runner) come after as a separate batch once all writers complete.
+
+Literal example for the three-MonoBehaviour case:
+
+\`\`\`
+tool_use: run_agent_in_docker_batch({
+  dispatches: [
+    { agent_name: "csharp-script-writer", task: "Create Assets/Scripts/Gameplay/PlayerMover.cs with anchor namespace AcmeCo.Gameplay; class implements IMovable; SerializeField _speed = 5f. Acceptance: file at exact path, namespace matches CLAUDE.md, compiles in next build pass." },
+    { agent_name: "csharp-script-writer", task: "Create Assets/Scripts/Gameplay/EnemySpawner.cs with anchor namespace AcmeCo.Gameplay; ScriptableObject reference _enemyConfig; spawns from object pool. Acceptance: file at exact path, ScriptableObject ref via SerializeField." },
+    { agent_name: "csharp-script-writer", task: "Create Assets/Scripts/Gameplay/ScoreManager.cs with anchor namespace AcmeCo.Gameplay; static event OnScoreChanged(int). Acceptance: file at exact path, event uses Action pattern not UnityEvent." }
+  ]
+})
+\`\`\`
+
+After all three resolve, dispatch the validation wave:
+
+\`\`\`
+tool_use: run_agent_in_docker_batch({
+  dispatches: [
+    { agent_name: "build-runner", task: "dotnet build the Unity project — report any new compile errors in the three files created in the prior wave." },
+    { agent_name: "test-runner",  task: "Run the test suite; flag any regressions introduced by the new scripts." }
+  ]
+})
+\`\`\`
+
+**Rule of thumb:** if your sub-chain has 2+ steps that do not consume each other's output, batch them. The Composition Recipes table tells you which steps are sequential (arrows = data flow); everything else is a candidate for parallelization.
 
 **You are the sub-manager for Unity C# work.** You orchestrate Tier-3 micro-agents that write the actual C# scripts; you never write code yourself. Use the Composition Recipes above to dispatch the right chain for each task, own the validation gate (build-runner, test-runner), and report the verified result back to scrum-master. The conventions described below define what your dispatched micro-agents must produce — your job is to verify their output matches before reporting completion.
 
@@ -3226,6 +3303,36 @@ Default chains for common tasks. Dispatch via \`run_agent_in_docker\`.
 | New state slice | store-slice-writer → typecheck-runner |
 | Bulk multi-file refactor | file-patch-runner → typecheck-runner → lint-runner |
 
+### Parallel Sub-Chain Dispatch
+
+When the task decomposes into multiple independent writer chains in the same wave (e.g., "add three API routes: /api/users, /api/teams, /api/projects"), dispatch all writers in ONE \`run_agent_in_docker_batch\` call. Validators (typecheck-runner, lint-runner, test-runner) come after as a separate batch once all writers complete.
+
+Literal example:
+
+\`\`\`
+tool_use: run_agent_in_docker_batch({
+  dispatches: [
+    { agent_name: "route-adder", task: "Add GET/POST /api/users handlers to server/src/routes/users.ts at anchor 'export const usersRouter ='. Request/response types in server/src/types/user.ts. Acceptance: tsc clean, route registered in index.ts." },
+    { agent_name: "route-adder", task: "Add GET/POST /api/teams handlers to server/src/routes/teams.ts at anchor 'export const teamsRouter ='. Types in server/src/types/team.ts. Acceptance: tsc clean, route registered in index.ts." },
+    { agent_name: "route-adder", task: "Add GET/POST /api/projects handlers to server/src/routes/projects.ts at anchor 'export const projectsRouter ='. Types in server/src/types/project.ts. Acceptance: tsc clean, route registered in index.ts." }
+  ]
+})
+\`\`\`
+
+Then dispatch the validation batch:
+
+\`\`\`
+tool_use: run_agent_in_docker_batch({
+  dispatches: [
+    { agent_name: "typecheck-runner", task: "Run npm run typecheck; report errors. Acceptance: zero TypeScript errors." },
+    { agent_name: "test-runner",      task: "Run npm test for server/; report failures." },
+    { agent_name: "url-route-matcher", task: "Verify each new route is reachable from the client hooks in src/hooks/." }
+  ]
+})
+\`\`\`
+
+**Rule of thumb:** if a sub-chain has 2+ steps with no data dependency, batch them. Arrows in the Composition Recipes table = data flow; everything else can run in parallel.
+
 **You are the sub-manager for the React/TypeScript + Node/Express stack.** You orchestrate Tier-3 micro-agents that write code; you never write code yourself. Use the Composition Recipes above to dispatch the right chain for each task, own the validation gate (typecheck-runner, lint-runner, test-runner), and report the verified result back to scrum-master. The standards described below define what your dispatched micro-agents must produce — your job is to verify their output matches before reporting completion.
 
 ## Dispatch Responsibilities
@@ -3521,6 +3628,35 @@ Default chains for common tasks. Dispatch via \`run_agent_in_docker\`.
 | New CI workflow | ci-workflow-writer → lint-runner |
 | New docker-compose service | docker-compose-editor |
 | Bulk config update | file-patch-runner |
+
+### Parallel Sub-Chain Dispatch
+
+When the task decomposes into independent config/yaml/dockerfile changes (e.g., "set up CI for three services"), dispatch the writers in ONE \`run_agent_in_docker_batch\` call. Validators (build-runner, security-scanner) come after.
+
+Literal example:
+
+\`\`\`
+tool_use: run_agent_in_docker_batch({
+  dispatches: [
+    { agent_name: "ci-workflow-writer", task: "Create .github/workflows/api-ci.yml — jobs: build, test, deploy-staging. Trigger on push to main affecting services/api/**." },
+    { agent_name: "ci-workflow-writer", task: "Create .github/workflows/web-ci.yml — jobs: build, lint, test, deploy. Trigger on push to main affecting services/web/**." },
+    { agent_name: "dockerfile-editor",  task: "Update services/api/Dockerfile to multi-stage build; add npm prune --omit=dev in the runtime stage." }
+  ]
+})
+\`\`\`
+
+Then dispatch validators:
+
+\`\`\`
+tool_use: run_agent_in_docker_batch({
+  dispatches: [
+    { agent_name: "build-runner",     task: "docker build services/api/ — confirm new Dockerfile produces a working image." },
+    { agent_name: "security-scanner", task: "Run security scan on the three changed files; report any new findings." }
+  ]
+})
+\`\`\`
+
+**Rule of thumb:** independent service configurations are the canonical batch case here. Always batch them.
 
 **You are the sub-manager for infrastructure, CI/CD, and deployment work.** You orchestrate Tier-3 micro-agents that write the actual Terraform / Dockerfiles / GitHub Actions / config; you never edit those files yourself. Use the Composition Recipes above to dispatch the right chain for each task, own the validation gate (build-runner, security-scanner), and report the verified result back to scrum-master. The infrastructure standards and conventions described below define what your dispatched micro-agents must produce — your job is to verify their output matches before reporting completion.
 
@@ -4134,6 +4270,26 @@ Default chains for common tasks. Dispatch via \`run_agent_in_docker\`.
 | New test config | test-config-writer |
 | New mock/stub | mock-writer → typecheck-runner |
 | Bulk test update | file-patch-runner → test-runner |
+
+### Parallel Sub-Chain Dispatch — Full QA Pass
+
+The "Full QA pass" recipe (above) is the canonical batch target. The five validators are mutually independent and should NEVER be run serially — they share no state, write no files, and can produce evidence in any order. Dispatch as a single batch:
+
+\`\`\`
+tool_use: run_agent_in_docker_batch({
+  dispatches: [
+    { agent_name: "typecheck-runner",       task: "Run tsc --noEmit on the project. Report any type errors. Acceptance: zero errors." },
+    { agent_name: "test-runner",            task: "Run npm test. Report any failures with the relevant test file paths." },
+    { agent_name: "lint-runner",            task: "Run npm run lint. Report errors (block) and warnings (review)." },
+    { agent_name: "security-scanner",       task: "Run security scan. Report any new HIGH/CRITICAL findings." },
+    { agent_name: "accessibility-auditor",  task: "Run accessibility audit on src/components/. Report any new WCAG violations." }
+  ]
+})
+\`\`\`
+
+Wall time for the full pass drops from sum-of-runtimes (typically 8–12 min sequentially) to max-of-runtimes (typically 2–3 min). This is the highest-leverage batch use case in the project.
+
+**Rule of thumb:** any audit/validation wave is parallel by definition. If you find yourself dispatching test-runner and lint-runner in separate calls, stop — batch them.
 
 **You are the sub-manager for testing, auditing, and quality gates.** You orchestrate Tier-3 micro-agents that write tests and run audits; you never write tests or run validators yourself. Use the Composition Recipes above to dispatch the right chain for each task (test-writer, test-runner, lint-runner, accessibility-auditor, lighthouse-runner, security-scanner), interpret their results, and report a pass/fail verdict back to scrum-master. The testing standards described below define what your dispatched micro-agents must produce — your job is to verify their output matches before reporting completion. You are the last gate before shipping.
 

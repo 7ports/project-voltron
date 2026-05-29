@@ -312,7 +312,7 @@
   <section>
     <div class="container">
       <h2>Docker Execution</h2>
-      <p class="section-sub">The scrum-master launches each specialist agent inside a Docker container with <code>--dangerously-skip-permissions</code> via the <code>run_agent_in_docker</code> MCP tool. You run Claude Code normally on your desktop — Docker is handled behind the scenes.</p>
+      <p class="section-sub">The scrum-master launches each specialist agent inside a Docker container with <code>--dangerously-skip-permissions</code> via the <code>run_agent_in_docker</code> MCP tool. You run Claude Code normally on your desktop — Docker is handled behind the scenes. For parallel work, the scrum-master uses <code>run_agent_in_docker_batch</code> to dispatch multiple agents in a single MCP call.</p>
 
       <div class="flow">
         <div class="flow-step">
@@ -717,6 +717,10 @@ node scripts/setup.js</code></pre>
           <tr>
             <td><code>run_agent_in_docker</code></td>
             <td>Launch a specialist agent inside a Docker container with full permissions — called by scrum-master</td>
+          </tr>
+          <tr>
+            <td><code>run_agent_in_docker_batch</code></td>
+            <td>Launch 2–8 specialist agents in parallel containers — one MCP call, N parallel executions. Use this for any dispatch wave of dependency-free agents; bypasses main-session tool-call serialization.</td>
           </tr>
           <tr>
             <td><code>start_agent_in_docker</code></td>

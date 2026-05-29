@@ -1694,6 +1694,301 @@ server.tool(
   }
 );
 
+// ─── Per-dispatch helper (shared by singleton + batch tools) ───────────────
+//
+// Runs ONE agent dispatch in Docker. Extracted from the run_agent_in_docker
+// handler so run_agent_in_docker_batch can Promise.all over it without
+// duplicating spawn/wait/parse logic.
+//
+// Caller is expected to have already resolved shared context (cwd, claudeMd)
+// and pre-flighted docker daemon + voltron-agent image. This function does NOT
+// call ensureVoltronImage / checkDockerAvailable — those are batch-wide
+// one-shots so we don't fire N redundant inspects during a fan-out.
+//
+// Returns a structured part (not a wrapped MCP content envelope) so each
+// caller frames its own section: the singleton renders "## Agent X completed";
+// the batch renders "### [N] Agent X ..." inside a multi-section body.
+
+async function dispatchOneAgent(spec, shared, opts = {}) {
+  const { agent_name, task, max_turns = 30, model } = spec;
+  const { cwd, claudeMd, currentDepth, isNested } = shared;
+  const { abortSignal, tailLines = 80 } = opts;
+
+  // 1. Template lookup (per-dispatch — each entry has its own agent_name)
+  const template = TEMPLATES[agent_name];
+  if (!template || template.category !== "agent") {
+    return { agent_name, validationError: `Error: Unknown agent '${agent_name}'. Run list_templates to see available agents.` };
+  }
+  if (agent_name === "scrum-master") {
+    return { agent_name, validationError: "❌ The scrum-master is a dedicated orchestrator that runs in the main Claude Code session, not in Docker, and is a slash command (not a subagent). Invoke it via `/scrum-master` from the Claude Code chat window instead." };
+  }
+
+  const nestable = template.nestable !== false;
+
+  // Resolve model tier: explicit parameter > template default > omit (session default)
+  const resolvedModel = model || template.model;
+  const MODEL_IDS = { opus: "claude-opus-4-7", sonnet: "claude-sonnet-4-6", haiku: "claude-haiku-4-5-20251001" };
+  const modelFlag = resolvedModel && MODEL_IDS[resolvedModel] ? `--model ${MODEL_IDS[resolvedModel]}` : "";
+
+  // 2. Compose the full prompt (strip YAML frontmatter — see v3.x notes in singleton history)
+  const agentInstructions = template.content.replace(/^---\n[\s\S]*?\n---\n*/, "");
+  const prompt = [
+    agentInstructions,
+    "",
+    PROGRESS_REPORTING_DIRECTIVE,
+    "",
+    "## Project Context (from CLAUDE.md)",
+    "",
+    claudeMd || "(No CLAUDE.md found — work without project context)",
+    "",
+    "## Your Task",
+    "",
+    task,
+  ].join("\n");
+
+  // 3. Write prompt to temp file. Random suffix defends against same-agent_name +
+  //    same-Date.now() millisecond collisions when a batch dispatches two of the
+  //    same agent in parallel; harmless for the singleton's single-dispatch case.
+  const uniqSuffix = Math.random().toString(36).slice(2, 8);
+  const tmpDir = path.join(cwd, ".voltron", "tmp");
+  await fs.mkdir(tmpDir, { recursive: true });
+  const tmpFilename = `voltron-${agent_name}-${Date.now()}-${uniqSuffix}.md`;
+  const tmpFile = path.join(tmpDir, tmpFilename);
+  await fs.writeFile(tmpFile, prompt);
+
+  // 4. Log + container naming (also gets the uniqSuffix for batch collision safety)
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const safeAgentName = agent_name.replace(/[^a-z0-9]/g, '-');
+  const containerName = `voltron-${safeAgentName}-${ts}-${uniqSuffix}`;
+  const logFilename = `${safeAgentName}-${ts}-${uniqSuffix}.log`;
+  const logsDir = path.join(cwd, ".voltron", "logs");
+  await fs.mkdir(logsDir, { recursive: true });
+
+  // 5. Mount + auth setup. See singleton history comments (kept inline) for the
+  //    nested-vs-outer / --volumes-from rationale.
+  const homeDir = process.env.VOLTRON_HOST_HOME || process.env.HOME || process.env.USERPROFILE || os.homedir();
+  const hostRoot = process.env.VOLTRON_HOST_ROOT || cwd;
+  const hostTmpdir = process.env.VOLTRON_HOST_TMPDIR || tmpDir;
+  const hostTmpFile = hostJoin(hostTmpdir, tmpFilename);
+
+  const gitConfigHostPath = hostJoin(homeDir, ".gitconfig");
+  const gitConfigCheckPath = isNested ? "/home/voltron/.gitconfig" : gitConfigHostPath;
+  let gitConfigMount = [];
+  if (!isNested) {
+    try {
+      await fs.access(gitConfigCheckPath);
+      gitConfigMount = ["--mount", `type=bind,source=${gitConfigHostPath},target=/home/voltron/.gitconfig,readonly`];
+    } catch {}
+  }
+
+  const credsHostPath = hostJoin(homeDir, ".claude", ".credentials.json");
+  const credsCheckPath = isNested ? "/home/voltron/.claude/.credentials.json" : credsHostPath;
+  let credsMount = [];
+  let credsAvailable = false;
+  try {
+    await fs.access(credsCheckPath);
+    credsAvailable = true;
+    if (!isNested) {
+      credsMount = ["--mount", `type=bind,source=${credsHostPath},target=/home/voltron/.claude/.credentials.json,readonly`];
+    }
+  } catch {}
+
+  const authEnvArgs = [];
+  if (process.env.CLAUDE_CODE_OAUTH_TOKEN) {
+    authEnvArgs.push("-e", `CLAUDE_CODE_OAUTH_TOKEN=${process.env.CLAUDE_CODE_OAUTH_TOKEN}`);
+  }
+  if (process.env.ANTHROPIC_API_KEY) {
+    authEnvArgs.push("-e", `ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY}`);
+  }
+
+  if (!credsAvailable && authEnvArgs.length === 0) {
+    await fs.unlink(tmpFile).catch(() => {});
+    return { agent_name, validationError: "Error: No auth available for Docker agent. Either run `claude setup-token` (creates ~/.claude/.credentials.json which will be mounted), or set CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY in your environment." };
+  }
+
+  // 6. Container-local MCP config (so nested dispatch works for nestable templates)
+  let mcpConfigFlag = "";
+  if (nestable) {
+    const mcpConfigDir = path.join(cwd, ".voltron");
+    await fs.mkdir(mcpConfigDir, { recursive: true });
+    const mcpConfigPath = path.join(mcpConfigDir, "container-mcp.json");
+    const mcpConfig = {
+      mcpServers: {
+        "project-voltron": {
+          command: "node",
+          args: ["/workspace/src/index.js"],
+        },
+      },
+    };
+    await fs.writeFile(mcpConfigPath, JSON.stringify(mcpConfig, null, 2));
+    mcpConfigFlag = "--mcp-config /workspace/.voltron/container-mcp.json";
+  }
+
+  const dockerSocketHostPath = process.platform === "win32" ? "//var/run/docker.sock" : "/var/run/docker.sock";
+  const socketMount = (nestable && !isNested) ? ["--mount", `type=bind,source=${dockerSocketHostPath},target=/var/run/docker.sock`] : [];
+
+  const voltronEnvArgs = [
+    "-e", `VOLTRON_HOST_ROOT=${hostRoot}`,
+    "-e", `VOLTRON_HOST_HOME=${homeDir}`,
+    "-e", `VOLTRON_HOST_TMPDIR=${hostTmpdir}`,
+    "-e", `VOLTRON_DEPTH=${currentDepth + 1}`,
+  ];
+
+  let mountArgs;
+  let taskFilePathInContainer;
+  if (isNested) {
+    const ownId = os.hostname();
+    mountArgs = ["--volumes-from", ownId];
+    taskFilePathInContainer = `/workspace/.voltron/tmp/${tmpFilename}`;
+  } else {
+    mountArgs = [
+      "--mount", `type=bind,source=${hostRoot},target=/workspace`,
+      ...gitConfigMount,
+      ...credsMount,
+      ...socketMount,
+      "--mount", `type=bind,source=${hostTmpFile},target=/tmp/task.md,readonly`,
+    ];
+    taskFilePathInContainer = "/tmp/task.md";
+  }
+
+  const dockerArgs = [
+    "run", "--rm",
+    "--name", containerName,
+    "--entrypoint", "bash",
+    ...authEnvArgs,
+    ...voltronEnvArgs,
+    ...mountArgs,
+    "voltron-agent",
+    "-c",
+    `{ echo "[entry] $(date -Is) host=$(hostname) user=$(whoami)"; echo "[claude-version] $(claude --version 2>&1)"; echo "[exec] $(date -Is) starting prompt"; claude --dangerously-skip-permissions ${modelFlag} ${mcpConfigFlag} --max-turns ${max_turns} --output-format stream-json --verbose -p "$(cat ${taskFilePathInContainer})" 2>&1; CLAUDE_EXIT=\$?; echo "[exit] $(date -Is) code=\$CLAUDE_EXIT"; exit \$CLAUDE_EXIT; } | tee /workspace/.voltron/logs/${logFilename}; exit \${PIPESTATUS[0]}`,
+  ];
+
+  // 7. Spawn + wait. abortSignal (when batch fail_fast cancels siblings) sends
+  //    SIGTERM to the child; the close handler marks the result as aborted so
+  //    the batch can distinguish "cancelled" from a real exit-1 failure.
+  let aborted = false;
+  const result = await new Promise((resolve) => {
+    let stdout = "";
+    let stderr = "";
+    const proc = spawn("docker", dockerArgs, { cwd });
+
+    const abortListener = () => {
+      aborted = true;
+      try { proc.kill('SIGTERM'); } catch {}
+    };
+    if (abortSignal) {
+      if (abortSignal.aborted) {
+        abortListener();
+      } else {
+        abortSignal.addEventListener('abort', abortListener, { once: true });
+      }
+    }
+
+    let pendingLine = "";
+    let extractedText = "";
+    proc.stdout?.on("data", (chunk) => {
+      const chunkStr = chunk.toString();
+      stdout += chunkStr;
+
+      pendingLine += chunkStr;
+      const parts = pendingLine.split("\n");
+      pendingLine = parts.pop() ?? "";
+      for (const rawLine of parts) {
+        const line = rawLine.trim();
+        if (!line) continue;
+
+        if (/^\[(entry|claude-version|exec|exit)\]/.test(line)) {
+          server.sendLoggingMessage({ level: "info", data: `[${agent_name}] ${line}` }).catch(() => {});
+          continue;
+        }
+
+        let event;
+        try { event = JSON.parse(line); } catch { continue; }
+        if (!event || typeof event !== "object") continue;
+
+        const texts = [];
+        if (event.type === "assistant" && event.message && Array.isArray(event.message.content)) {
+          for (const block of event.message.content) {
+            if (block && block.type === "text" && typeof block.text === "string") texts.push(block.text);
+          }
+        } else if (event.type === "stream_event" && event.event && event.event.type === "content_block_delta"
+                   && event.event.delta && event.event.delta.type === "text_delta"
+                   && typeof event.event.delta.text === "string") {
+          texts.push(event.event.delta.text);
+        } else if (event.type === "text" && typeof event.text === "string") {
+          texts.push(event.text);
+        } else if (event.type === "result" && typeof event.result === "string") {
+          texts.push(event.result);
+        }
+
+        for (const text of texts) {
+          extractedText += text + "\n";
+          for (const t of text.split("\n")) {
+            const trimmed = t.trim();
+            if (/^\[(STEP \d+|DONE)\]/.test(trimmed)) {
+              server.sendLoggingMessage({ level: "info", data: `[${agent_name}] ${trimmed}` }).catch(() => {});
+            }
+          }
+        }
+      }
+
+      if (stdout.length > 10 * 1024 * 1024) {
+        proc.kill();
+        resolve({ status: 1, stdout: stdout.slice(-10 * 1024 * 1024), stderr, extractedText, error: new Error("Output exceeded 10MB limit") });
+      }
+    });
+    proc.stderr?.on("data", (chunk) => { stderr += chunk.toString(); });
+
+    const timer = setTimeout(() => {
+      proc.kill();
+      resolve({ status: 1, stdout, stderr, extractedText, error: new Error("Timeout after 10 minutes") });
+    }, 600000);
+
+    proc.on("close", (code) => {
+      clearTimeout(timer);
+      if (abortSignal) abortSignal.removeEventListener('abort', abortListener);
+      resolve({ status: code, stdout, stderr, extractedText, error: null });
+    });
+    proc.on("error", (err) => {
+      clearTimeout(timer);
+      if (abortSignal) abortSignal.removeEventListener('abort', abortListener);
+      resolve({ status: 1, stdout, stderr, extractedText, error: err });
+    });
+  });
+
+  await fs.unlink(tmpFile).catch(() => {});
+
+  const allOutputLines = (result.stdout || "").split("\n");
+  const wrapperLines = allOutputLines
+    .map((l) => l.trim())
+    .filter((l) => /^\[(entry|claude-version|exec|exit)\]/.test(l));
+  const stepLines = (result.extractedText || "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => /^\[(STEP \d+|DONE)\]/.test(l));
+  const headerLines = wrapperLines.filter((l) => !/^\[exit\]/.test(l));
+  const exitLines = wrapperLines.filter((l) => /^\[exit\]/.test(l));
+  const trailLines = [...headerLines, ...stepLines, ...exitLines];
+  const trailSection = trailLines.length > 0
+    ? `### Progress Trail\n\`\`\`\n${trailLines.join("\n")}\n\`\`\``
+    : "";
+
+  const outputTail = allOutputLines.slice(-tailLines).join("\n");
+  const ok = !aborted && !result.error && result.status === 0;
+
+  return {
+    agent_name,
+    ok,
+    aborted,
+    status: result.status,
+    logFilename,
+    trailSection,
+    outputTail,
+    stderr: result.stderr,
+    errorMessage: result.error?.message,
+  };
+}
+
 // ─── Tool: run_agent_in_docker ─────────────────────────────────────────────
 
 server.tool(
@@ -1721,445 +2016,233 @@ server.tool(
   },
   async ({ agent_name, task, max_turns = 30, model }) => {
     // v3.8.0: Depth-cap guard for nested dispatch (scrum-master → sub-manager → micro-agent).
-    // Refuse to spawn at depth >= 3 to prevent unbounded recursion. VOLTRON_DEPTH is set by
-    // the parent's docker run -e on every spawn; missing/0 means top-level (host) invocation.
     const currentDepth = parseInt(process.env.VOLTRON_DEPTH || "0", 10);
     if (currentDepth >= 3) {
-      return {
-        content: [{
-          type: "text",
-          text: `❌ Max nesting depth (3) reached: scrum-master → sub-manager → micro-agent. Tier-3 micro-agents must not dispatch further. Current VOLTRON_DEPTH=${currentDepth}.`,
-        }],
-      };
+      return { content: [{ type: "text", text: `❌ Max nesting depth (3) reached: scrum-master → sub-manager → micro-agent. Tier-3 micro-agents must not dispatch further. Current VOLTRON_DEPTH=${currentDepth}.` }] };
     }
     const isNested = currentDepth > 0;
-
-    // v3.8.0: Refuse nested spawns when host-path propagation was lost (e.g. parent forgot
-    // to set VOLTRON_HOST_ROOT). Without it the docker daemon would receive /workspace as
-    // the mount source, which it cannot see.
     if (isNested && !process.env.VOLTRON_HOST_ROOT) {
-      return {
-        content: [{
-          type: "text",
-          text: "❌ Nested dispatch detected (VOLTRON_DEPTH>0) but VOLTRON_HOST_ROOT was not propagated. The parent container failed to forward host-path env vars; refusing to spawn.",
-        }],
-      };
+      return { content: [{ type: "text", text: "❌ Nested dispatch detected (VOLTRON_DEPTH>0) but VOLTRON_HOST_ROOT was not propagated. The parent container failed to forward host-path env vars; refusing to spawn." }] };
     }
 
     const { root: cwd } = detectProjectRoot(undefined);
 
-    // 1. Look up the template
-    const template = TEMPLATES[agent_name];
-    if (!template || template.category !== "agent") {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Error: Unknown agent '${agent_name}'. Run list_templates to see available agents.`,
-          },
-        ],
-      };
+    // Read CLAUDE.md once
+    let claudeMd = "";
+    try { claudeMd = await fs.readFile(path.join(cwd, "CLAUDE.md"), "utf-8"); } catch {}
+
+    // Docker availability + image ensure (caller-shared in dispatchOneAgent's contract)
+    const dockerErr = await checkDockerAvailable();
+    if (dockerErr) return { content: [{ type: "text", text: `Error: ${dockerErr}` }] };
+
+    const dockerfilePath = path.join(cwd, "Dockerfile.voltron");
+    try { await fs.access(dockerfilePath); } catch {
+      return { content: [{ type: "text", text: "Error: Dockerfile.voltron not found in project root. Run scaffold_project first to generate it." }] };
+    }
+    const imageResult = await ensureVoltronImage(cwd, dockerfilePath);
+    if (!imageResult.ok) return { content: [{ type: "text", text: imageResult.error }] };
+
+    const r = await dispatchOneAgent(
+      { agent_name, task, max_turns, model },
+      { cwd, claudeMd, currentDepth, isNested },
+      { tailLines: 80 },
+    );
+
+    if (r.validationError) {
+      return { content: [{ type: "text", text: r.validationError }] };
     }
 
-    // Scrum-master must run in the main Claude Code session, not in Docker
-    if (agent_name === "scrum-master") {
+    const logLine = `\n\nLog: \`.voltron/logs/${r.logFilename}\``;
+    if (r.ok) {
       return {
         content: [{
           type: "text",
-          text: "❌ The scrum-master is a dedicated orchestrator that runs in the main Claude Code session, not in Docker, and is a slash command (not a subagent). Invoke it via `/scrum-master` from the Claude Code chat window instead.",
+          text: [
+            `## Agent ${r.agent_name} completed ✅`,
+            r.trailSection,
+            `### Output Tail (last 80 lines — full output in log)\n\`\`\`\n${r.outputTail}\n\`\`\``,
+          ].filter(Boolean).join("\n\n") + logLine,
         }],
       };
     }
-
-    // v3.8.0: Terminal (Tier-3) micro-agents declare `nestable: false` and never dispatch.
-    // For them we skip generating the container MCP config and skip mounting the docker socket,
-    // which removes the *capability* of further nesting rather than relying on the runtime cap.
-    const nestable = template.nestable !== false;
-
-    // Resolve model tier: explicit parameter > template default > omit (session default)
-    const resolvedModel = model || template.model;
-    const MODEL_IDS = { opus: "claude-opus-4-7", sonnet: "claude-sonnet-4-6", haiku: "claude-haiku-4-5-20251001" };
-    const modelFlag = resolvedModel && MODEL_IDS[resolvedModel] ? `--model ${MODEL_IDS[resolvedModel]}` : "";
-
-    // 2. Read CLAUDE.md for project context
-    let claudeMd = "";
-    try {
-      claudeMd = await fs.readFile(path.join(cwd, "CLAUDE.md"), "utf-8");
-    } catch {
-      // No CLAUDE.md — proceed without project context
-    }
-
-    // 3. Compose the full prompt
-    // Strip YAML frontmatter from the template — it's for Claude Code's agent
-    // discovery system (name, description, tools), not runtime instructions.
-    // Including it causes claude CLI to interpret the prompt as an agent
-    // definition file rather than a plain prompt, failing with a parse error.
-    const agentInstructions = template.content.replace(/^---\n[\s\S]*?\n---\n*/, "");
-
-    const prompt = [
-      agentInstructions,
-      "",
-      PROGRESS_REPORTING_DIRECTIVE,
-      "",
-      "## Project Context (from CLAUDE.md)",
-      "",
-      claudeMd || "(No CLAUDE.md found — work without project context)",
-      "",
-      "## Your Task",
-      "",
-      task,
-    ].join("\n");
-
-    // 4. Write prompt to temp file (avoids shell escaping issues).
-    // v3.8.0: Live under <cwd>/.voltron/tmp/ rather than os.tmpdir() so the file is on the
-    // bind-mounted tree. This makes the host-path of the file computable inside nested
-    // containers (it's just hostRoot/.voltron/tmp/<filename>) and lets us mount it back.
-    const tmpDir = path.join(cwd, ".voltron", "tmp");
-    await fs.mkdir(tmpDir, { recursive: true });
-    const tmpFilename = `voltron-${agent_name}-${Date.now()}.md`;
-    const tmpFile = path.join(tmpDir, tmpFilename);
-    await fs.writeFile(tmpFile, prompt);
-
-    // 5. Check Docker CLI + daemon are both available
-    const dockerErr = await checkDockerAvailable();
-    if (dockerErr) {
-      await fs.unlink(tmpFile).catch(() => {});
-      return { content: [{ type: "text", text: `Error: ${dockerErr}` }] };
-    }
-
-    // 6. Ensure voltron-agent image is current (skips rebuild if Dockerfile unchanged)
-    const dockerfilePath = path.join(cwd, "Dockerfile.voltron");
-    try {
-      await fs.access(dockerfilePath);
-    } catch {
-      await fs.unlink(tmpFile).catch(() => {});
-      return {
-        content: [{ type: "text", text: "Error: Dockerfile.voltron not found in project root. Run scaffold_project first to generate it." }],
-      };
-    }
-    const imageResult = await ensureVoltronImage(cwd, dockerfilePath);
-    if (!imageResult.ok) {
-      await fs.unlink(tmpFile).catch(() => {});
-      return { content: [{ type: "text", text: imageResult.error }] };
-    }
-
-    // 8. Set up log infrastructure — each run gets a named container + a live log file
-    const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    const safeAgentName = agent_name.replace(/[^a-z0-9]/g, '-');
-    const containerName = `voltron-${safeAgentName}-${ts}`;
-    const logFilename = `${safeAgentName}-${ts}.log`;
-    const logsDir = path.join(cwd, ".voltron", "logs");
-    await fs.mkdir(logsDir, { recursive: true });
-
-    // 10. Run agent in Docker
-    // Use spawnSync with an explicit args array — avoids host-shell quoting issues
-    // on Windows where execSync uses cmd.exe (which doesn't understand single quotes),
-    // causing the -c argument to be mangled before reaching Docker.
-    //
-    // v3.8.0: When this MCP server runs inside a nested container, process.cwd() resolves
-    // to /workspace and os.homedir() to /home/voltron — neither is visible to the host
-    // docker daemon. The parent propagates VOLTRON_HOST_ROOT / VOLTRON_HOST_HOME /
-    // VOLTRON_HOST_TMPDIR carrying the host-side strings; prefer those when set.
-    const homeDir = process.env.VOLTRON_HOST_HOME || process.env.HOME || process.env.USERPROFILE || os.homedir();
-    const hostRoot = process.env.VOLTRON_HOST_ROOT || cwd;
-    const hostTmpdir = process.env.VOLTRON_HOST_TMPDIR || tmpDir;
-    const hostTmpFile = hostJoin(hostTmpdir, tmpFilename);
-
-    // Conditionally mount ~/.gitconfig so git commits work inside Docker. When nested,
-    // check the container-side mount point /home/voltron/.gitconfig (where the parent
-    // mounted it) instead of the host path (which is unreachable from the Linux container).
-    // v3.8.4: For nested dispatch we use --volumes-from on the parent container, which
-    // inherits gitconfig automatically — leave gitConfigMount empty in that branch.
-    const gitConfigHostPath = hostJoin(homeDir, ".gitconfig");
-    const gitConfigCheckPath = isNested ? "/home/voltron/.gitconfig" : gitConfigHostPath;
-    let gitConfigMount = [];
-    if (!isNested) {
-      try {
-        await fs.access(gitConfigCheckPath);
-        gitConfigMount = ["--mount", `type=bind,source=${gitConfigHostPath},target=/home/voltron/.gitconfig,readonly`];
-      } catch {
-        // No ~/.gitconfig — agents must set git identity manually if they need to commit
-      }
-    }
-
-    // v3.4.1: Auth path = narrow OAuth credentials mount + env-var passthrough.
-    // History:
-    //   v2.x   mounted full ~/.claude + ~/.claude.json  (Max-plan OAuth worked)
-    //   v3.3.2 dropped BOTH mounts to fix a 60-90s hang caused by ~/.claude.json
-    //          containing Windows-pathed MCP server registrations the Linux container
-    //          tried to spawn. That fix was correct — but it also killed Max-plan auth
-    //          for users without CLAUDE_CODE_OAUTH_TOKEN set, making Voltron unusable.
-    //   v3.4.1 restores Option-2 auth narrowly: mount only ~/.claude/.credentials.json
-    //          (the OAuth token file), keep ~/.claude.json mount DROPPED.
-    // On Windows the credentials file only exists if the user has run `claude setup-token`
-    // (Windows otherwise stores OAuth in the Credential Manager, which the Linux container
-    // can't reach). Mount is conditional on file existence; falls back to env-var auth.
-    // v3.8.4: For nested dispatch, --volumes-from inherits the parent's creds mount
-    // (and the docker socket), so credsMount stays empty in that branch.
-    const credsHostPath = hostJoin(homeDir, ".claude", ".credentials.json");
-    const credsCheckPath = isNested ? "/home/voltron/.claude/.credentials.json" : credsHostPath;
-    let credsMount = [];
-    let credsAvailable = false;
-    try {
-      await fs.access(credsCheckPath);
-      credsAvailable = true;
-      if (!isNested) {
-        credsMount = ["--mount", `type=bind,source=${credsHostPath},target=/home/voltron/.claude/.credentials.json,readonly`];
-      }
-    } catch {
-      // No ~/.claude/.credentials.json — auth must come from env vars
-    }
-
-    const authEnvArgs = [];
-    if (process.env.CLAUDE_CODE_OAUTH_TOKEN) {
-      authEnvArgs.push("-e", `CLAUDE_CODE_OAUTH_TOKEN=${process.env.CLAUDE_CODE_OAUTH_TOKEN}`);
-    }
-    if (process.env.ANTHROPIC_API_KEY) {
-      authEnvArgs.push("-e", `ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY}`);
-    }
-
-    if (!credsAvailable && authEnvArgs.length === 0) {
-      await fs.unlink(tmpFile).catch(() => {});
-      return { content: [{ type: "text", text: "Error: No auth available for Docker agent. Either run `claude setup-token` (creates ~/.claude/.credentials.json which will be mounted), or set CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY in your environment." }] };
-    }
-
-    // v3.8.0: Generate a container-local MCP config so the dispatched agent's `claude`
-    // CLI can register project-voltron and recursively call run_agent_in_docker. We deliberately
-    // do NOT mount ~/.claude.json (that's the v3.3.2 hang bug); a fresh per-run file is safe.
-    // Skipped for `nestable: false` (Tier-3) templates — they should never dispatch.
-    let mcpConfigFlag = "";
-    if (nestable) {
-      const mcpConfigDir = path.join(cwd, ".voltron");
-      await fs.mkdir(mcpConfigDir, { recursive: true });
-      const mcpConfigPath = path.join(mcpConfigDir, "container-mcp.json");
-      const mcpConfig = {
-        mcpServers: {
-          "project-voltron": {
-            command: "node",
-            args: ["/workspace/src/index.js"],
-          },
-        },
-      };
-      await fs.writeFile(mcpConfigPath, JSON.stringify(mcpConfig, null, 2));
-      mcpConfigFlag = "--mcp-config /workspace/.voltron/container-mcp.json";
-    }
-
-    // v3.8.0: Docker-out-of-Docker — mount the host docker socket so the in-container
-    // `docker` CLI drives the host's daemon. Nested containers become *siblings* of the parent
-    // on the host (not children-of-the-container), which keeps host-path translation working.
-    // On Windows + Docker Desktop the socket path is `//var/run/docker.sock` (leading `//`
-    // defeats MSYS/Git-Bash absolute-path mangling); POSIX hosts use `/var/run/docker.sock`.
-    // Skipped for `nestable: false` — terminal agents have no reason to talk to docker.
-    // v3.8.4: For nested dispatch the socket arrives via --volumes-from, so we don't add it
-    // as a separate --mount in that branch.
-    const dockerSocketHostPath = process.platform === "win32" ? "//var/run/docker.sock" : "/var/run/docker.sock";
-    const socketMount = (nestable && !isNested) ? ["--mount", `type=bind,source=${dockerSocketHostPath},target=/var/run/docker.sock`] : [];
-
-    // v3.8.0: Propagate host-side paths + depth through the process tree so a nested
-    // run_agent_in_docker call can reconstruct host-visible mount sources instead of /workspace.
-    const voltronEnvArgs = [
-      "-e", `VOLTRON_HOST_ROOT=${hostRoot}`,
-      "-e", `VOLTRON_HOST_HOME=${homeDir}`,
-      "-e", `VOLTRON_HOST_TMPDIR=${hostTmpdir}`,
-      "-e", `VOLTRON_DEPTH=${currentDepth + 1}`,
-    ];
-
-    // v3.8.4: Two mount strategies, branched on nesting depth.
-    //
-    // OUTER (depth 0, on the host): use --mount type=bind with host-resolved paths.
-    //   The host docker daemon handles Windows path translation (e.g. C:/Users/...) correctly.
-    //
-    // NESTED (depth > 0, dispatched from inside a container): use a single --volumes-from
-    //   <own-id> flag, which inherits the parent's ENTIRE mount table — /workspace,
-    //   /var/run/docker.sock, ~/.gitconfig, ~/.claude/.credentials.json — without ever
-    //   handing the Linux daemon a host-flavored path it cannot resolve. This is the
-    //   validated fix for the Windows path-translation failure: the in-container docker
-    //   CLI cannot translate /workspace → C:/Users/...; --volumes-from sidesteps the
-    //   translation entirely by referencing the parent container's existing mounts by id.
-    //
-    //   The per-run task file lives at <cwd>/.voltron/tmp/<tmpFilename>, which is inside
-    //   the inherited /workspace, so we read it from /workspace/.voltron/tmp/<tmpFilename>
-    //   instead of a separate /tmp/task.md mount.
-    let mountArgs;
-    let taskFilePathInContainer;
-    if (isNested) {
-      const ownId = os.hostname();
-      mountArgs = ["--volumes-from", ownId];
-      taskFilePathInContainer = `/workspace/.voltron/tmp/${tmpFilename}`;
-    } else {
-      mountArgs = [
-        "--mount", `type=bind,source=${hostRoot},target=/workspace`,
-        ...gitConfigMount,        // mount ~/.gitconfig if present so git commits work
-        ...credsMount,            // mount ~/.claude/.credentials.json:ro for Max-plan OAuth
-        ...socketMount,           // v3.8.0: docker socket for nested dispatch (omit for tier-3)
-        "--mount", `type=bind,source=${hostTmpFile},target=/tmp/task.md,readonly`,
-      ];
-      taskFilePathInContainer = "/tmp/task.md";
-    }
-
-    // Named container enables `docker logs <name> -f` from a second terminal while running.
-    // tee writes a live log to .voltron/logs/ on the host (mounted via /workspace).
-    // PIPESTATUS[0] propagates claude's exit code through the pipe to Docker's exit code.
-    const dockerArgs = [
-      "run", "--rm",
-      "--name", containerName,
-      "--entrypoint", "bash",
-      ...authEnvArgs,
-      ...voltronEnvArgs,        // v3.8.0: VOLTRON_HOST_ROOT/HOME/TMPDIR/DEPTH for nested dispatch
-      ...mountArgs,
-      "voltron-agent",
-      "-c",
-      // v3.3.2: breadcrumb-wrapped — surfaces stalls before claude produces its first byte.
-      // [entry]/[claude-version]/[exec]/[exit] echoes localize hangs to mount, auth, parse, or run.
-      // v3.6.4: --output-format stream-json --verbose so intermediate assistant text
-      // (including [STEP N] progress lines emitted before each tool call) reaches stdout.
-      // Plain `-p` only prints the final assistant message and would suppress all [STEP N]s.
-      // v3.8.0: ${mcpConfigFlag} adds --mcp-config when the agent is nestable, registering
-      // project-voltron inside the container so the dispatched claude can call run_agent_in_docker.
-      `{ echo "[entry] $(date -Is) host=$(hostname) user=$(whoami)"; echo "[claude-version] $(claude --version 2>&1)"; echo "[exec] $(date -Is) starting prompt"; claude --dangerously-skip-permissions ${modelFlag} ${mcpConfigFlag} --max-turns ${max_turns} --output-format stream-json --verbose -p "$(cat ${taskFilePathInContainer})" 2>&1; CLAUDE_EXIT=\$?; echo "[exit] $(date -Is) code=\$CLAUDE_EXIT"; exit \$CLAUDE_EXIT; } | tee /workspace/.voltron/logs/${logFilename}; exit \${PIPESTATUS[0]}`,
-    ];
-
-    // Async spawn — allows multiple agents to run in parallel Docker containers
-    const result = await new Promise((resolve) => {
-      let stdout = "";
-      let stderr = "";
-      const proc = spawn("docker", dockerArgs, { cwd });
-
-      // v3.6.4: claude is invoked with --output-format stream-json --verbose, so
-      // its stdout is a JSONL stream of events (system/assistant/user/result) interleaved
-      // with the bash-wrapper plain-text breadcrumbs ([entry]/[claude-version]/[exec]/[exit]).
-      // We forward wrapper breadcrumbs verbatim, parse JSON lines for assistant text content,
-      // and emit any [STEP N]/[DONE] markers found in that text as MCP logging notifications.
-      let pendingLine = "";
-      let extractedText = "";
-      proc.stdout?.on("data", (chunk) => {
-        const chunkStr = chunk.toString();
-        stdout += chunkStr;
-
-        pendingLine += chunkStr;
-        const parts = pendingLine.split("\n");
-        pendingLine = parts.pop() ?? "";
-        for (const rawLine of parts) {
-          const line = rawLine.trim();
-          if (!line) continue;
-
-          // Bash-wrapper breadcrumbs are plain text — bypass JSON parsing.
-          if (/^\[(entry|claude-version|exec|exit)\]/.test(line)) {
-            server.sendLoggingMessage({ level: "info", data: `[${agent_name}] ${line}` }).catch(() => {});
-            continue;
-          }
-
-          // Everything else should be a stream-json event.
-          let event;
-          try { event = JSON.parse(line); } catch { continue; }
-          if (!event || typeof event !== "object") continue;
-
-          const texts = [];
-          // Dominant shape: {type:"assistant", message:{content:[{type:"text", text:"..."}, ...]}}
-          if (event.type === "assistant" && event.message && Array.isArray(event.message.content)) {
-            for (const block of event.message.content) {
-              if (block && block.type === "text" && typeof block.text === "string") texts.push(block.text);
-            }
-          // Partial-streaming shape (only when --include-partial-messages is set, but harmless to support)
-          } else if (event.type === "stream_event" && event.event && event.event.type === "content_block_delta"
-                     && event.event.delta && event.event.delta.type === "text_delta"
-                     && typeof event.event.delta.text === "string") {
-            texts.push(event.event.delta.text);
-          // Defensive fallbacks for SDK-version drift
-          } else if (event.type === "text" && typeof event.text === "string") {
-            texts.push(event.text);
-          } else if (event.type === "result" && typeof event.result === "string") {
-            texts.push(event.result);
-          }
-
-          for (const text of texts) {
-            extractedText += text + "\n";
-            for (const t of text.split("\n")) {
-              const trimmed = t.trim();
-              if (/^\[(STEP \d+|DONE)\]/.test(trimmed)) {
-                server.sendLoggingMessage({ level: "info", data: `[${agent_name}] ${trimmed}` }).catch(() => {});
-              }
-            }
-          }
-        }
-
-        if (stdout.length > 10 * 1024 * 1024) {
-          proc.kill();
-          resolve({ status: 1, stdout: stdout.slice(-10 * 1024 * 1024), stderr, extractedText, error: new Error("Output exceeded 10MB limit") });
-        }
-      });
-      proc.stderr?.on("data", (chunk) => { stderr += chunk.toString(); });
-
-      const timer = setTimeout(() => {
-        proc.kill();
-        resolve({ status: 1, stdout, stderr, extractedText, error: new Error("Timeout after 10 minutes") });
-      }, 600000);
-
-      proc.on("close", (code) => {
-        clearTimeout(timer);
-        resolve({ status: code, stdout, stderr, extractedText, error: null });
-      });
-      proc.on("error", (err) => {
-        clearTimeout(timer);
-        resolve({ status: 1, stdout, stderr, extractedText, error: err });
-      });
-    });
-
-    await fs.unlink(tmpFile).catch(() => {});
-    const logLine = `\n\nLog: \`.voltron/logs/${logFilename}\``;
-
-    // Extract progress breadcrumbs into a trail section so the orchestrator
-    // can scan what happened without reading the full output wall.
-    // v3.6.4: with stream-json, raw stdout is JSONL — wrapper breadcrumbs are still
-    // plain-text lines in stdout, while [STEP N]/[DONE] live inside parsed assistant
-    // text (captured during streaming as `extractedText`).
-    const allOutputLines = (result.stdout || "").split("\n");
-    const wrapperLines = allOutputLines
-      .map((l) => l.trim())
-      .filter((l) => /^\[(entry|claude-version|exec|exit)\]/.test(l));
-    const stepLines = (result.extractedText || "")
-      .split("\n")
-      .map((l) => l.trim())
-      .filter((l) => /^\[(STEP \d+|DONE)\]/.test(l));
-    const headerLines = wrapperLines.filter((l) => !/^\[exit\]/.test(l));
-    const exitLines = wrapperLines.filter((l) => /^\[exit\]/.test(l));
-    const trailLines = [...headerLines, ...stepLines, ...exitLines];
-    const trailSection = trailLines.length > 0
-      ? `### Progress Trail\n\`\`\`\n${trailLines.join("\n")}\n\`\`\``
-      : "";
-
-    if (result.error || result.status !== 0) {
-      const tail = allOutputLines.slice(-80).join("\n");
-      return {
-        content: [
-          {
-            type: "text",
-            text: [
-              `## Agent ${agent_name} FAILED (exit ${result.status})`,
-              trailSection,
-              `### Output Tail\n\`\`\`\n${tail}\n\`\`\``,
-              result.stderr ? `### Stderr\n\`\`\`\n${result.stderr}\n\`\`\`` : "",
-              result.error?.message ? `**Error:** ${result.error.message}` : "",
-            ].filter(Boolean).join("\n\n") + logLine,
-          },
-        ],
-      };
-    }
-
-    const successTail = allOutputLines.slice(-80).join("\n");
     return {
-      content: [
-        {
-          type: "text",
-          text: [
-            `## Agent ${agent_name} completed ✅`,
-            trailSection,
-            `### Output Tail (last 80 lines — full output in log)\n\`\`\`\n${successTail}\n\`\`\``,
-          ].filter(Boolean).join("\n\n") + logLine,
-        },
-      ],
+      content: [{
+        type: "text",
+        text: [
+          `## Agent ${r.agent_name} FAILED (exit ${r.status})`,
+          r.trailSection,
+          `### Output Tail\n\`\`\`\n${r.outputTail}\n\`\`\``,
+          r.stderr ? `### Stderr\n\`\`\`\n${r.stderr}\n\`\`\`` : "",
+          r.errorMessage ? `**Error:** ${r.errorMessage}` : "",
+        ].filter(Boolean).join("\n\n") + logLine,
+      }],
     };
   }
+);
+
+// ─── Tool: run_agent_in_docker_batch ───────────────────────────────────────
+//
+// Fan out 2–8 agents to parallel Docker containers under a single MCP call.
+// Bypasses the Claude Code main-session tool-call serializer (see
+// docs/parallel-dispatch-investigation.md + docs/run-agents-batch-design.md).
+// The MCP server's own stack is parallel-safe (Tier-A verified 2026-05-28), so
+// Promise.all over dispatchOneAgent gives true concurrency.
+
+server.tool(
+  "run_agent_in_docker_batch",
+  "Launch 2-8 specialist agents concurrently inside parallel Docker containers — one MCP call, N parallel executions. Prefer this over multiple run_agent_in_docker calls when dispatching dependency-free agents; bypasses main-session tool-call serialization. See docs/run-agents-batch-design.md.",
+  {
+    dispatches: z.array(
+      z.object({
+        agent_name: z.string().describe("The agent template name (e.g., 'fullstack-dev', 'csharp-dev'). Must exist in TEMPLATES with category=='agent'."),
+        task: z.string().describe("Complete task description for this dispatch, including context, file paths, acceptance criteria, and any outputs from prior tasks."),
+        max_turns: z.number().min(1).optional().describe("Maximum agent turns for this dispatch. Default: 30."),
+        model: z.enum(["opus", "sonnet", "haiku"]).optional().describe("Model tier override for this dispatch. Priority: explicit > template.model > session default."),
+      }),
+    ).min(2).max(8).describe("Two to eight independent agent dispatches. Each runs in its own parallel Docker container under the same MCP call."),
+    fail_fast: z.boolean().optional().describe("When true, on the first failed dispatch terminate pending containers and short-circuit the batch. When false (default), all dispatches run to completion and each result is reported independently."),
+  },
+  async ({ dispatches, fail_fast = false }) => {
+    const batchId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+    const batchStart = Date.now();
+
+    // 0. Pre-fan-out shared validation (same checks the singleton does, at batch level).
+    const currentDepth = parseInt(process.env.VOLTRON_DEPTH || "0", 10);
+    if (currentDepth >= 3) {
+      return { content: [{ type: "text", text: `❌ Max nesting depth (3) reached. Tier-3 micro-agents must not dispatch further. Current VOLTRON_DEPTH=${currentDepth}.` }] };
+    }
+    const isNested = currentDepth > 0;
+    if (isNested && !process.env.VOLTRON_HOST_ROOT) {
+      return { content: [{ type: "text", text: "❌ Nested dispatch detected (VOLTRON_DEPTH>0) but VOLTRON_HOST_ROOT was not propagated. Refusing to spawn." }] };
+    }
+
+    // 1. Pre-validate every agent_name. Refuse the whole batch on any unknown name
+    //    or scrum-master entry (per design §3 — no containers spawned on validation failure).
+    const invalid = [];
+    for (let i = 0; i < dispatches.length; i++) {
+      const d = dispatches[i];
+      const t = TEMPLATES[d.agent_name];
+      if (!t || t.category !== "agent") {
+        invalid.push(`[${i}] unknown agent '${d.agent_name}'`);
+      } else if (d.agent_name === "scrum-master") {
+        invalid.push(`[${i}] 'scrum-master' is not dispatchable via Docker; it is a slash command for the main session`);
+      }
+    }
+    if (invalid.length > 0) {
+      return { content: [{ type: "text", text: `❌ Batch rejected — invalid dispatches:\n${invalid.map(l => `- ${l}`).join("\n")}` }] };
+    }
+
+    const { root: cwd } = detectProjectRoot(undefined);
+
+    // 2. Read CLAUDE.md ONCE (identical for every dispatch in batch)
+    let claudeMd = "";
+    try { claudeMd = await fs.readFile(path.join(cwd, "CLAUDE.md"), "utf-8"); } catch {}
+
+    // 3. Docker check + image ensure — ONCE before fan-out (per design §4: no N redundant inspects).
+    const dockerErr = await checkDockerAvailable();
+    if (dockerErr) return { content: [{ type: "text", text: `❌ ${dockerErr}` }] };
+
+    const dockerfilePath = path.join(cwd, "Dockerfile.voltron");
+    try { await fs.access(dockerfilePath); } catch {
+      return { content: [{ type: "text", text: "❌ Dockerfile.voltron not found in project root. Run scaffold_project first." }] };
+    }
+    const imageResult = await ensureVoltronImage(cwd, dockerfilePath);
+    if (!imageResult.ok) return { content: [{ type: "text", text: `❌ ${imageResult.error}` }] };
+
+    // 4. Fan-out with one AbortController per dispatch (for fail_fast cancellation).
+    const controllers = dispatches.map(() => new AbortController());
+
+    const promises = dispatches.map(async (spec, i) => {
+      const r = await dispatchOneAgent(
+        spec,
+        { cwd, claudeMd, currentDepth, isNested },
+        { abortSignal: controllers[i].signal, tailLines: 40 },
+      );
+      // Trigger sibling cancellation as soon as one dispatch lands a real failure.
+      if (fail_fast && !r.aborted && !r.ok && !r.validationError) {
+        for (let j = 0; j < controllers.length; j++) {
+          if (j !== i) controllers[j].abort();
+        }
+      }
+      return r;
+    });
+
+    const results = await Promise.all(promises);
+    const walltimeMs = Date.now() - batchStart;
+    const walltimeSec = (walltimeMs / 1000).toFixed(1);
+
+    // 5. Assemble summary table + N per-dispatch sections.
+    let cancelledCount = 0;
+    const tableRows = results.map((r, i) => {
+      let status;
+      if (r.validationError) {
+        status = "❌ validation error";
+      } else if (r.aborted) {
+        status = "🟡 cancelled (sibling failed)";
+        cancelledCount++;
+      } else if (r.ok) {
+        status = `✅ ok (exit ${r.status})`;
+      } else {
+        status = `❌ FAILED (exit ${r.status})`;
+      }
+      const logCell = r.logFilename ? `\`.voltron/logs/${r.logFilename}\`` : "—";
+      return `| ${i + 1} | ${r.agent_name} | ${status} | ${logCell} |`;
+    });
+
+    const sections = results.map((r, i) => {
+      const idx = i + 1;
+      const logLine = r.logFilename ? `Log: \`.voltron/logs/${r.logFilename}\`` : "";
+      if (r.validationError) {
+        return [
+          `### [${idx}] Agent ${r.agent_name} — validation error`,
+          "```",
+          r.validationError,
+          "```",
+        ].join("\n");
+      }
+      if (r.aborted) {
+        return [
+          `### [${idx}] Agent ${r.agent_name} CANCELLED 🟡`,
+          r.trailSection,
+          r.outputTail ? `#### Output Tail (last 40 lines — full output in log)\n\`\`\`\n${r.outputTail}\n\`\`\`` : "",
+          "**Cancelled because a sibling dispatch failed (fail_fast=true).**",
+          logLine,
+        ].filter(Boolean).join("\n\n");
+      }
+      if (r.ok) {
+        return [
+          `### [${idx}] Agent ${r.agent_name} completed ✅`,
+          r.trailSection,
+          `#### Output Tail (last 40 lines — full output in log)\n\`\`\`\n${r.outputTail}\n\`\`\``,
+          logLine,
+        ].filter(Boolean).join("\n\n");
+      }
+      return [
+        `### [${idx}] Agent ${r.agent_name} FAILED (exit ${r.status})`,
+        r.trailSection,
+        `#### Output Tail (last 40 lines)\n\`\`\`\n${r.outputTail}\n\`\`\``,
+        r.stderr ? `#### Stderr (last 20 lines)\n\`\`\`\n${r.stderr.split("\n").slice(-20).join("\n")}\n\`\`\`` : "",
+        r.errorMessage ? `**Error:** ${r.errorMessage}` : "",
+        logLine,
+      ].filter(Boolean).join("\n\n");
+    });
+
+    const body = [
+      `## Batch dispatch — ${results.length} agents (batch_id: ${batchId})`,
+      "",
+      "| # | agent | status | log |",
+      "|---|---|---|---|",
+      ...tableRows,
+      "",
+      `Wall time: ${walltimeSec}s. Cancelled: ${cancelledCount}. fail_fast: ${fail_fast}.`,
+      "",
+      "---",
+      "",
+      sections.join("\n\n---\n\n"),
+    ].join("\n");
+
+    return { content: [{ type: "text", text: body }] };
+  },
 );
 
 

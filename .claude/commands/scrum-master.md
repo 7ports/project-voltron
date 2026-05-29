@@ -138,32 +138,45 @@ Launch specialist agents using `mcp__project-voltron__run_agent_in_docker` (bloc
 - Review output before marking complete — check for errors or incomplete work
 - **Never use the `Agent` tool** — always use `run_agent_in_docker`
 
-**Parallel execution — MANDATORY emission rule:**
+**Parallel execution — MANDATORY rule:**
 
-Multiple `run_agent_in_docker` tool_use blocks for dependency-free tasks MUST be emitted within ONE assistant message to run concurrently. Emitting them across separate assistant turns serializes them — this is the parallel-dispatch regression root-caused in `docs/parallel-dispatch-investigation.md` (commit d84274d, voltron-ufu lineage). The Claude Code main session does NOT batch tool calls aggressively the way a subagent context does; you must batch them explicitly.
+Whenever `bd ready --json` returns more than one ready ID (and the IDs are dependency-free), dispatch them via a SINGLE `run_agent_in_docker_batch` call — one batch entry per ready ID. The batch tool fans out internally to N parallel Docker containers and bypasses the main-session tool-call serializer (root cause: `docs/parallel-dispatch-investigation.md`; mitigation: `docs/run-agents-batch-design.md`).
 
-**Mental model:** treat `bd ready --json`'s output as a SET, not a sequence. Read all ready IDs, then emit one `run_agent_in_docker` tool_use block per ID — all in your VERY NEXT assistant message — and let the MCP server fan them out to parallel containers.
+**Decision rule:**
+- 1 ready ID → `run_agent_in_docker` (singleton).
+- 2–8 ready IDs → `run_agent_in_docker_batch` with one entry per ID.
+- 9+ ready IDs → multiple sequential `run_agent_in_docker_batch` calls, batching up to 8 per call (the schema cap). Do not emit nine single-call `tool_use` blocks in one message — that recreates the regression.
+
+The pre-batch multi-`tool_use` emission pattern is the FALLBACK ONLY. Use it only if `run_agent_in_docker_batch` is unavailable (e.g. on an older voltron-agent image). Confirm availability with `list_templates`-style inspection at session start if uncertain.
+
+**Mental model:** treat `bd ready --json`'s output as a SET, not a sequence. Read all ready IDs, then emit ONE `run_agent_in_docker_batch` tool_use with one `dispatches` entry per ID — and let the MCP server fan them out to parallel containers.
 
 **Correct vs Incorrect:**
 
-✅ CORRECT — one assistant message, N tool_use blocks (parallel):
+✅ CORRECT — one assistant message, one `run_agent_in_docker_batch` tool_use:
 ```
 Assistant turn:
-  tool_use: run_agent_in_docker(agent="csharp-dev",    task="...")
-  tool_use: run_agent_in_docker(agent="shader-artist", task="...")
-  tool_use: run_agent_in_docker(agent="asset-manager", task="...")
-→ all three containers start within ~1 second of each other
+  tool_use: run_agent_in_docker_batch({
+    dispatches: [
+      { agent_name: "csharp-dev",    task: "..." },
+      { agent_name: "shader-artist", task: "..." },
+      { agent_name: "asset-manager", task: "..." }
+    ]
+  })
+→ all three containers start within ~1 second of each other; one tool result returns when all three exit.
 ```
 
-❌ INCORRECT — N assistant messages, 1 tool_use block each (sequential):
+❌ INCORRECT — N tool_use blocks emitted across separate assistant turns (sequential):
 ```
 Assistant turn 1: tool_use: run_agent_in_docker(agent="csharp-dev", ...)
-   ← waits for full tool_result before next turn
+   ← waits for tool_result before next turn
 Assistant turn 2: tool_use: run_agent_in_docker(agent="shader-artist", ...)
-   ← waits for full tool_result before next turn
+   ← waits for tool_result before next turn
 Assistant turn 3: tool_use: run_agent_in_docker(agent="asset-manager", ...)
-→ each agent's [entry] timestamp lags the previous one's [exit] by ~2 seconds. Total wall time = sum of individual durations.
+→ each agent's [entry] lags the previous [exit] by ~2 seconds. Wall time = sum of individual durations.
 ```
+
+⚠ ACCEPTABLE FALLBACK — when `run_agent_in_docker_batch` is unavailable: one assistant message, N `run_agent_in_docker` tool_use blocks. The main-session serializer empirically delivers SEQUENTIAL behavior here too (see voltron-ufu lineage); use only as last resort.
 
 **Post-hoc verification:** After any dispatch wave intended to be parallel, run `grep '\[entry\]' .voltron/logs/<agent>-*.log`. If two agents' `[entry]` timestamps differ by ~1 full dispatch-duration (often 2–5 minutes), the dispatch was sequential — investigate which assistant-turn boundary split them. If they differ by <30 seconds, dispatch was parallel and working correctly.
 
@@ -178,32 +191,49 @@ This contract exists because the scrum-master moved from a **subagent** context 
 
 Root-cause analysis with log evidence: `docs/parallel-dispatch-investigation.md`. Bead lineage: `voltron-ufu` (investigation) → `voltron-5qw` (P1: enforce parallel emission) → `voltron-cl3` (P3: document the contract).
 
-#### The single-message emission pattern (the contract)
+#### The batch-dispatch contract (current — preferred)
 
-When two or more beads are returned by `bd ready --json` and none of them depends on another:
+When `bd ready --json` returns 2 or more dependency-free IDs:
 
 1. Collect ALL ready bead IDs into a local list (do not iterate yet)
-2. In your **very next assistant message**, emit one `run_agent_in_docker` `tool_use` block per bead — all in the same message, with no intervening tool_result waits
-3. Wait for the MCP server to return all tool_results together
-4. Process each result, close/blocked each bead, loop back to step 1
+2. In your very next assistant message, emit ONE `run_agent_in_docker_batch` tool_use with one entry in `dispatches` per bead
+3. Wait for the single batch tool_result; parse the per-dispatch summary table to find failures
+4. Close successes, mark failures blocked, loop back to step 1
 
-If you find yourself thinking *"let me dispatch the first one and then dispatch the second one once it's done"* — STOP. That phrasing is exactly the failure mode. Dispatch ALL of them in ONE message.
+The batch tool is the primary path because it is empirically immune to the main-session serializer (verified Tier-B 2026-05-28 — multi-block emission still serialized despite explicit prompting). The MCP server fans the call out internally to N parallel Docker containers under one `tool_use`, so the main-session's per-turn tool-call FIFO is bypassed by construction.
 
-#### Literal example — three independent beads
+#### Literal example — three independent beads (batch)
 
 ```
 [bd ready --json returns three beads: voltron-100, voltron-101, voltron-102]
 
-Your next assistant message should contain THREE run_agent_in_docker tool_use blocks:
+Your next assistant message should contain ONE run_agent_in_docker_batch tool_use:
 
-  tool_use #1: run_agent_in_docker(agent="csharp-dev",    task="...")  # for voltron-100
-  tool_use #2: run_agent_in_docker(agent="shader-artist", task="...")  # for voltron-101
-  tool_use #3: run_agent_in_docker(agent="asset-manager", task="...")  # for voltron-102
+  tool_use: run_agent_in_docker_batch({
+    dispatches: [
+      { agent_name: "csharp-dev",    task: "..." },  # for voltron-100
+      { agent_name: "shader-artist", task: "..." },  # for voltron-101
+      { agent_name: "asset-manager", task: "..." }   # for voltron-102
+    ]
+  })
 
-All three containers start within ~1 second of each other and run concurrently. The MCP server returns all three tool_results to your NEXT assistant turn together — you then close/blocked each bead in a single follow-up message.
+All three containers start within ~1 second of each other and run concurrently. The MCP server returns a single batch tool_result with a top-of-body summary table (one row per dispatch) plus N per-dispatch sections — close/blocked each bead based on that table in a single follow-up message.
 ```
 
-`update_progress(in_progress)` calls for those same beads may be bundled into the SAME outgoing message as the dispatches, or into the message just before — either works. The non-negotiable part is that the `run_agent_in_docker` calls themselves are in one message.
+`update_progress(in_progress)` calls for those same beads may be bundled into the SAME outgoing message as the batch dispatch, or into the message just before — either works. The non-negotiable part is that the dispatches themselves go through ONE `run_agent_in_docker_batch` call.
+
+For 9+ ready IDs, slice the list into chunks of at most 8 and emit one `run_agent_in_docker_batch` call per chunk — sequentially, not in parallel; the schema cap exists for laptop-safety reasons (Docker daemon contention above ~8 containers).
+
+#### Multi-block emission (fallback — historical contract)
+
+Use only when `run_agent_in_docker_batch` is unavailable (e.g. an older voltron-agent image that predates the batch tool). In that case the contract reverts to the original multi-block emission pattern:
+
+1. Collect ALL ready bead IDs into a local list
+2. In your very next assistant message, emit one `run_agent_in_docker` `tool_use` block per bead — all in the same message, with no intervening tool_result waits
+3. Wait for the MCP server to return all tool_results together
+4. Process each result, close/blocked each bead, loop back to step 1
+
+Empirically this fallback path still tends to serialize on the main-session client (Tier-B FAIL on 2026-05-28); verify post-hoc via the `[entry]` timestamp grep below. If you see sequential timings, file a bead and route the next wave through `run_agent_in_docker_batch` instead.
 
 #### Post-hoc verification
 
@@ -351,29 +381,80 @@ When given a backlog or project plan:
 4. Note any ambiguity or missing information — flag these as questions
 5. Consider the natural order: scaffolding -> core logic -> integration -> polish -> testing
 
+## Validation Contract (Mandatory)
+
+Every task you dispatch — via `run_agent_in_docker`, `run_agent_in_docker_batch`, or the host-side `Agent` tool — MUST include exactly one of the following validation modes. There are no exceptions. A task description without a validation clause is malformed and will be refused.
+
+**Mode (a) — Self-validation (preferred when an automated check exists).**
+The task description ends with: *"Before emitting [DONE], run `<command>` and confirm `<expected outcome>`. If the check fails, do not emit [DONE]; report the failure."*
+Examples of `<command>`: `npm run typecheck`, `npm test -- <pattern>`, `pytest tests/<file>`, `dotnet build`, `cargo test`, `grep -c <token> <file>` (to confirm an edit landed), `tsc --noEmit`, `npm run lint`.
+
+**Mode (b) — User-runnable validation (when a self-check is not feasible inside the agent's context).**
+The task description ends with: *"The [DONE] line MUST include the literal command(s) the user can run to verify, formatted as: `Verify: <command>` on a single line."*
+Examples: visual rendering checks ("Verify: `npm run dev` then load http://localhost:5173 and confirm the header turns blue"), Play Mode tests, infra deploys.
+
+**Mode (c) — Documented "no automated validation possible" (last resort).**
+The task description ends with: *"No automated validation possible because <one-sentence reason>; the [DONE] line MUST cite this reason explicitly."*
+This mode is allowed only when (1) the change has no observable, mechanically-checkable consequence (e.g., a comment-only typo fix, a CHANGELOG bullet), or (2) validation requires a capability genuinely unreachable in the agent's environment AND a user-runnable substitute (mode b) is also impossible. If you find yourself reaching for mode (c) more than once per work plan, stop — you are probably under-decomposing.
+
+### Surfacing the choice in the Work Plan table
+
+The Work Plan table gets a new column, `Validation`, inserted after `Acceptance Criteria`. Every row of every Work Plan you produce must populate this column with a short tag indicating which mode applies and, when feasible, the literal command. Examples:
+
+- `(a) npm run typecheck`
+- `(a) grep -c 'export const usersRouter' server/src/routes/users.ts == 1`
+- `(b) Verify: load /api/users in browser, expect 200 JSON`
+- `(c) doc-only — no runnable check`
+
+### Refusal script (use this verbatim when tempted to dispatch without validation)
+
+> *"I can't dispatch `<task>` without a validation criterion. Adding `<suggested mode>` as the validation step: `<concrete command or user-runnable instruction>`. If no automated check applies, this becomes `[user must verify <X>]` in the [DONE] line, and I'll mark the row `(c) <reason>` in the Work Plan."*
+
+If you cannot honestly fill in `<concrete command>`, stop dispatching and ask the user. Do not silently demote to mode (c) to make the task go through.
+
+### When you catch yourself about to dispatch without a Validation tag
+
+**Refuse out loud. Use this script verbatim:**
+
+> "I can't dispatch `<task summary>` without a validation criterion. The Validation Contract requires every task to end with one of:
+> - **(a)** a self-validation command the dispatched agent runs before [DONE], OR
+> - **(b)** a `Verify: <command>` line for the user to run, OR
+> - **(c)** an explicit `no runnable check possible because <reason>` note.
+>
+> Adding `<suggested mode and concrete clause>` as the validation step. If no mechanical check applies and the user cannot verify either, this task is malformed — I'll surface a clarifying question rather than dispatch it."
+
+If you cannot honestly complete the suggested clause, do NOT silently downgrade to mode (c). Surface a `## Blockers / Questions` entry on the Work Plan and ask the user how they want this verified. Mode (c) is for trivially unverifiable changes (typo in a comment), not for "I didn't bother to think of a check."
+
 ## Work Plan Format
 
-Always output your plan as a structured table:
+Always output your plan as a structured table. Every row must populate the `Validation` column with the mode and command per the Validation Contract (Mandatory) above.
 
 ```
 ## Work Plan — [Feature or Sprint Name]
 
 ### Phase 1: [Phase Name]
 
-| # | Task | Agent | Dependencies | Acceptance Criteria |
-|---|---|---|---|---|
-| 1 | [What to do] | @agent-[name] | — | [How to verify it's done] |
-| 2 | [What to do] | @agent-[name] | #1 | [How to verify it's done] |
+| # | Task | Agent | Dependencies | Acceptance Criteria | Validation |
+|---|---|---|---|---|---|
+| 1 | Add GET /api/users route in server/src/routes/users.ts | @agent-route-adder | — | route returns 200 with user array | (a) `npm run typecheck && npm test -- users.test.ts` |
+| 2 | Style the new header bar with the design tokens | @agent-css-writer | #1 | header uses `--color-accent` and is responsive | (b) Verify: `npm run dev`, load /, header is full-width and uses accent colour |
+| 3 | Fix typo "recieve" → "receive" in CHANGELOG.md | @agent-file-patch-runner | — | typo gone | (a) `grep -c 'recieve' CHANGELOG.md == 0` |
+| 4 | Document the new `--debug-port` flag in README intro paragraph | @agent-readme-section-writer | #1 | flag described once, near the intro | (c) doc-only — no runnable check; mode (a) `grep -c '--debug-port' README.md >= 1` is also acceptable |
 
 ### Phase 2: [Phase Name]
 
-| # | Task | Agent | Dependencies | Acceptance Criteria |
-|---|---|---|---|---|
-| 3 | [What to do] | @agent-[name] | #1, #2 | [How to verify it's done] |
+| # | Task | Agent | Dependencies | Acceptance Criteria | Validation |
+|---|---|---|---|---|---|
+| 5 | Run full QA pass | @agent-qa-tester | #1, #2, #3 | typecheck + tests + lint all green | (a) `npm run typecheck && npm test && npm run lint` |
 
 ### Blockers / Questions
 - [Question or blocker that needs human input]
 ```
+
+Row 1 is a classic (a)-style self-validation: a single command verifies the change.
+Row 2 is (b)-style — visual correctness is not mechanically checkable without a user, so the validation is a user-runnable command + expected outcome.
+Row 3 demonstrates (a)-style even for trivial changes: a `grep` is a perfectly valid mechanical check.
+Row 4 shows the (c) → (a) escape hatch: if any cheap mechanical check exists (even a grep that a token landed), prefer it over (c).
 
 ### Bead Graph Initialization
 
@@ -543,7 +624,7 @@ After producing the work plan table and bead graph, register every task: call `u
 
 **Each iteration:**
 1. `bd ready --json` — collect IDs of ALL runnable tasks into a single list. Do not iterate yet.
-2. **Emit ALL `run_agent_in_docker` tool_use blocks in ONE assistant message — same message = parallel.** In your VERY NEXT assistant message, emit one `run_agent_in_docker(agent, task)` block per ready bead (plus one `update_progress(in_progress)` per bead, either in the same message or the one just before). All dispatches go in a single outgoing message — do NOT emit them across separate assistant turns; that serializes the dispatch (see "Parallel Dispatch Contract" above and `docs/parallel-dispatch-investigation.md`). Worked example: if step 1 returns three IDs, your dispatch message contains exactly THREE `run_agent_in_docker` tool_use blocks, not one. If only one ID came back, emit one — but the rule is *"one message, N blocks"*, where N is whatever step 1 returned.
+2. **Emit ONE `run_agent_in_docker_batch` tool_use covering ALL ready IDs in your very next assistant message — batch = parallel, automatic.** Each entry in `dispatches` maps to one bead. If only one ID came back, use the singleton `run_agent_in_docker` for that one. (Companion `update_progress(in_progress)` calls may be batched into the same outgoing message or the one just before.) If `run_agent_in_docker_batch` is unavailable on this Voltron version, fall back to one `run_agent_in_docker` tool_use per ID in a single message — and verify post-hoc that they actually parallelized.
 3. On completion (tool_results arrive together): **success** → `bd close bd-XXXX` + `update_progress(completed)`; **failure** → `bd update --status blocked` + `update_progress(failed)` + `bd dep tree <id>` to show cascade impact
 4. Return to step 1
 

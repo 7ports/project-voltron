@@ -489,6 +489,17 @@ server.tool(
             written.push(f.path);
           }
 
+        // Strategy 2b: Slash-command .md files — skip if exists (user may have customized)
+        } else if (f.path.startsWith(".claude/commands/")) {
+          let exists = false;
+          try { await fs.access(fullPath); exists = true; } catch { /* not found */ }
+          if (exists) {
+            skipped.push({ path: f.path, reason: "slash command already exists; user may have customized" });
+          } else {
+            await fs.writeFile(fullPath, f.content, "utf-8");
+            written.push(f.path);
+          }
+
         // Strategy 3: Dockerfile.voltron — preserve custom, write .new if different
         } else if (f.path === "Dockerfile.voltron") {
           let existing = null;

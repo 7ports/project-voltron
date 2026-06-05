@@ -5,7 +5,7 @@
 // Usage: node /path/to/project-voltron/scripts/auto-update-agents.js
 // The hook runs from the project directory (cwd = project root).
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync, readdirSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -41,27 +41,75 @@ const MIGRATIONS = [
   { from: ".claude/agents/scrum-master.md", to: ".claude/commands/scrum-master.md" },
 ];
 
-// Detect Voltron presence: either the new orchestrator slash command, or the
-// legacy subagent location (for projects scaffolded before v3.11).
+// Detect Voltron presence: treat as a Voltron project if any of these hold —
+//   1. new orchestrator slash command at .claude/commands/scrum-master.md
+//   2. legacy subagent .claude/agents/scrum-master.md (pre-v3.11 install)
+//   3. .claude/agents/ exists and is non-empty (some Voltron agents scaffolded)
+//   4. .claude/settings.json mentions auto-update-agents (the hook itself is wired)
+// This widens the previous detection so the hook can self-heal projects whose
+// orchestrator command file was never written due to a prior scaffold bug.
 const scrumMasterNew = resolve(projectRoot, ".claude/commands/scrum-master.md");
 const scrumMasterLegacy = resolve(projectRoot, ".claude/agents/scrum-master.md");
+const claudeAgentsDir = resolve(projectRoot, ".claude/agents");
+const claudeSettingsPath = resolve(projectRoot, ".claude/settings.json");
+
+function isVoltronProject() {
+  if (existsSync(scrumMasterNew)) return true;
+  if (existsSync(scrumMasterLegacy)) return true;
+  try {
+    if (existsSync(claudeAgentsDir) && readdirSync(claudeAgentsDir).length > 0) return true;
+  } catch { /* non-fatal */ }
+  try {
+    if (existsSync(claudeSettingsPath)) {
+      const settings = readFileSync(claudeSettingsPath, "utf-8");
+      if (settings.includes("auto-update-agents")) return true;
+    }
+  } catch { /* non-fatal */ }
+  return false;
+}
+
+if (!isVoltronProject()) {
+  process.exit(0);
+}
+
+// Anchor the installed version on whichever scrum-master file is present.
+// May be absent on broken scaffolds — the self-heal pass below will create it.
 const scrumMasterPath = existsSync(scrumMasterNew)
   ? scrumMasterNew
   : (existsSync(scrumMasterLegacy) ? scrumMasterLegacy : null);
 
-if (!scrumMasterPath) {
-  process.exit(0);
+let installedVersion = null;
+if (scrumMasterPath) {
+  const installedContent = readFileSync(scrumMasterPath, "utf-8");
+  const versionMatch = installedContent.match(/\*\*Version:\*\*\s+([\d.]+)/);
+  installedVersion = versionMatch ? versionMatch[1] : null;
 }
-
-// Read installed version from whichever scrum-master file is present.
-const installedContent = readFileSync(scrumMasterPath, "utf-8");
-const versionMatch = installedContent.match(/\*\*Version:\*\*\s+([\d.]+)/);
-const installedVersion = versionMatch ? versionMatch[1] : null;
 
 const needsUpdate = installedVersion !== currentVersion;
 
 let updated = 0;
 const updatedItems = [];
+
+// ── Self-heal missing orchestrators (always check, regardless of version) ────
+// Slash-command templates are required for any Voltron project to function,
+// so create them from the template when missing — covers projects scaffolded
+// before the orchestrator-write bug was fixed. Scope is intentionally narrow:
+// agent (subagent) templates do NOT self-heal, because that would dump the
+// entire catalog into projects that scaffolded only a subset.
+for (const agentKey of AGENT_NAMES) {
+  const template = TEMPLATES[agentKey];
+  if (!template || template.category !== "slash-command") continue;
+  const destPath = resolve(projectRoot, template.destination);
+  if (existsSync(destPath)) continue;
+  // If a legacy file exists, defer to the migration path below.
+  const migration = MIGRATIONS.find((m) => resolve(projectRoot, m.to) === destPath);
+  if (migration && existsSync(resolve(projectRoot, migration.from))) continue;
+  const destDir = dirname(destPath);
+  if (!existsSync(destDir)) mkdirSync(destDir, { recursive: true });
+  writeFileSync(destPath, template.content, "utf-8");
+  updated++;
+  updatedItems.push(`${agentKey} (self-healed)`);
+}
 
 // ── Update agent / slash-command files (only when version changed) ───────────
 if (needsUpdate) {

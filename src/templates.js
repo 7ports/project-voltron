@@ -9990,5 +9990,11 @@ export function getTemplatesForType(projectType) {
     )
     .map(([key]) => key);
 
-  return [claudeMdKey, ...agents];
+  // Slash-commands (e.g. scrum-master) are included for every project type
+  // regardless of tags — the orchestrator belongs everywhere.
+  const slashCommands = Object.entries(TEMPLATES)
+    .filter(([, t]) => t.category === "slash-command")
+    .map(([key]) => key);
+
+  return [claudeMdKey, ...agents, ...slashCommands];
 }

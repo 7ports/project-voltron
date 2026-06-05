@@ -1,6 +1,6 @@
 {
   "name": "project-voltron",
-  "version": "3.12.0",
+  "version": "3.12.1",
   "description": "MCP server providing specialized agent templates for Claude Code — Unity game dev, web/fullstack development, and general software projects with a scrum-master coordinator, 51 micro-agents, and the voltron-evals harness for repeatable agent-as-a-judge evaluations.",
   "main": "src/index.js",
   "type": "module",

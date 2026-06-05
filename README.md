@@ -238,6 +238,22 @@ When the scrum-master invokes an agent, `run_agent_in_docker`:
 
 On Windows, OAuth is stored in the Credential Manager by default and `~/.claude/.credentials.json` does not exist. Run `claude setup-token` once in a normal terminal to materialize a long-lived token at that path, then Voltron Docker agents will pick it up automatically.
 
+**Auth model (v3.13.0):** Claude auth inside agent containers is resolved exclusively from the mounted `~/.claude/.credentials.json` — pre-flight no longer checks the `CLAUDE_CODE_OAUTH_TOKEN` env var. On Unix run `claude setup-token` once to materialize the file; on Windows update `~/.claude/.credentials.json` manually if it's missing or stale.
+
+**Git push from inside containers (v3.13.0):** The `committer` and `pr-opener` agents can now push commits and open PRs from inside the Docker container. To enable this, set `GH_TOKEN` on your host **once** before launching Claude Code so Voltron passes it into agent containers (a fine-grained PAT with `repo` scope also works; Voltron falls back to `GITHUB_TOKEN` if set):
+
+```bash
+# Unix / WSL
+export GH_TOKEN="$(gh auth token)"
+```
+
+```powershell
+# Windows PowerShell
+$env:GH_TOKEN = (gh auth token)
+```
+
+The container entrypoint runs `gh auth setup-git` so HTTPS pushes and PR creation work without further configuration.
+
 ### Nested 3-tier dispatch (v3.8.0)
 
 A containerized sub-manager or `harness-engineer` can now dispatch its own Tier-3 micro-agents via `run_agent_in_docker` — end to end, from inside a container. The scrum-master no longer has to flatten work plans to a single tier: Tier-2 sub-managers running in Docker drive the Tier-3 micro-agents that do the file edits, and the chain bottoms out cleanly because every Tier-3 template is tagged `nestable: false`.

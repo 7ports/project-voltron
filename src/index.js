@@ -1738,7 +1738,7 @@ async function dispatchOneAgent(spec, shared, opts = {}) {
 
   // Resolve model tier: explicit parameter > template default > omit (session default)
   const resolvedModel = model || template.model;
-  const MODEL_IDS = { opus: "claude-opus-4-7", sonnet: "claude-sonnet-4-6", haiku: "claude-haiku-4-5-20251001" };
+  const MODEL_IDS = { opus: "claude-opus-4-8", sonnet: "claude-sonnet-4-6", haiku: "claude-haiku-4-5-20251001" };
   const modelFlag = resolvedModel && MODEL_IDS[resolvedModel] ? `--model ${MODEL_IDS[resolvedModel]}` : "";
 
   // 2. Compose the full prompt (strip YAML frontmatter — see v3.x notes in singleton history)

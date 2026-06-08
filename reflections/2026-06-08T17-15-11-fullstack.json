@@ -1,0 +1,34 @@
+{
+  "timestamp": "2026-06-08T17:15:11.550Z",
+  "project_name": "Voltron Glimpse",
+  "project_type": "fullstack",
+  "session_summary": "Built voltron-glimpse end-to-end from docs/implementation-plan.md via 17 orchestrated beads across 7 phases (scaffold → backend core → parsers → model → wiring → frontend → docs/QA/commit). Final: 64/64 unit tests green, QA gate confirmed read-only-observer + localhost-only constraints, 2 commits (ac89ce4, 778779d) on feat/glimpse-implementation. bd stats: 17 total / 17 closed / 0 open. No git remote, so push/PR deferred to the user.",
+  "agents_used": [
+    "fullstack-dev",
+    "ui-designer",
+    "doc-writer",
+    "qa-tester",
+    "committer",
+    "branch-manager",
+    "config-editor"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "committer",
+      "worked_well": "Reliably staged-excluding-.voltron and produced clean single commits with the exact message supplied.",
+      "needs_improvement": "When given 4-5 post-commit validation greps, it consistently exhausts its turn budget AFTER the commit already succeeded and exits non-zero (max_turns), producing a false-negative FAILED status the orchestrator must manually reconcile against git log.",
+      "suggested_change": "Cap committer self-validation at 2 cheap checks (git log -1 + porcelain), or have it emit [DONE] immediately after the commit and treat validation as best-effort so a successful commit never reports as failure."
+    },
+    {
+      "agent": "qa-tester",
+      "worked_well": "Cleanly executed the read-only fs-write audit and bind-address audit and produced a crisp PASS/FAIL verdict with file:line evidence."
+    },
+    {
+      "agent": "fullstack-dev",
+      "worked_well": "Composed micro-agents (function-writer/test-writer/test-runner) effectively for parsers and wiring; honored 'do not commit' and per-parser test-file separation to avoid parallel-write collisions.",
+      "needs_improvement": "On the transport task it looped on test-teardown fixes and got cut at the batch wall clock; the work was actually fine (test passed on retry with no edits)."
+    }
+  ],
+  "overall_notes": "Two recurring false-negative patterns the orchestrator had to reconcile by inspecting disk/git: (1) container exit 137 (SIGKILL, likely OOM) AFTER files were written and tests passed; (2) committer max_turns AFTER a successful commit. In both cases the bead was actually done — recommend the run_agent_in_docker_batch summary distinguish 'process killed' from 'work incomplete'. Also hit a shared-account 5-hour usage cap mid-wave (4 of 6 agents failed with 'session limit'); the survivors' work persisted and a simple re-dispatch after reset completed them. Cross-project isolation matters: Docker agents mount only the project repo, so fixtures from the sibling project-voltron/.voltron had to be staged host-side and tier lists inlined into task descriptions. beads required `bd init --shared-server` on this Windows host (embedded Dolt needs CGO). Tooling: alexandria reachable, stringer present but baseline skipped (greenfield).",
+  "processed": false
+}

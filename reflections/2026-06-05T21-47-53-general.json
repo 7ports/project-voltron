@@ -1,0 +1,37 @@
+{
+  "timestamp": "2026-06-05T21:47:53.714Z",
+  "project_name": "project-voltron",
+  "project_type": "general",
+  "session_summary": "Two sprints, all via orchestration. Sprint A (PR #43, v3.12.1): fixed scaffold so /scrum-master is written for every project type (getTemplatesForType dropped slash-commands) + auto-update hook self-heals a missing command. Sprint B (extended PR #43 to v3.13.0): removed the stale CLAUDE_CODE_OAUTH_TOKEN env-var pre-flight check (auth is via mounted ~/.claude/.credentials.json) and fixed the PowerShell pre-flight block; added container GitHub push credentials (gh in image + optional GH_TOKEN/GITHUB_TOKEN passthrough + gh auth setup-git). bd stats at close: 95 total, 91 closed, 0 blocked, 3 open (2 pre-existing unrelated + voltron-jws dolt-divergence follow-up; plus voltron-jws + the new overflow bead). PR #43 OPEN with 2 commits, pushed from host.",
+  "agents_used": [
+    "branch-manager",
+    "harness-engineer",
+    "project-planner",
+    "committer",
+    "pr-opener"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "pr-opener",
+      "worked_well": "Correctly detected the auth failure and reported the exact error instead of fabricating success.",
+      "needs_improvement": "Failed entirely: the Docker container has no GitHub credentials, so git push + gh both fail (could not read Username / not authenticated / HTTP 401). The agent correctly refused a false [DONE], but the whole publish step had to be done from the host.",
+      "suggested_change": "This is exactly what v3.13.0 (this PR) fixes via GH_TOKEN passthrough + gh auth setup-git. After it merges + image rebuild, pr-opener/committer should be able to push. The pr-opener template should also instruct the agent to check for GH_TOKEN/gh auth at start and emit a clear handoff if absent."
+    },
+    {
+      "agent": "harness-engineer",
+      "worked_well": "Handled multi-file Voltron edits reliably with pre-computed anchors; respected 'no commit' boundaries; self-validated with node --check + grep every time.",
+      "needs_improvement": "Self-validation greps only checked what the task literally specified — e.g. the docs task confirmed no stale version in docs/index.html but not in README, which I had to re-check on the host.",
+      "suggested_change": "Encourage harness-engineer to generalize a version-bump validation to ALL version-bearing files (package.json + docs + README) rather than only the ones named, and to distinguish current-version badges from historical changelog tags."
+    },
+    {
+      "agent": "committer",
+      "worked_well": "Explicit-path staging worked perfectly both times — committed exactly the intended files and excluded unrelated untracked eval/reflection artifacts; verified staged set before and empty index after."
+    },
+    {
+      "agent": "project-planner",
+      "worked_well": "Produced a precise, implementable plan (docs/voltron-git-credentials-plan.md) with exact file/line anchors, security constraints, cross-platform sourcing, and a validation plan — harness-engineer implemented directly from it with no rework."
+    }
+  ],
+  "overall_notes": "Biggest friction: EVERY run_agent_in_docker and run_agent_in_docker_batch result overflowed the tool-result token limit because the MCP returns the full agent JSONL transcript (54k–2.3M chars), forcing me to grep the saved file for [DONE]/PASS/outcome on every dispatch. Filed a bead suggesting the MCP return a compact structured summary by default. Also: the bash-subshell pre-flight reports a false 'Token: NO' (subshell doesn't source the profile) — fixed this sprint by switching to a credentials.json presence check. Beads dolt remote push has been failing all session with 'no common ancestor / divergent histories' (filed voltron-jws; fix is bd bootstrap) — local bd state is correct but not syncing to the dolt remote. main is branch-protected (GH013) so all changes go via PR, and pushes must originate from the host until the v3.13.0 image with git creds is built. Tools touched: gh CLI, bd/dolt, docker, node, PowerShell. Updated Alexandria guide project-voltron-docker with the in-container GitHub-auth gotcha (issue #5).",
+  "processed": false
+}

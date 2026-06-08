@@ -489,6 +489,17 @@ server.tool(
             written.push(f.path);
           }
 
+        // Strategy 2b: Slash-command .md files — skip if exists (user may have customized)
+        } else if (f.path.startsWith(".claude/commands/")) {
+          let exists = false;
+          try { await fs.access(fullPath); exists = true; } catch { /* not found */ }
+          if (exists) {
+            skipped.push({ path: f.path, reason: "slash command already exists; user may have customized" });
+          } else {
+            await fs.writeFile(fullPath, f.content, "utf-8");
+            written.push(f.path);
+          }
+
         // Strategy 3: Dockerfile.voltron — preserve custom, write .new if different
         } else if (f.path === "Dockerfile.voltron") {
           let existing = null;
@@ -1727,7 +1738,7 @@ async function dispatchOneAgent(spec, shared, opts = {}) {
 
   // Resolve model tier: explicit parameter > template default > omit (session default)
   const resolvedModel = model || template.model;
-  const MODEL_IDS = { opus: "claude-opus-4-7", sonnet: "claude-sonnet-4-6", haiku: "claude-haiku-4-5-20251001" };
+  const MODEL_IDS = { opus: "claude-opus-4-8", sonnet: "claude-sonnet-4-6", haiku: "claude-haiku-4-5-20251001" };
   const modelFlag = resolvedModel && MODEL_IDS[resolvedModel] ? `--model ${MODEL_IDS[resolvedModel]}` : "";
 
   // 2. Compose the full prompt (strip YAML frontmatter — see v3.x notes in singleton history)
@@ -1801,9 +1812,18 @@ async function dispatchOneAgent(spec, shared, opts = {}) {
     authEnvArgs.push("-e", `ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY}`);
   }
 
+  // v3.13.0: GitHub credential passthrough (OPTIONAL). Sourced from host env (set
+  // by `export GH_TOKEN="$(gh auth token)"` or a fine-grained PAT). The container
+  // init step runs `gh auth setup-git` so both `gh` and `git push` authenticate.
+  // Falls back to GITHUB_TOKEN when GH_TOKEN is unset. Absence is non-fatal —
+  // read-only agents continue to launch exactly as before, only push/PR ops fail.
+  // See docs/voltron-git-credentials-plan.md.
+  const ghToken = process.env.GH_TOKEN || process.env.GITHUB_TOKEN;
+  const ghEnvArgs = ghToken ? ["-e", `GH_TOKEN=${ghToken}`] : [];
+
   if (!credsAvailable && authEnvArgs.length === 0) {
     await fs.unlink(tmpFile).catch(() => {});
-    return { agent_name, validationError: "Error: No auth available for Docker agent. Either run `claude setup-token` (creates ~/.claude/.credentials.json which will be mounted), or set CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY in your environment." };
+    return { agent_name, validationError: "Error: No auth available for Docker agent. Either run `claude setup-token` (creates ~/.claude/.credentials.json which will be mounted), or set CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY in your environment. (Optional: also set GH_TOKEN — or GITHUB_TOKEN — to enable publish agents like pr-opener/committer/branch-manager to push and open PRs from inside the container.)" };
   }
 
   // 6. Container-local MCP config (so nested dispatch works for nestable templates)
@@ -1851,16 +1871,25 @@ async function dispatchOneAgent(spec, shared, opts = {}) {
     taskFilePathInContainer = "/tmp/task.md";
   }
 
+  // v3.13.0: GitHub auth bootstrap. No-op when GH_TOKEN is unset (read-only agents
+  // unaffected). When set, writes a 0600 ~/.config/gh/hosts.yml and runs
+  // `gh auth setup-git` so `git push` over HTTPS authenticates without prompting.
+  // Falls back to an inline credential.helper if `gh` is missing or setup-git
+  // fails. Stderr from gh is suppressed to keep the token out of agent logs;
+  // the printf writes to a file, never stdout. See docs/voltron-git-credentials-plan.md.
+  const ghBootstrap = `if [ -n "\$GH_TOKEN" ]; then mkdir -p ~/.config/gh; printf 'github.com:\\n    oauth_token: %s\\n    git_protocol: https\\n' "\$GH_TOKEN" > ~/.config/gh/hosts.yml; chmod 600 ~/.config/gh/hosts.yml; gh auth setup-git >/dev/null 2>&1 || git config --global credential.helper '!f() { echo "username=x-access-token"; echo "password=\$GH_TOKEN"; }; f'; fi`;
+
   const dockerArgs = [
     "run", "--rm",
     "--name", containerName,
     "--entrypoint", "bash",
     ...authEnvArgs,
+    ...ghEnvArgs,
     ...voltronEnvArgs,
     ...mountArgs,
     "voltron-agent",
     "-c",
-    `{ echo "[entry] $(date -Is) host=$(hostname) user=$(whoami)"; echo "[claude-version] $(claude --version 2>&1)"; echo "[exec] $(date -Is) starting prompt"; claude --dangerously-skip-permissions ${modelFlag} ${mcpConfigFlag} --max-turns ${max_turns} --output-format stream-json --verbose -p "$(cat ${taskFilePathInContainer})" 2>&1; CLAUDE_EXIT=\$?; echo "[exit] $(date -Is) code=\$CLAUDE_EXIT"; exit \$CLAUDE_EXIT; } | tee /workspace/.voltron/logs/${logFilename}; exit \${PIPESTATUS[0]}`,
+    `{ ${ghBootstrap}; echo "[entry] $(date -Is) host=$(hostname) user=$(whoami)"; echo "[claude-version] $(claude --version 2>&1)"; echo "[exec] $(date -Is) starting prompt"; claude --dangerously-skip-permissions ${modelFlag} ${mcpConfigFlag} --max-turns ${max_turns} --output-format stream-json --verbose -p "$(cat ${taskFilePathInContainer})" 2>&1; CLAUDE_EXIT=\$?; echo "[exit] $(date -Is) code=\$CLAUDE_EXIT"; exit \$CLAUDE_EXIT; } | tee /workspace/.voltron/logs/${logFilename}; exit \${PIPESTATUS[0]}`,
   ];
 
   // 7. Spawn + wait. abortSignal (when batch fail_fast cancels siblings) sends

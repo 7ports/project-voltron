@@ -1259,8 +1259,8 @@ Run before creating any work plan. Use the variant matching your shell.
 **Bash / macOS / Linux / WSL:**
 \`\`\`bash
 docker --version                                                                        # Docker available?
-test -f Dockerfile.voltron && echo "OK" || echo "MISSING"                              # Dockerfile present?
-echo "Token: $(test -n "$CLAUDE_CODE_OAUTH_TOKEN" && echo YES || echo NO)"             # OAuth token?
+test -f Dockerfile.voltron && echo "Dockerfile OK" || echo "DOCKERFILE MISSING"        # Dockerfile present?
+test -f "$HOME/.claude/.credentials.json" && echo "credentials OK" || echo "CREDENTIALS MISSING"  # mounted auth file?
 command -v bd >/dev/null 2>&1 && echo "beads OK" || echo "BEADS MISSING"               # beads CLI installed?
 if command -v bd >/dev/null 2>&1; then \\
   bd dolt status 2>&1 | grep -qi "running" && echo "bd dolt OK" || { \\
@@ -1276,18 +1276,24 @@ node -e "process.exit(JSON.parse(require('fs').readFileSync(require('os').homedi
 **PowerShell (Windows):**
 \`\`\`powershell
 docker --version
-if (Test-Path Dockerfile.voltron) { "OK" } else { "MISSING" }
-"Token: $(if ($env:CLAUDE_CODE_OAUTH_TOKEN) { 'YES' } else { 'NO' })"
+if (Test-Path Dockerfile.voltron) { "Dockerfile OK" } else { "DOCKERFILE MISSING" }
+if (Test-Path "$env:USERPROFILE/.claude/.credentials.json") { "credentials OK" } else { "CREDENTIALS MISSING" }
 if (Get-Command bd -ErrorAction SilentlyContinue) {
   "beads OK"
-  $status = bd dolt status 2>&1 | Out-String
-  if ($status -match 'running') { "bd dolt OK" } else {
-    "bd dolt down — auto-recovering..."; bd dolt start | Out-Null
-    $status = bd dolt status 2>&1 | Out-String
+  $status = (bd dolt status 2>&1 | Out-String)
+  if ($status -match 'running') {
+    "bd dolt OK"
+  } else {
+    "bd dolt down - auto-recovering..."
+    bd dolt start 2>&1 | Out-Null
+    $status = (bd dolt status 2>&1 | Out-String)
     if ($status -match 'running') { "bd dolt RECOVERED" } else { "BEADS SERVER DOWN" }
   }
-  bd ready --json *> $null; if ($LASTEXITCODE -eq 0) { "bd ready OK" } else { "BEADS READY FAILED" }
-} else { "BEADS MISSING" }
+  bd ready --json 2>&1 | Out-Null
+  if ($LASTEXITCODE -eq 0) { "bd ready OK" } else { "BEADS READY FAILED" }
+} else {
+  "BEADS MISSING"
+}
 if (Get-Command stringer -ErrorAction SilentlyContinue) { "stringer OK" } else { "STRINGER MISSING" }
 \`\`\`
 
@@ -1295,7 +1301,7 @@ if (Get-Command stringer -ErrorAction SilentlyContinue) { "stringer OK" } else {
 
 - **Docker missing** → "Docker is not installed or not running. Install Docker Desktop, then retry."
 - **Dockerfile missing** → "Run \`mcp__project-voltron__scaffold_project\` first."
-- **Token missing** → Agents fail silently with "Not logged in". Check Alexandria guide \`project-voltron-docker\` before proceeding.
+- **CREDENTIALS MISSING** → Docker agents will fail with "No auth available". Auth is mounted into the container from \`~/.claude/.credentials.json\` (read-only) — this file is the *only* supported auth path for Voltron agents; the \`CLAUDE_CODE_OAUTH_TOKEN\` env var on the host is NOT used. On **Unix / macOS**: run \`claude setup-token\` once to materialize the file. On **Windows**: \`claude setup-token\` does NOT write this file, so you must create/refresh \`~/.claude/.credentials.json\` manually — paste your current OAuth token into it (matching the JSON shape Claude Code uses on macOS) and update it whenever the token rotates. STOP and resolve before launching any agent.
 - **beads MISSING (mandatory)** → bd binary not on PATH. STOP. Tell the user: "beads is mandatory and not installed. Run \`npm install -g @beads/bd\` (or \`brew install beads\`) and retry. Do not proceed without it."
 - **bd dolt down — auto-recovering...** → expected output when the shared-server (\`dolt.shared-server: true\` in \`.beads/config.yaml\`) was orphaned by a reboot. Auto-recovery via \`bd dolt start\` runs inline; no action needed if followed by **bd dolt RECOVERED**.
 - **BEADS SERVER DOWN (auto-recovery failed)** → bd is installed but \`bd dolt start\` did not bring the server up. STOP. See the **Beads Recovery** section below; run \`bd dolt status\` manually for the actual error, then check for stale \`.beads/dolt-server.pid\`/\`.lock\` files. Do not proceed until \`bd ready --json\` returns cleanly.
@@ -9838,6 +9844,19 @@ export const DOCKERFILE_CONTENT =
   "    apt-get install -y --no-install-recommends docker-ce-cli && \\\n" +
   "    rm -rf /var/lib/apt/lists/*\n" +
   "\n" +
+  "# v3.13.0: GitHub CLI (gh) for publish agents (pr-opener, committer, branch-manager,\n" +
+  "# deploy-trigger, changelog-updater). Token is supplied at `docker run` time via\n" +
+  "# -e GH_TOKEN; the dispatch wrapper then runs `gh auth setup-git` so both `gh` and\n" +
+  "# `git push` authenticate. The token is NEVER baked into the image (no ENV/ARG).\n" +
+  "# See docs/voltron-git-credentials-plan.md.\n" +
+  "RUN install -m 0755 -d /etc/apt/keyrings && \\\n" +
+  "    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg -o /etc/apt/keyrings/githubcli-archive-keyring.gpg && \\\n" +
+  "    chmod a+r /etc/apt/keyrings/githubcli-archive-keyring.gpg && \\\n" +
+  "    echo \"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main\" > /etc/apt/sources.list.d/github-cli.list && \\\n" +
+  "    apt-get update && \\\n" +
+  "    apt-get install -y --no-install-recommends gh && \\\n" +
+  "    rm -rf /var/lib/apt/lists/*\n" +
+  "\n" +
   "# v3.8.1: grant the non-root `voltron` user access to the mounted host Docker socket.\n" +
   "# The host's /var/run/docker.sock is owned root:docker with mode 0660; its group GID\n" +
   "# is host-dependent and unknown at image-build time, so we cannot preemptively add\n" +
@@ -9904,6 +9923,20 @@ export const VOLTRON_RUN_SCRIPT =
   '[ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] && AUTH_ARGS+=(-e "CLAUDE_CODE_OAUTH_TOKEN=$CLAUDE_CODE_OAUTH_TOKEN")\n' +
   '[ -n "$ANTHROPIC_API_KEY" ] && AUTH_ARGS+=(-e "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY")\n' +
   "\n" +
+  "# v3.13.0: GitHub publish credentials. Supplied by the host via env var so the\n" +
+  "# token never persists in an image layer. One-time host setup (pick one):\n" +
+  "#   Unix:    export GH_TOKEN=\"$(gh auth token)\"\n" +
+  "#   Windows: $env:GH_TOKEN = (gh auth token)\n" +
+  "#   Or set a fine-grained PAT directly as GH_TOKEN / GITHUB_TOKEN.\n" +
+  "# Falls back to GITHUB_TOKEN if GH_TOKEN is unset. Entirely optional —\n" +
+  "# read-only agents still run without it.\n" +
+  "GH_ARGS=()\n" +
+  'if [ -n "$GH_TOKEN" ]; then\n' +
+  '  GH_ARGS+=(-e "GH_TOKEN=$GH_TOKEN")\n' +
+  'elif [ -n "$GITHUB_TOKEN" ]; then\n' +
+  '  GH_ARGS+=(-e "GH_TOKEN=$GITHUB_TOKEN")\n' +
+  'fi\n' +
+  "\n" +
   "CREDS_MOUNT=()\n" +
   '[ -f "$HOME/.claude/.credentials.json" ] && CREDS_MOUNT+=(-v "$HOME/.claude/.credentials.json:/home/voltron/.claude/.credentials.json:ro")\n' +
   "\n" +
@@ -9917,6 +9950,7 @@ export const VOLTRON_RUN_SCRIPT =
   "\n" +
   "docker run --rm -it \\\n" +
   '  "${AUTH_ARGS[@]}" \\\n' +
+  '  "${GH_ARGS[@]}" \\\n' +
   '  -v "$(pwd):/workspace" \\\n' +
   '  "${CREDS_MOUNT[@]}" \\\n' +
   '  "${GIT_MOUNT[@]}" \\\n' +
@@ -9990,5 +10024,11 @@ export function getTemplatesForType(projectType) {
     )
     .map(([key]) => key);
 
-  return [claudeMdKey, ...agents];
+  // Slash-commands (e.g. scrum-master) are included for every project type
+  // regardless of tags — the orchestrator belongs everywhere.
+  const slashCommands = Object.entries(TEMPLATES)
+    .filter(([, t]) => t.category === "slash-command")
+    .map(([key]) => key);
+
+  return [claudeMdKey, ...agents, ...slashCommands];
 }

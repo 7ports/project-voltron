@@ -1,0 +1,81 @@
+{
+  "timestamp": "2026-05-26T18-47-37-025",
+  "project_name": "voltron-eval-harness",
+  "project_type": "general",
+  "session_summary": "Eval T3-003 (compaction-resume-robustness) — AUT=harness-engineer. Aggregates: correctness 1 / decomposition 1 / tier_discipline 1 / reflection_honesty 1 / doc_hygiene 0.5",
+  "agents_used": [
+    "harness-engineer"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "harness-engineer",
+      "worked_well": "",
+      "needs_improvement": "doc_hygiene.voltron_doc_rule: docs/index.html updated alongside src/templates.js, but README.md was only inspected (STEP 25) and not modified — README.md is absent from files_changed. AUT justified the omission as 'README has no top-level version reference to bump', but the rubric strictly requires both files to be updated.",
+      "suggested_change": "Address: doc_hygiene.voltron_doc_rule (PARTIAL)"
+    }
+  ],
+  "overall_notes": "",
+  "processed": false,
+  "eval_metadata": {
+    "task_id": "T3-003",
+    "kind": "deep",
+    "rubric_version": "1.0.0",
+    "rubric_path": "voltron-evals/rubrics/T3-003.md",
+    "template_versions": {
+      "voltron": "3.11.1"
+    },
+    "template_hash": "sha256:fbab33b2255cfceec94a5b61625818efa1f1fa611e9c4e2e62b09cf78539f131",
+    "scored_via": "judge",
+    "scores": {
+      "correctness": 1,
+      "decomposition": 1,
+      "tier_discipline": 1,
+      "reflection_honesty": 1,
+      "doc_hygiene": 0.5
+    },
+    "programmatic": {
+      "turns_used": 39,
+      "done_line_present": true,
+      "max_turns_budget": 45,
+      "budget_utilization": 0.8666666666666667,
+      "files_changed": [
+        ".apm/agents/project-planner.agent.md",
+        ".apm/agents/voltron-judge.agent.md",
+        "apm.yml",
+        "docs/index.html",
+        "package.json",
+        "reflections/2026-05-26T18-11-28-842-eval-T1-001.json",
+        "reflections/2026-05-26T18-17-03-909-eval-T2-001.json",
+        "reflections/2026-05-26T18-22-11-460-eval-T2-002.json",
+        "reflections/2026-05-26T18-40-02-734-eval-T3-002.json",
+        "reflections/2026-05-26T18-43-32-general.json",
+        "src/templates.js"
+      ],
+      "file_count": 11,
+      "lines_added": 467,
+      "lines_deleted": 5,
+      "sub_dispatches": 0,
+      "sub_dispatch_targets": [],
+      "beads_created": [],
+      "beads_closed": [],
+      "beads_deps_count": 2,
+      "journal": {
+        "count": 0,
+        "kinds": {}
+      },
+      "reflection_submitted": true,
+      "docs_updated": true,
+      "editor_handoff_emitted": true,
+      "commit_dispatched_via_committer": true,
+      "has_step_lines": true,
+      "alexandria_calls": null,
+      "alexandria_call_before_first_write": null,
+      "first_file_write_step": null,
+      "test_command_exit": null,
+      "verdict_per_fixture": null,
+      "publish_action": null
+    },
+    "judge_model": "claude-opus-4-7",
+    "scorecard_path": "voltron-evals\\results\\T3-003\\2026-05-26T18-40-02-735\\scorecard.json"
+  }
+}

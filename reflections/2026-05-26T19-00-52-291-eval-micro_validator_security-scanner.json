@@ -1,0 +1,75 @@
+{
+  "timestamp": "2026-05-26T19-00-52-291",
+  "project_name": "voltron-eval-harness",
+  "project_type": "general",
+  "session_summary": "Eval micro_validator/security-scanner (micro_validator) — AUT=security-scanner. Aggregates: ",
+  "agents_used": [
+    "security-scanner"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "security-scanner",
+      "worked_well": "All rubric criteria met.",
+      "needs_improvement": "",
+      "suggested_change": "No criteria failed."
+    }
+  ],
+  "overall_notes": "",
+  "processed": false,
+  "eval_metadata": {
+    "task_id": "micro_validator/security-scanner",
+    "kind": "shape-instance",
+    "rubric_version": "1.0.0",
+    "rubric_path": "voltron-evals/rubrics/shapes/micro_validator.md",
+    "template_versions": {},
+    "template_hash": "sha256:93955e989af0a9e7bc05b0fac1b21d1f7b2b2befe26425627be3aba55f6663ce",
+    "scored_via": "programmatic",
+    "scores": {},
+    "programmatic": {
+      "turns_used": 0,
+      "done_line_present": false,
+      "max_turns_budget": 10,
+      "budget_utilization": 0,
+      "files_changed": [],
+      "file_count": 0,
+      "lines_added": 0,
+      "lines_deleted": 0,
+      "sub_dispatches": 0,
+      "sub_dispatch_targets": [],
+      "beads_created": [],
+      "beads_closed": [],
+      "beads_deps_count": 0,
+      "journal": {
+        "count": 0,
+        "kinds": {}
+      },
+      "reflection_submitted": false,
+      "docs_updated": null,
+      "editor_handoff_emitted": false,
+      "commit_dispatched_via_committer": false,
+      "has_step_lines": false,
+      "alexandria_calls": null,
+      "alexandria_call_before_first_write": null,
+      "first_file_write_step": null,
+      "test_command_exit": null,
+      "verdict_per_fixture": {
+        "fixtures": {
+          "clean": {
+            "expected_verdict": "pass",
+            "expected_term": "NO_HIGH_VULN",
+            "matched": false
+          },
+          "vulnerable": {
+            "expected_verdict": "fail",
+            "expected_term": "VULNERABLE",
+            "matched": false
+          }
+        },
+        "all_correct": false
+      },
+      "publish_action": null
+    },
+    "judge_model": null,
+    "scorecard_path": "voltron-evals\\results\\micro_validator\\security-scanner\\2026-05-26T19-00-37-840\\scorecard.json"
+  }
+}

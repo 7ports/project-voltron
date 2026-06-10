@@ -260,6 +260,8 @@ The container entrypoint runs `gh auth setup-git` so HTTPS pushes and PR creatio
 
 **Zero-setup GitHub auth (v3.14.0):** Manual `GH_TOKEN` export is no longer required. After a one-time host `gh auth login`, Voltron derives a token from the host's `gh auth token` at dispatch and injects it into each agent container — so `committer` and `pr-opener` can push commits and open PRs with no manual `GH_TOKEN` and no relaunch. An explicit `GH_TOKEN`/`GITHUB_TOKEN` env override still takes precedence; set `VOLTRON_DISABLE_GH_AUTOTOKEN` to disable the auto-token entirely. See [`docs/voltron-gh-credentials-automount-plan.md`](docs/voltron-gh-credentials-automount-plan.md) for design details.
 
+**Cost optimizations (v3.15.0):** Behavior-preserving improvements to `run_agent_in_docker` and `run_agent_in_docker_batch` — prompt-cache reuse of the static role-template prefix (system-prompt relocation for Haiku/Sonnet agents), de-duplicated CLAUDE.md and bd-prime context, staggered batch fan-out to reduce cold-start spikes, and raised per-agent `max_turns`. No change to agent behavior or outputs; take effect after an MCP-server restart. See [`docs/voltron-cost-optimization-plan.md`](docs/voltron-cost-optimization-plan.md) for details.
+
 ### Nested 3-tier dispatch (v3.8.0)
 
 A containerized sub-manager or `harness-engineer` can now dispatch its own Tier-3 micro-agents via `run_agent_in_docker` — end to end, from inside a container. The scrum-master no longer has to flatten work plans to a single tier: Tier-2 sub-managers running in Docker drive the Tier-3 micro-agents that do the file edits, and the chain bottoms out cleanly because every Tier-3 template is tagged `nestable: false`.

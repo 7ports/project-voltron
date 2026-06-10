@@ -1730,6 +1730,21 @@ server.tool(
 // to .voltron/logs/<file> regardless — only the returned value is capped.
 const MAX_TAIL_CHARS = 4000;
 
+// B1/B2 (docs/voltron-cost-optimization-plan.md §B1, §B2): per-agent max_turns
+// defaults, consulted ONLY when the caller passes no explicit max_turns. An
+// explicit caller value always wins. Raising ceilings only — the global fallback
+// stays 30. qa-tester's own template (templates.js:~4616) states 30 truncates a
+// full QA pass and requests 40, so a right-sized run completes instead of
+// truncating, failing validation, and being re-dispatched (paying twice).
+// committer/pr-opener reserve enough turns that the commit/PR publish step is
+// reachable instead of truncating right after edits / on a long PR body — raising
+// their effective publish-stage budget so the intended artifact is produced.
+const AGENT_MAX_TURNS_DEFAULTS = {
+  "qa-tester": 40,
+  "committer": 12,
+  "pr-opener": 12,
+};
+
 // Keep at most maxChars characters from the END of text, prefixing a clear
 // marker that points at the full log when truncation occurred.
 function boundTailChars(text, logFilename, maxChars = MAX_TAIL_CHARS) {
@@ -1741,9 +1756,13 @@ function boundTailChars(text, logFilename, maxChars = MAX_TAIL_CHARS) {
 }
 
 async function dispatchOneAgent(spec, shared, opts = {}) {
-  const { agent_name, task, max_turns = 30, model } = spec;
+  const { agent_name, task, max_turns: max_turns_in, model } = spec;
+  // B1/B2: explicit caller value wins; otherwise consult the per-agent default
+  // map; otherwise fall back to the global 30. (`?? ` so an explicit 0 from the
+  // caller would still win, though the schemas enforce min 1.)
+  const max_turns = max_turns_in ?? AGENT_MAX_TURNS_DEFAULTS[agent_name] ?? 30;
   const { cwd, claudeMd, currentDepth, isNested } = shared;
-  const { abortSignal, tailLines = 80 } = opts;
+  const { abortSignal, tailLines = 80, onFirstToken } = opts;
 
   // 1. Template lookup (per-dispatch — each entry has its own agent_name)
   const template = TEMPLATES[agent_name];
@@ -1762,16 +1781,33 @@ async function dispatchOneAgent(spec, shared, opts = {}) {
   const modelFlag = resolvedModel && MODEL_IDS[resolvedModel] ? `--model ${MODEL_IDS[resolvedModel]}` : "";
 
   // 2. Compose the full prompt (strip YAML frontmatter — see v3.x notes in singleton history)
+  //    A2 (cost-opt): CLAUDE.md is NOT re-embedded here. Claude Code auto-loads
+  //    /workspace/CLAUDE.md as project memory (WORKDIR /workspace, bind-mounted
+  //    repo), so embedding it in -p as well double-injected ~1,867 tok/dispatch.
+  //    The same content still reaches the agent via the native memory auto-load;
+  //    we removed only the redundant copy. (`claudeMd` is still read for the
+  //    orchestrator-side fallback messages elsewhere — that path is unchanged.)
   const agentInstructions = template.content.replace(/^---\n[\s\S]*?\n---\n*/, "");
-  const prompt = [
-    agentInstructions,
-    "",
+  // A1 (cost-opt): relocate the static role template + shared progress directive
+  //   OUT of the volatile -p user message INTO the cacheable system-prompt region
+  //   via --append-system-prompt-file (see CLI assembly below). Claude Code marks
+  //   its default system prompt with cache_control, so these stable instruction
+  //   bytes bill at ~0.1x on reuse instead of full price every dispatch. The model
+  //   receives the EXACT SAME instruction bytes — only moved from the user role to
+  //   the system role; nothing is added, removed, or reworded. Ordered SHARED-FIRST:
+  //   PROGRESS_REPORTING_DIRECTIVE (byte-identical for every agent) precedes the
+  //   per-agent template, so the boilerplate is a reusable cache prefix across
+  //   *different* agents and the template is the cached suffix for same-agent repeats.
+  //   A4 invariant: NOTHING dynamic (timestamps, uniqSuffix, container/host names,
+  //   cwd) is interpolated into this body — those live in filenames/logging only —
+  //   so the prefix stays byte-stable across containers and the cache actually hits.
+  const sysPromptContent = [
     PROGRESS_REPORTING_DIRECTIVE,
     "",
-    "## Project Context (from CLAUDE.md)",
-    "",
-    claudeMd || "(No CLAUDE.md found — work without project context)",
-    "",
+    agentInstructions,
+  ].join("\n");
+  // The -p user message is now purely the per-dispatch task (the only volatile part).
+  const prompt = [
     "## Your Task",
     "",
     task,
@@ -1786,6 +1822,17 @@ async function dispatchOneAgent(spec, shared, opts = {}) {
   const tmpFilename = `voltron-${agent_name}-${Date.now()}-${uniqSuffix}.md`;
   const tmpFile = path.join(tmpDir, tmpFilename);
   await fs.writeFile(tmpFile, prompt);
+
+  // A1: write the system-prompt block to its own file under .voltron/tmp. It is
+  //   reachable in-container at /workspace/.voltron/tmp/... via the /workspace bind
+  //   for BOTH nested (--volumes-from) and non-nested dispatch. The uniqSuffix lives
+  //   in the FILENAME only (reused from tmpFilename) to avoid torn concurrent writes
+  //   in batch fan-out; the filename never reaches the API, so it does not affect the
+  //   cache, which keys on file CONTENT. Same-agent dispatches write identical bytes.
+  const sysPromptFilename = tmpFilename.replace(/\.md$/, "-sysprompt.md");
+  const sysPromptFile = path.join(tmpDir, sysPromptFilename);
+  await fs.writeFile(sysPromptFile, sysPromptContent);
+  const sysPromptPathInContainer = `/workspace/.voltron/tmp/${sysPromptFilename}`;
 
   // 4. Log + container naming (also gets the uniqSuffix for batch collision safety)
   const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
@@ -1853,6 +1900,7 @@ async function dispatchOneAgent(spec, shared, opts = {}) {
 
   if (!credsAvailable && authEnvArgs.length === 0) {
     await fs.unlink(tmpFile).catch(() => {});
+    await fs.unlink(sysPromptFile).catch(() => {});
     return { agent_name, validationError: "Error: No auth available for Docker agent. Either run `claude setup-token` (creates ~/.claude/.credentials.json which will be mounted), or set CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY in your environment. (Optional: a one-time host `gh auth login` now suffices to enable publish agents like pr-opener/committer/branch-manager to push and open PRs from inside the container — the token is derived automatically at dispatch. Set GH_TOKEN — or GITHUB_TOKEN — manually only to override it with a specific PAT.)" };
   }
 
@@ -1873,6 +1921,21 @@ async function dispatchOneAgent(spec, shared, opts = {}) {
     await fs.writeFile(mcpConfigPath, JSON.stringify(mcpConfig, null, 2));
     mcpConfigFlag = "--mcp-config /workspace/.voltron/container-mcp.json";
   }
+
+  // 6b. Container-scoped settings (A3 cost-opt): suppress the redundant bd-prime
+  //     SessionStart hook in disposable dispatch containers. The hook fires in
+  //     every container via the mounted project .claude/settings.json and its
+  //     output triple-overlaps CLAUDE.md's BEADS INTEGRATION block (~1,365 tok).
+  //     We write a container-only settings file with an empty hooks map and point
+  //     `claude` at it via --settings, so the project settings.json is NOT touched
+  //     (the main orchestration session legitimately runs bd prime). Beads guidance
+  //     still reaches the agent through CLAUDE.md's BEADS section — only the
+  //     redundant hook copy is removed. Mirrors the container-mcp.json write above.
+  const settingsConfigDir = path.join(cwd, ".voltron");
+  await fs.mkdir(settingsConfigDir, { recursive: true });
+  const settingsConfigPath = path.join(settingsConfigDir, "container-settings.json");
+  await fs.writeFile(settingsConfigPath, JSON.stringify({ hooks: {} }, null, 2));
+  const settingsFlag = "--settings /workspace/.voltron/container-settings.json";
 
   const dockerSocketHostPath = process.platform === "win32" ? "//var/run/docker.sock" : "/var/run/docker.sock";
   const socketMount = (nestable && !isNested) ? ["--mount", `type=bind,source=${dockerSocketHostPath},target=/var/run/docker.sock`] : [];
@@ -1919,7 +1982,7 @@ async function dispatchOneAgent(spec, shared, opts = {}) {
     ...mountArgs,
     "voltron-agent",
     "-c",
-    `{ ${ghBootstrap}; echo "[entry] $(date -Is) host=$(hostname) user=$(whoami)"; echo "[claude-version] $(claude --version 2>&1)"; echo "[exec] $(date -Is) starting prompt"; claude --dangerously-skip-permissions ${modelFlag} ${mcpConfigFlag} --max-turns ${max_turns} --output-format stream-json --verbose -p "$(cat ${taskFilePathInContainer})" 2>&1; CLAUDE_EXIT=\$?; echo "[exit] $(date -Is) code=\$CLAUDE_EXIT"; exit \$CLAUDE_EXIT; } | tee /workspace/.voltron/logs/${logFilename}; exit \${PIPESTATUS[0]}`,
+    `{ ${ghBootstrap}; echo "[entry] $(date -Is) host=$(hostname) user=$(whoami)"; echo "[claude-version] $(claude --version 2>&1)"; echo "[exec] $(date -Is) starting prompt"; claude --dangerously-skip-permissions ${modelFlag} ${mcpConfigFlag} ${settingsFlag} --append-system-prompt-file ${sysPromptPathInContainer} --exclude-dynamic-system-prompt-sections --max-turns ${max_turns} --output-format stream-json --verbose -p "$(cat ${taskFilePathInContainer})" 2>&1; CLAUDE_EXIT=\$?; echo "[exit] $(date -Is) code=\$CLAUDE_EXIT"; exit \$CLAUDE_EXIT; } | tee /workspace/.voltron/logs/${logFilename}; exit \${PIPESTATUS[0]}`,
   ];
 
   // 7. Spawn + wait. abortSignal (when batch fail_fast cancels siblings) sends
@@ -1945,6 +2008,7 @@ async function dispatchOneAgent(spec, shared, opts = {}) {
 
     let pendingLine = "";
     let extractedText = "";
+    let firstTokenFired = false;
     proc.stdout?.on("data", (chunk) => {
       const chunkStr = chunk.toString();
       stdout += chunkStr;
@@ -1978,6 +2042,16 @@ async function dispatchOneAgent(spec, shared, opts = {}) {
           texts.push(event.text);
         } else if (event.type === "result" && typeof event.result === "string") {
           texts.push(event.result);
+        }
+
+        // A5: the first streamed model token means the API has begun generating
+        // for this dispatch — i.e. the shared prompt-prefix cache has been written
+        // and is now readable. Signal the batch launcher so it can release the
+        // staggered fan-out of the remaining dispatches (which then READ this cache
+        // instead of each paying a full cache WRITE). Fired at most once.
+        if (texts.length && !firstTokenFired && onFirstToken) {
+          firstTokenFired = true;
+          try { onFirstToken(); } catch {}
         }
 
         for (const text of texts) {
@@ -2080,7 +2154,9 @@ server.tool(
       .optional()
       .describe("Model tier override. If omitted, uses the template's default model. Priority: explicit parameter > template.model > session default."),
   },
-  async ({ agent_name, task, max_turns = 30, model }) => {
+  async ({ agent_name, task, max_turns, model }) => {
+    // max_turns left undefined when the caller omits it, so dispatchOneAgent can
+    // apply the per-agent default (AGENT_MAX_TURNS_DEFAULTS) before the global 30.
     // v3.8.0: Depth-cap guard for nested dispatch (scrum-master → sub-manager → micro-agent).
     const currentDepth = parseInt(process.env.VOLTRON_DEPTH || "0", 10);
     if (currentDepth >= 3) {
@@ -2218,20 +2294,53 @@ server.tool(
     // 4. Fan-out with one AbortController per dispatch (for fail_fast cancellation).
     const controllers = dispatches.map(() => new AbortController());
 
-    const promises = dispatches.map(async (spec, i) => {
-      const r = await dispatchOneAgent(
+    // Shared per-dispatch runner — preserves fail_fast sibling-cancellation: as
+    // soon as one dispatch lands a real failure, abort the others.
+    const runDispatch = (spec, i, extraOpts = {}) =>
+      dispatchOneAgent(
         spec,
         { cwd, claudeMd, currentDepth, isNested },
-        { abortSignal: controllers[i].signal, tailLines: 40 },
-      );
-      // Trigger sibling cancellation as soon as one dispatch lands a real failure.
-      if (fail_fast && !r.aborted && !r.ok && !r.validationError) {
-        for (let j = 0; j < controllers.length; j++) {
-          if (j !== i) controllers[j].abort();
+        { abortSignal: controllers[i].signal, tailLines: 40, ...extraOpts },
+      ).then((r) => {
+        if (fail_fast && !r.aborted && !r.ok && !r.validationError) {
+          for (let j = 0; j < controllers.length; j++) {
+            if (j !== i) controllers[j].abort();
+          }
         }
-      }
-      return r;
+        return r;
+      });
+
+    // A5 (docs/voltron-cost-optimization-plan.md §A5): stagger the fan-out so the
+    // batch shares ONE cache write instead of N. Identical-prefix containers fired
+    // all at once each pay a full cache WRITE; instead, launch dispatch[0] first,
+    // wait until it has written the shared prompt-prefix cache (signalled by its
+    // first streamed token), THEN fan out the remaining N−1 — which READ the
+    // just-written cache. Only LAUNCH TIMING changes: all N dispatches still run,
+    // results are still aggregated in order, and fail_fast semantics are intact.
+    // The head-start is bounded by a cap so a stalled or early-failing first
+    // dispatch can never hang the batch.
+    const HEADSTART_CAP_MS = 8000;
+    const promises = new Array(dispatches.length);
+
+    let releaseHeadStart;
+    const headStartGate = new Promise((resolve) => { releaseHeadStart = resolve; });
+    const headStartTimer = setTimeout(() => releaseHeadStart(), HEADSTART_CAP_MS);
+
+    // Launch the first dispatch; release the gate on its first streamed token
+    // (cache prefix now written) or after the cap, whichever comes first.
+    promises[0] = runDispatch(dispatches[0], 0, {
+      onFirstToken: () => { clearTimeout(headStartTimer); releaseHeadStart(); },
     });
+    // If the first dispatch resolves before ever streaming a token (e.g. it fails
+    // fast on startup), don't keep the rest waiting on the cap timer.
+    promises[0].then(() => { clearTimeout(headStartTimer); releaseHeadStart(); });
+
+    await headStartGate;
+
+    // Fan out the remaining N−1 — they read the cache the first dispatch wrote.
+    for (let i = 1; i < dispatches.length; i++) {
+      promises[i] = runDispatch(dispatches[i], i);
+    }
 
     const results = await Promise.all(promises);
     const walltimeMs = Date.now() - batchStart;

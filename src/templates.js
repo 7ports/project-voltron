@@ -9923,18 +9923,21 @@ export const VOLTRON_RUN_SCRIPT =
   '[ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] && AUTH_ARGS+=(-e "CLAUDE_CODE_OAUTH_TOKEN=$CLAUDE_CODE_OAUTH_TOKEN")\n' +
   '[ -n "$ANTHROPIC_API_KEY" ] && AUTH_ARGS+=(-e "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY")\n' +
   "\n" +
-  "# v3.13.0: GitHub publish credentials. Supplied by the host via env var so the\n" +
-  "# token never persists in an image layer. One-time host setup (pick one):\n" +
-  "#   Unix:    export GH_TOKEN=\"$(gh auth token)\"\n" +
-  "#   Windows: $env:GH_TOKEN = (gh auth token)\n" +
-  "#   Or set a fine-grained PAT directly as GH_TOKEN / GITHUB_TOKEN.\n" +
-  "# Falls back to GITHUB_TOKEN if GH_TOKEN is unset. Entirely optional —\n" +
-  "# read-only agents still run without it.\n" +
+  "# GitHub publish credentials. Supplied to the container via env var so the\n" +
+  "# token never persists in an image layer. A one-time host `gh auth login` is\n" +
+  "# enough — the token is derived automatically below via `gh auth token`. Set\n" +
+  "# GH_TOKEN / GITHUB_TOKEN (e.g. a fine-grained PAT) manually only to override.\n" +
+  "# Entirely optional — read-only agents still run without any of it.\n" +
+  "# Set VOLTRON_DISABLE_GH_AUTOTOKEN to skip the automatic `gh auth token`\n" +
+  "# derivation (agents then get no push capability unless an env token is set).\n" +
   "GH_ARGS=()\n" +
   'if [ -n "$GH_TOKEN" ]; then\n' +
   '  GH_ARGS+=(-e "GH_TOKEN=$GH_TOKEN")\n' +
   'elif [ -n "$GITHUB_TOKEN" ]; then\n' +
   '  GH_ARGS+=(-e "GH_TOKEN=$GITHUB_TOKEN")\n' +
+  'elif [ -z "$VOLTRON_DISABLE_GH_AUTOTOKEN" ] && command -v gh >/dev/null 2>&1; then\n' +
+  '  _GH_TOK="$(gh auth token 2>/dev/null)"\n' +
+  '  [ -n "$_GH_TOK" ] && GH_ARGS+=(-e "GH_TOKEN=$_GH_TOK")\n' +
   'fi\n' +
   "\n" +
   "CREDS_MOUNT=()\n" +

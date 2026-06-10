@@ -8,7 +8,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { execSync, spawn, exec as execCb, execFile as execFileCb } from "node:child_process";
+import { execSync, spawn, spawnSync, exec as execCb, execFile as execFileCb } from "node:child_process";
 import { promisify } from "node:util";
 const exec = promisify(execCb);
 const execFileAsync = promisify(execFileCb);
@@ -1832,18 +1832,28 @@ async function dispatchOneAgent(spec, shared, opts = {}) {
     authEnvArgs.push("-e", `ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY}`);
   }
 
-  // v3.13.0: GitHub credential passthrough (OPTIONAL). Sourced from host env (set
-  // by `export GH_TOKEN="$(gh auth token)"` or a fine-grained PAT). The container
-  // init step runs `gh auth setup-git` so both `gh` and `git push` authenticate.
-  // Falls back to GITHUB_TOKEN when GH_TOKEN is unset. Absence is non-fatal —
-  // read-only agents continue to launch exactly as before, only push/PR ops fail.
-  // See docs/voltron-git-credentials-plan.md.
-  const ghToken = process.env.GH_TOKEN || process.env.GITHUB_TOKEN;
+  // v3.13.0+: GitHub credential auto-provision. Priority:
+  //   1. explicit host env GH_TOKEN / GITHUB_TOKEN (manual override / PAT)
+  //   2. derived from host `gh auth token` (zero-setup after one `gh auth login`)
+  // The container init step runs `gh auth setup-git` so both `gh` and `git push`
+  // authenticate. All optional & non-fatal: if none resolve, ghEnvArgs stays []
+  // and agents launch read-only exactly as before, only push/PR ops fail. The
+  // token is NEVER logged. Derivation is skipped for nested dispatch (no host
+  // `gh`; creds inherited via --volumes-from/parent env) and when the
+  // VOLTRON_DISABLE_GH_AUTOTOKEN escape hatch is set.
+  // See docs/voltron-gh-credentials-automount-plan.md.
+  let ghToken = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || "";
+  if (!ghToken && !isNested && !process.env.VOLTRON_DISABLE_GH_AUTOTOKEN) {
+    try {
+      const r = spawnSync("gh", ["auth", "token"], { encoding: "utf8", timeout: 5000 });
+      if (r.status === 0 && r.stdout) ghToken = r.stdout.trim();
+    } catch { /* gh absent / not logged in — fall through, push disabled */ }
+  }
   const ghEnvArgs = ghToken ? ["-e", `GH_TOKEN=${ghToken}`] : [];
 
   if (!credsAvailable && authEnvArgs.length === 0) {
     await fs.unlink(tmpFile).catch(() => {});
-    return { agent_name, validationError: "Error: No auth available for Docker agent. Either run `claude setup-token` (creates ~/.claude/.credentials.json which will be mounted), or set CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY in your environment. (Optional: also set GH_TOKEN — or GITHUB_TOKEN — to enable publish agents like pr-opener/committer/branch-manager to push and open PRs from inside the container.)" };
+    return { agent_name, validationError: "Error: No auth available for Docker agent. Either run `claude setup-token` (creates ~/.claude/.credentials.json which will be mounted), or set CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY in your environment. (Optional: a one-time host `gh auth login` now suffices to enable publish agents like pr-opener/committer/branch-manager to push and open PRs from inside the container — the token is derived automatically at dispatch. Set GH_TOKEN — or GITHUB_TOKEN — manually only to override it with a specific PAT.)" };
   }
 
   // 6. Container-local MCP config (so nested dispatch works for nestable templates)

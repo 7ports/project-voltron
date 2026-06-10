@@ -20,5 +20,5 @@
     }
   ],
   "overall_notes": "Capability-gap discovery this phase: the Voltron container cannot push to GitHub. Two micro-agents in the publish taxonomy (pr-opener, branch-manager, plus likely deploy-trigger) are effectively unreachable when the remote is private + HTTPS + the container has neither gh nor a token. Workaround that worked: surface the push and gh-pr-create step to the user as a 3-command paste block, document the auth wall in the bead notes, then close the bead once the user reports the URL. This is the second time this session a 'container can't reach an external auth boundary' pattern surfaced (first was the early OAuth-token confusion); both eventually resolved via host-side execution. Worth a short Alexandria guide on 'when to route a Tier-3 publish step through the user'. Tools used this phase: gh CLI 2.89.0 (host), git (host + container), bd 59 issues across the whole sprint.",
-  "processed": false
+  "processed": true
 }

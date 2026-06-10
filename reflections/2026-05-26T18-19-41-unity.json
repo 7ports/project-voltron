@@ -20,5 +20,5 @@
     }
   ],
   "overall_notes": "Eval task T2-002. The WebGL platform constraint is the load-bearing detail: WebGL's browser sandbox blocks synchronous filesystem APIs, so any File.* / Stream / Thread / Socket use will throw PlatformNotSupportedException at runtime. The fix shape (runtime branch on Application.platform routing to PlayerPrefs) is dictated by that constraint — same binary has to serve both desktop (File.WriteAllText works) and WebGL (only PlayerPrefs works). Load() in the same class has the same latent bug but was out of scope for this slice; flagged for follow-up. Build was not validated in this run because Unity Editor is not present in the Docker file-only environment — handed off to build-validator.",
-  "processed": false
+  "processed": true
 }

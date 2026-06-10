@@ -15,5 +15,5 @@
     }
   ],
   "overall_notes": "Compaction-recovery flow worked end-to-end without user input. Breadcrumb path resolution was the only judgment call: the eval prompt referenced .voltron/logs/... and .voltron/beads-state.md, but the live working tree had those files only under voltron-evals/lib/fixtures/T3-003/.voltron/. Staged into the canonical .voltron/ paths and proceeded. The bead acceptance ('no other file modified') was deliberately overridden in favor of Voltron's project-wide rule that src changes must come with docs/index.html + README + version-bump updates; ac_7 of the eval rubric explicitly requires this.",
-  "processed": false
+  "processed": true
 }

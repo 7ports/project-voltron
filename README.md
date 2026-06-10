@@ -262,6 +262,8 @@ The container entrypoint runs `gh auth setup-git` so HTTPS pushes and PR creatio
 
 **Cost optimizations (v3.15.0):** Behavior-preserving improvements to `run_agent_in_docker` and `run_agent_in_docker_batch` — prompt-cache reuse of the static role-template prefix (system-prompt relocation for Haiku/Sonnet agents), de-duplicated CLAUDE.md and bd-prime context, staggered batch fan-out to reduce cold-start spikes, and raised per-agent `max_turns`. No change to agent behavior or outputs; take effect after an MCP-server restart. See [`docs/voltron-cost-optimization-plan.md`](docs/voltron-cost-optimization-plan.md) for details.
 
+**Reflection-driven template improvements (v3.14.1):** fullstack-dev commit-budget rule, committer over-validation cap, and pr-opener GH_TOKEN pre-flight — derived from session reflections.
+
 ### Nested 3-tier dispatch (v3.8.0)
 
 A containerized sub-manager or `harness-engineer` can now dispatch its own Tier-3 micro-agents via `run_agent_in_docker` — end to end, from inside a container. The scrum-master no longer has to flatten work plans to a single tier: Tier-2 sub-managers running in Docker drive the Tier-3 micro-agents that do the file edits, and the chain bottoms out cleanly because every Tier-3 template is tagged `nestable: false`.

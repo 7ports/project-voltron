@@ -1,0 +1,75 @@
+{
+  "timestamp": "2026-05-26T19-02-39-334",
+  "project_name": "voltron-eval-harness",
+  "project_type": "general",
+  "session_summary": "Eval micro_validator/url-route-matcher (micro_validator) — AUT=url-route-matcher. Aggregates: ",
+  "agents_used": [
+    "url-route-matcher"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "url-route-matcher",
+      "worked_well": "All rubric criteria met.",
+      "needs_improvement": "",
+      "suggested_change": "No criteria failed."
+    }
+  ],
+  "overall_notes": "",
+  "processed": false,
+  "eval_metadata": {
+    "task_id": "micro_validator/url-route-matcher",
+    "kind": "shape-instance",
+    "rubric_version": "1.0.0",
+    "rubric_path": "voltron-evals/rubrics/shapes/micro_validator.md",
+    "template_versions": {},
+    "template_hash": "sha256:6722e46948ef148e086076e3e605b6c8b3470024bd38925a53b0fd69a206bb9d",
+    "scored_via": "programmatic",
+    "scores": {},
+    "programmatic": {
+      "turns_used": 0,
+      "done_line_present": false,
+      "max_turns_budget": 10,
+      "budget_utilization": 0,
+      "files_changed": [],
+      "file_count": 0,
+      "lines_added": 0,
+      "lines_deleted": 0,
+      "sub_dispatches": 0,
+      "sub_dispatch_targets": [],
+      "beads_created": [],
+      "beads_closed": [],
+      "beads_deps_count": 0,
+      "journal": {
+        "count": 0,
+        "kinds": {}
+      },
+      "reflection_submitted": false,
+      "docs_updated": null,
+      "editor_handoff_emitted": false,
+      "commit_dispatched_via_committer": false,
+      "has_step_lines": false,
+      "alexandria_calls": null,
+      "alexandria_call_before_first_write": null,
+      "first_file_write_step": null,
+      "test_command_exit": null,
+      "verdict_per_fixture": {
+        "fixtures": {
+          "matched": {
+            "expected_verdict": "pass",
+            "expected_term": "ALL_MATCHED",
+            "matched": false
+          },
+          "mismatch": {
+            "expected_verdict": "fail",
+            "expected_term": "MISMATCH",
+            "matched": false
+          }
+        },
+        "all_correct": false
+      },
+      "publish_action": null
+    },
+    "judge_model": null,
+    "scorecard_path": "voltron-evals\\results\\micro_validator\\url-route-matcher\\2026-05-26T19-02-23-538\\scorecard.json"
+  }
+}

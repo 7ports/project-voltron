@@ -1,0 +1,75 @@
+{
+  "timestamp": "2026-05-26T18-59-02-887",
+  "project_name": "voltron-eval-harness",
+  "project_type": "general",
+  "session_summary": "Eval micro_validator/git-state-reader (micro_validator) — AUT=git-state-reader. Aggregates: ",
+  "agents_used": [
+    "git-state-reader"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "git-state-reader",
+      "worked_well": "All rubric criteria met.",
+      "needs_improvement": "",
+      "suggested_change": "No criteria failed."
+    }
+  ],
+  "overall_notes": "",
+  "processed": false,
+  "eval_metadata": {
+    "task_id": "micro_validator/git-state-reader",
+    "kind": "shape-instance",
+    "rubric_version": "1.0.0",
+    "rubric_path": "voltron-evals/rubrics/shapes/micro_validator.md",
+    "template_versions": {},
+    "template_hash": "sha256:fc8e8bce19e232c4383e335b2644be6b662d2e681d00018dbf2dd1a10de22655",
+    "scored_via": "programmatic",
+    "scores": {},
+    "programmatic": {
+      "turns_used": 0,
+      "done_line_present": false,
+      "max_turns_budget": 10,
+      "budget_utilization": 0,
+      "files_changed": [],
+      "file_count": 0,
+      "lines_added": 0,
+      "lines_deleted": 0,
+      "sub_dispatches": 0,
+      "sub_dispatch_targets": [],
+      "beads_created": [],
+      "beads_closed": [],
+      "beads_deps_count": 0,
+      "journal": {
+        "count": 0,
+        "kinds": {}
+      },
+      "reflection_submitted": false,
+      "docs_updated": null,
+      "editor_handoff_emitted": false,
+      "commit_dispatched_via_committer": false,
+      "has_step_lines": false,
+      "alexandria_calls": null,
+      "alexandria_call_before_first_write": null,
+      "first_file_write_step": null,
+      "test_command_exit": null,
+      "verdict_per_fixture": {
+        "fixtures": {
+          "repo": {
+            "expected_verdict": "pass",
+            "expected_term": "REPO_READ",
+            "matched": false
+          },
+          "non-repo": {
+            "expected_verdict": "fail",
+            "expected_term": "NOT_A_REPO",
+            "matched": false
+          }
+        },
+        "all_correct": false
+      },
+      "publish_action": null
+    },
+    "judge_model": null,
+    "scorecard_path": "voltron-evals\\results\\micro_validator\\git-state-reader\\2026-05-26T18-58-50-084\\scorecard.json"
+  }
+}

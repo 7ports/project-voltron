@@ -1,0 +1,67 @@
+{
+  "timestamp": "2026-05-28T16-16-24-980",
+  "project_name": "voltron-eval-harness",
+  "project_type": "general",
+  "session_summary": "Eval T1-001 (single-file-web-edit) — AUT=route-adder. Aggregates: correctness 1 / decomposition null / tier_discipline 1 / reflection_honesty null / doc_hygiene 1",
+  "agents_used": [
+    "route-adder"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "route-adder",
+      "worked_well": "All rubric criteria met.",
+      "needs_improvement": "",
+      "suggested_change": "No criteria failed."
+    }
+  ],
+  "overall_notes": "",
+  "processed": false,
+  "eval_metadata": {
+    "task_id": "T1-001",
+    "kind": "deep",
+    "rubric_version": "1.0.0",
+    "rubric_path": "voltron-evals/rubrics/T1-001.md",
+    "template_versions": {},
+    "template_hash": "sha256:aebc0f64c3f2708366aba3c36c2389d11f1f01567b03c7d4d8bb1e7d71313248",
+    "scored_via": "judge",
+    "scores": {
+      "correctness": 1,
+      "decomposition": null,
+      "tier_discipline": 1,
+      "reflection_honesty": null,
+      "doc_hygiene": 1
+    },
+    "programmatic": {
+      "turns_used": 10,
+      "done_line_present": true,
+      "max_turns_budget": 10,
+      "budget_utilization": 1,
+      "files_changed": [],
+      "file_count": 0,
+      "lines_added": 0,
+      "lines_deleted": 0,
+      "sub_dispatches": 0,
+      "sub_dispatch_targets": [],
+      "beads_created": [],
+      "beads_closed": [],
+      "beads_deps_count": 0,
+      "journal": {
+        "count": 0,
+        "kinds": {}
+      },
+      "reflection_submitted": false,
+      "docs_updated": null,
+      "editor_handoff_emitted": false,
+      "commit_dispatched_via_committer": false,
+      "has_step_lines": true,
+      "alexandria_calls": null,
+      "alexandria_call_before_first_write": null,
+      "first_file_write_step": null,
+      "test_command_exit": null,
+      "verdict_per_fixture": null,
+      "publish_action": null
+    },
+    "judge_model": "claude-opus-4-7",
+    "scorecard_path": "voltron-evals\\results\\T1-001\\2026-05-28T16-13-00-289\\scorecard.json"
+  }
+}

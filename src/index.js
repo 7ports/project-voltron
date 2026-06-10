@@ -8,7 +8,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { execSync, spawn, exec as execCb, execFile as execFileCb } from "node:child_process";
+import { execSync, spawn, spawnSync, exec as execCb, execFile as execFileCb } from "node:child_process";
 import { promisify } from "node:util";
 const exec = promisify(execCb);
 const execFileAsync = promisify(execFileCb);
@@ -993,20 +993,20 @@ server.tool(
       processed: false,
     };
 
-    writeFileSync(filepath, JSON.stringify(reflection, null, 2), "utf-8");
-
-    let gitStatus = "";
     try {
-      const repoRoot = join(__dirname, "..");
-      execSync(`git add "reflections/${filename}"`, { cwd: repoRoot });
-      execSync(
-        `git commit -m "Add reflection: ${filename}"`,
-        { cwd: repoRoot }
-      );
-      execSync("git push", { cwd: repoRoot });
-      gitStatus = "\n\nCommitted and pushed to remote.";
+      writeFileSync(filepath, JSON.stringify(reflection, null, 2), "utf-8");
     } catch (err) {
-      gitStatus = `\n\n> Warning: reflection saved locally but git commit/push failed: ${err.message}`;
+      return {
+        content: [
+          {
+            type: "text",
+            text:
+              `# Reflection NOT Saved\n\n` +
+              `Failed to write \`reflections/${filename}\`: ${err.message}\n\n` +
+              `saved: false | committed: false | path: reflections/${filename}`,
+          },
+        ],
+      };
     }
 
     return {
@@ -1015,7 +1015,9 @@ server.tool(
           type: "text",
           text:
             `# Reflection Saved\n\n` +
-            `Saved to \`reflections/${filename}\`.${gitStatus}\n\n` +
+            `Saved to \`reflections/${filename}\` but NOT committed.\n\n` +
+            `It will reach main when the reflections sweep commits reflections/*.json and merges via PR; do NOT commit it onto an unrelated feature branch.\n\n` +
+            `saved: true | committed: false | path: reflections/${filename}\n\n` +
             `This feedback will be reviewed and applied to improve Project Voltron agent templates.`,
         },
       ],
@@ -1720,6 +1722,24 @@ server.tool(
 // caller frames its own section: the singleton renders "## Agent X completed";
 // the batch renders "### [N] Agent X ..." inside a multi-section body.
 
+// Hard cap on the size of the Output Tail returned to the caller. stream-json
+// lines are individually huge (full JSON messages with content/thinking/
+// signatures), so a "last N lines" tail is NOT size-bounded and can overflow
+// the MCP tool-result token limit (observed 54k–2.3M chars). We bound the
+// RETURNED tail by characters instead. The full transcript is always persisted
+// to .voltron/logs/<file> regardless — only the returned value is capped.
+const MAX_TAIL_CHARS = 4000;
+
+// Keep at most maxChars characters from the END of text, prefixing a clear
+// marker that points at the full log when truncation occurred.
+function boundTailChars(text, logFilename, maxChars = MAX_TAIL_CHARS) {
+  if (!text) return "";
+  if (text.length <= maxChars) return text;
+  const logRef = logFilename ? `.voltron/logs/${logFilename}` : "log";
+  const marker = `…[truncated — full output in ${logRef}]\n`;
+  return marker + text.slice(-maxChars);
+}
+
 async function dispatchOneAgent(spec, shared, opts = {}) {
   const { agent_name, task, max_turns = 30, model } = spec;
   const { cwd, claudeMd, currentDepth, isNested } = shared;
@@ -1812,18 +1832,28 @@ async function dispatchOneAgent(spec, shared, opts = {}) {
     authEnvArgs.push("-e", `ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY}`);
   }
 
-  // v3.13.0: GitHub credential passthrough (OPTIONAL). Sourced from host env (set
-  // by `export GH_TOKEN="$(gh auth token)"` or a fine-grained PAT). The container
-  // init step runs `gh auth setup-git` so both `gh` and `git push` authenticate.
-  // Falls back to GITHUB_TOKEN when GH_TOKEN is unset. Absence is non-fatal —
-  // read-only agents continue to launch exactly as before, only push/PR ops fail.
-  // See docs/voltron-git-credentials-plan.md.
-  const ghToken = process.env.GH_TOKEN || process.env.GITHUB_TOKEN;
+  // v3.13.0+: GitHub credential auto-provision. Priority:
+  //   1. explicit host env GH_TOKEN / GITHUB_TOKEN (manual override / PAT)
+  //   2. derived from host `gh auth token` (zero-setup after one `gh auth login`)
+  // The container init step runs `gh auth setup-git` so both `gh` and `git push`
+  // authenticate. All optional & non-fatal: if none resolve, ghEnvArgs stays []
+  // and agents launch read-only exactly as before, only push/PR ops fail. The
+  // token is NEVER logged. Derivation is skipped for nested dispatch (no host
+  // `gh`; creds inherited via --volumes-from/parent env) and when the
+  // VOLTRON_DISABLE_GH_AUTOTOKEN escape hatch is set.
+  // See docs/voltron-gh-credentials-automount-plan.md.
+  let ghToken = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || "";
+  if (!ghToken && !isNested && !process.env.VOLTRON_DISABLE_GH_AUTOTOKEN) {
+    try {
+      const r = spawnSync("gh", ["auth", "token"], { encoding: "utf8", timeout: 5000 });
+      if (r.status === 0 && r.stdout) ghToken = r.stdout.trim();
+    } catch { /* gh absent / not logged in — fall through, push disabled */ }
+  }
   const ghEnvArgs = ghToken ? ["-e", `GH_TOKEN=${ghToken}`] : [];
 
   if (!credsAvailable && authEnvArgs.length === 0) {
     await fs.unlink(tmpFile).catch(() => {});
-    return { agent_name, validationError: "Error: No auth available for Docker agent. Either run `claude setup-token` (creates ~/.claude/.credentials.json which will be mounted), or set CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY in your environment. (Optional: also set GH_TOKEN — or GITHUB_TOKEN — to enable publish agents like pr-opener/committer/branch-manager to push and open PRs from inside the container.)" };
+    return { agent_name, validationError: "Error: No auth available for Docker agent. Either run `claude setup-token` (creates ~/.claude/.credentials.json which will be mounted), or set CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY in your environment. (Optional: a one-time host `gh auth login` now suffices to enable publish agents like pr-opener/committer/branch-manager to push and open PRs from inside the container — the token is derived automatically at dispatch. Set GH_TOKEN — or GITHUB_TOKEN — manually only to override it with a specific PAT.)" };
   }
 
   // 6. Container-local MCP config (so nested dispatch works for nestable templates)
@@ -2002,7 +2032,14 @@ async function dispatchOneAgent(spec, shared, opts = {}) {
     ? `### Progress Trail\n\`\`\`\n${trailLines.join("\n")}\n\`\`\``
     : "";
 
-  const outputTail = allOutputLines.slice(-tailLines).join("\n");
+  // Take the last N lines first, then HARD-CAP by characters so the returned
+  // tail can never overflow the MCP result limit regardless of agent verbosity.
+  // The full transcript is written to the log file below — this only bounds the
+  // value returned to the caller.
+  const outputTail = boundTailChars(
+    allOutputLines.slice(-tailLines).join("\n"),
+    logFilename,
+  );
   const ok = !aborted && !result.error && result.status === 0;
 
   return {
@@ -2089,7 +2126,7 @@ server.tool(
           text: [
             `## Agent ${r.agent_name} completed ✅`,
             r.trailSection,
-            `### Output Tail (last 80 lines — full output in log)\n\`\`\`\n${r.outputTail}\n\`\`\``,
+            `### Output Tail (last ~${MAX_TAIL_CHARS} chars — full output in log)\n\`\`\`\n${r.outputTail}\n\`\`\``,
           ].filter(Boolean).join("\n\n") + logLine,
         }],
       };
@@ -2100,8 +2137,8 @@ server.tool(
         text: [
           `## Agent ${r.agent_name} FAILED (exit ${r.status})`,
           r.trailSection,
-          `### Output Tail\n\`\`\`\n${r.outputTail}\n\`\`\``,
-          r.stderr ? `### Stderr\n\`\`\`\n${r.stderr}\n\`\`\`` : "",
+          `### Output Tail (last ~${MAX_TAIL_CHARS} chars — full output in log)\n\`\`\`\n${r.outputTail}\n\`\`\``,
+          r.stderr ? `### Stderr\n\`\`\`\n${boundTailChars(r.stderr, r.logFilename)}\n\`\`\`` : "",
           r.errorMessage ? `**Error:** ${r.errorMessage}` : "",
         ].filter(Boolean).join("\n\n") + logLine,
       }],
@@ -2233,7 +2270,7 @@ server.tool(
         return [
           `### [${idx}] Agent ${r.agent_name} CANCELLED 🟡`,
           r.trailSection,
-          r.outputTail ? `#### Output Tail (last 40 lines — full output in log)\n\`\`\`\n${r.outputTail}\n\`\`\`` : "",
+          r.outputTail ? `#### Output Tail (last ~${MAX_TAIL_CHARS} chars — full output in log)\n\`\`\`\n${r.outputTail}\n\`\`\`` : "",
           "**Cancelled because a sibling dispatch failed (fail_fast=true).**",
           logLine,
         ].filter(Boolean).join("\n\n");
@@ -2242,15 +2279,15 @@ server.tool(
         return [
           `### [${idx}] Agent ${r.agent_name} completed ✅`,
           r.trailSection,
-          `#### Output Tail (last 40 lines — full output in log)\n\`\`\`\n${r.outputTail}\n\`\`\``,
+          `#### Output Tail (last ~${MAX_TAIL_CHARS} chars — full output in log)\n\`\`\`\n${r.outputTail}\n\`\`\``,
           logLine,
         ].filter(Boolean).join("\n\n");
       }
       return [
         `### [${idx}] Agent ${r.agent_name} FAILED (exit ${r.status})`,
         r.trailSection,
-        `#### Output Tail (last 40 lines)\n\`\`\`\n${r.outputTail}\n\`\`\``,
-        r.stderr ? `#### Stderr (last 20 lines)\n\`\`\`\n${r.stderr.split("\n").slice(-20).join("\n")}\n\`\`\`` : "",
+        `#### Output Tail (last ~${MAX_TAIL_CHARS} chars — full output in log)\n\`\`\`\n${r.outputTail}\n\`\`\``,
+        r.stderr ? `#### Stderr (last ~${MAX_TAIL_CHARS} chars)\n\`\`\`\n${boundTailChars(r.stderr.split("\n").slice(-20).join("\n"), r.logFilename)}\n\`\`\`` : "",
         r.errorMessage ? `**Error:** ${r.errorMessage}` : "",
         logLine,
       ].filter(Boolean).join("\n\n");

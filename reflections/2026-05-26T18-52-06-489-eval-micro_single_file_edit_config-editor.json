@@ -1,0 +1,61 @@
+{
+  "timestamp": "2026-05-26T18-52-06-489",
+  "project_name": "voltron-eval-harness",
+  "project_type": "general",
+  "session_summary": "Eval micro_single_file_edit/config-editor (micro_single_file_edit) — AUT=config-editor. Aggregates: ",
+  "agents_used": [
+    "config-editor"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "config-editor",
+      "worked_well": "All rubric criteria met.",
+      "needs_improvement": "",
+      "suggested_change": "No criteria failed."
+    }
+  ],
+  "overall_notes": "",
+  "processed": false,
+  "eval_metadata": {
+    "task_id": "micro_single_file_edit/config-editor",
+    "kind": "shape-instance",
+    "rubric_version": "1.0.0",
+    "rubric_path": "voltron-evals/rubrics/shapes/micro_single_file_edit.md",
+    "template_versions": {},
+    "template_hash": "sha256:c74f234828ddc20fd6b36d39ac288badfa7152d010a5e2dd82a931b237e5cbdf",
+    "scored_via": "programmatic",
+    "scores": {},
+    "programmatic": {
+      "turns_used": 8,
+      "done_line_present": true,
+      "max_turns_budget": 8,
+      "budget_utilization": 1,
+      "files_changed": [],
+      "file_count": 0,
+      "lines_added": 0,
+      "lines_deleted": 0,
+      "sub_dispatches": 0,
+      "sub_dispatch_targets": [],
+      "beads_created": [],
+      "beads_closed": [],
+      "beads_deps_count": 0,
+      "journal": {
+        "count": 0,
+        "kinds": {}
+      },
+      "reflection_submitted": false,
+      "docs_updated": null,
+      "editor_handoff_emitted": false,
+      "commit_dispatched_via_committer": false,
+      "has_step_lines": true,
+      "alexandria_calls": null,
+      "alexandria_call_before_first_write": null,
+      "first_file_write_step": null,
+      "test_command_exit": null,
+      "verdict_per_fixture": null,
+      "publish_action": null
+    },
+    "judge_model": null,
+    "scorecard_path": "voltron-evals\\results\\micro_single_file_edit\\config-editor\\2026-05-26T18-51-12-462\\scorecard.json"
+  }
+}

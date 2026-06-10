@@ -1,0 +1,70 @@
+{
+  "timestamp": "2026-05-26T18-47-56-828",
+  "project_name": "voltron-eval-harness",
+  "project_type": "general",
+  "session_summary": "Eval micro_committer/branch-manager (micro_committer) — AUT=branch-manager. Aggregates: ",
+  "agents_used": [
+    "branch-manager"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "branch-manager",
+      "worked_well": "All rubric criteria met.",
+      "needs_improvement": "",
+      "suggested_change": "No criteria failed."
+    }
+  ],
+  "overall_notes": "",
+  "processed": false,
+  "eval_metadata": {
+    "task_id": "micro_committer/branch-manager",
+    "kind": "shape-instance",
+    "rubric_version": "1.0.0",
+    "rubric_path": "voltron-evals/rubrics/shapes/micro_committer.md",
+    "template_versions": {},
+    "template_hash": "sha256:87c4ed5676bbc2b3195de319eb8baaddfda8873ceae212578f5f8e3923b44e9e",
+    "scored_via": "programmatic",
+    "scores": {},
+    "programmatic": {
+      "turns_used": 2,
+      "done_line_present": true,
+      "max_turns_budget": 6,
+      "budget_utilization": 0.3333333333333333,
+      "files_changed": [],
+      "file_count": 0,
+      "lines_added": 0,
+      "lines_deleted": 0,
+      "sub_dispatches": 0,
+      "sub_dispatch_targets": [],
+      "beads_created": [],
+      "beads_closed": [],
+      "beads_deps_count": 0,
+      "journal": {
+        "count": 0,
+        "kinds": {}
+      },
+      "reflection_submitted": false,
+      "docs_updated": null,
+      "editor_handoff_emitted": false,
+      "commit_dispatched_via_committer": false,
+      "has_step_lines": true,
+      "alexandria_calls": null,
+      "alexandria_call_before_first_write": null,
+      "first_file_write_step": null,
+      "test_command_exit": null,
+      "verdict_per_fixture": null,
+      "publish_action": {
+        "action": "multiple",
+        "saw_commit": true,
+        "saw_push": true,
+        "saw_pr_create": false,
+        "saw_branch_create": true,
+        "saw_deploy": false,
+        "changelog_touched": false,
+        "new_commit_sha": null
+      }
+    },
+    "judge_model": null,
+    "scorecard_path": "voltron-evals\\results\\micro_committer\\branch-manager\\2026-05-26T18-47-37-026\\scorecard.json"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "timestamp": "2026-06-03T03:11:08.964Z",
+  "project_name": "toronto-ferry-tracker-v2",
+  "project_type": "fullstack",
+  "session_summary": "Sprint 9 (Analytics & Polish) complete — 57/57 beads closed; 15 commits shipped to master. Stats: Total 57 / Open 0 / In Progress 0 / Blocked 0 / Closed 57 / Ready 0. Delivered: weather observation derivation (8922051), mobile 72×72 FAB (b1d6ccf), SQLite storage scaffolding on Fly volume (966db60), navStatus plumbing (c69d7aa), destination inference v1 (899b493), panel polish audit gaps (b89f124), AIS+event ingest hooks (9395073), Claude Haiku LLM features (4066cd3), daily rollups+VACUUM (97cdffb), 10 analytics API endpoints (91a9e8a), 3 realtime feedback hooks (c94a2eb), ?view=stats analytics page (f93de71), URL audit+smoke scripts (6d7e801), Lighthouse+a11y+bundle gates (11bed90), sprint closeout docs + 2 ADRs + PR body (8a893fd).",
+  "agents_used": [
+    "fullstack-dev",
+    "qa-tester",
+    "committer",
+    "doc-writer"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "fullstack-dev",
+      "worked_well": "Composed Tier-3 micro-agents (type-definer, fixture-writer, test-writer, typecheck-runner, lint-runner, test-runner, committer) correctly for all medium-complexity features. Validated thoroughly before committing.",
+      "needs_improvement": "Consistently exhausted max_turns at the commit step after passing all validators. Pattern visible across Tasks 3, 7, 11, 12, 15: agents would log 'Now commit only the files I changed' as their LAST line. The recovery cost is significant — each requires a follow-up committer dispatch.",
+      "suggested_change": "Add a hard rule in the fullstack-dev template: when you reach the commit step with max_turns ≤ 5 remaining, stage files but DO NOT run validators again — emit a handoff to committer with the exact file list. Also consider splitting the validation gate into an explicit 'pre-commit-validation' phase that doesn't re-run if it passed in the last 3 turns."
+    },
+    {
+      "agent": "qa-tester",
+      "worked_well": "Both URL-audit and Lighthouse-audit agents produced working scripts and config (lighthouserc.json, .pa11yci.json, scripts/audit.mjs).",
+      "needs_improvement": "Same commit-budget exhaustion pattern as fullstack-dev. Both Task 14 and 15 finished work but neither committed in one shot.",
+      "suggested_change": "Same hard rule as fullstack-dev — hand off to committer when ≤5 turns remain."
+    },
+    {
+      "agent": "committer",
+      "worked_well": "When dispatched with a pre-staged tree and a single explicit commit message, completed in 3 steps (commit→verify→DONE). Extremely reliable as a recovery tool.",
+      "needs_improvement": "Initial Task 3 recovery attempt only got 2 steps in before exit — appeared to be turn-budget exhaustion on typecheck output size. The committer's narrow scope can't handle 'validate then commit' when validators produce verbose output."
+    },
+    {
+      "agent": "doc-writer",
+      "worked_well": "Single-shot Task 16 (CLAUDE.md update + CHANGELOG + 2 ADRs + PR body + commit) succeeded with one dispatch."
+    }
+  ],
+  "overall_notes": "Tool/orchestration notes for future scrum-master sessions: (1) run_agent_in_docker_batch (new in v3.12.0) eliminated the cascading-permission-rejection failure mode that broke prior parallel batches via multiple run_agent_in_docker tool_uses. Use the batch tool by default for 2-8 ready beads. (2) Output-size cap on MCP results consistently triggered ('result exceeds maximum allowed tokens') — every dispatch this sprint hit it despite explicit \"OUTPUT BUDGET under 5KB\" instructions in the task description. Agents follow the constraint when writing their final message but the cap counts ALL transcript output including tool results from inside the container. Suggest the harness add per-dispatch streamed-output truncation or a 'summary-only' return mode. (3) Parallelization conflicts on shared files (server/src/lib/storage/schema.ts, migrations.ts, server/src/index.ts) cost a recovery round in Wave D — when multiple agents add migrations to the same file, even with explicit \"you own v2, you own v3\" coordination they race on last-write-wins. Better: serialize storage-module-touching tasks, OR have planner pre-split the migrations file into per-feature subfiles. (4) Recovery pattern that worked: when a parallel batch leaves N validated-but-uncommitted feature sets in the tree, dispatch ONE fullstack-dev (max_turns=60) with explicit per-task file ownership lists and \"use git add -p for shared files\" — that single agent successfully split-committed Wave D's 3 tasks and Wave E's 2 tasks.",
+  "processed": false
+}

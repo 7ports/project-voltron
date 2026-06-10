@@ -1,0 +1,24 @@
+{
+  "timestamp": "2026-06-05T15:58:10.749Z",
+  "project_name": "toronto-ferry-tracker-v2",
+  "project_type": "fullstack",
+  "session_summary": "Sprint 9 release-prep phase complete. Stats: 59/59 closed, 0 open, 0 in_progress, 0 blocked, 0 ready. Shipped this phase: validation guide (commit 480ed51, 392 lines) and draft PR #14 (https://github.com/7ports/project-hammer/pull/14). Draft state is intentional — user runs local validation against the guide, ticks each feature, then flips PR to ready-for-review and merges to trigger deploy. Total sprint output: 17 commits on feat/sprint-9-analytics-polish covering weather, mobile FAB, SQLite storage + ingest + rollups, navStatus, destination inference v1, panel polish, LLM Haiku features, trip inference + weather snapshots, 10 analytics endpoints, 3 realtime hooks, stats page, URL audit + smoke, Lighthouse + bundle + a11y gates, closeout docs (CLAUDE.md / CHANGELOG / ADRs / PR body) and local validation guide.",
+  "agents_used": [
+    "devops-engineer",
+    "qa-tester"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "devops-engineer",
+      "worked_well": "Correctly diagnosed the auth-blocker root cause (no gh CLI inside container, no host credential helper) instead of looping on push retries. Cleanly rolled back its local branch checkout when it determined push wasn't possible, leaving a recoverable state.",
+      "needs_improvement": "Container image lacks gh CLI for PR-opening tasks. Even with git available, HTTPS push requires either a credential helper or a PAT env var — neither is present in the Voltron Docker base image. Any pr-opener, branch-manager, or deploy-trigger task that needs to talk to GitHub will hit the same wall.",
+      "suggested_change": "Either (1) bake gh CLI into Dockerfile.voltron and pass a GITHUB_TOKEN env var into the container at run-time, or (2) explicitly document that pr-opener and branch-manager are 'host-only' micro-agents whose dispatches must be routed through the user via a Verify: block. Right now the agent taxonomy lists pr-opener as Tier-3 publish but the runtime can't actually execute it."
+    },
+    {
+      "agent": "qa-tester",
+      "worked_well": "Single-shot dispatch produced a substantial, well-structured validation guide (392 lines, 20 sections, feature-by-feature walkthroughs with what-to-test / steps / expected / red-flags). Self-validated all four mode-(a) gates before commit (file exists, line count ≥ 80, ≥ 14 section headers, commit-log message match)."
+    }
+  ],
+  "overall_notes": "Capability-gap discovery this phase: the Voltron container cannot push to GitHub. Two micro-agents in the publish taxonomy (pr-opener, branch-manager, plus likely deploy-trigger) are effectively unreachable when the remote is private + HTTPS + the container has neither gh nor a token. Workaround that worked: surface the push and gh-pr-create step to the user as a 3-command paste block, document the auth wall in the bead notes, then close the bead once the user reports the URL. This is the second time this session a 'container can't reach an external auth boundary' pattern surfaced (first was the early OAuth-token confusion); both eventually resolved via host-side execution. Worth a short Alexandria guide on 'when to route a Tier-3 publish step through the user'. Tools used this phase: gh CLI 2.89.0 (host), git (host + container), bd 59 issues across the whole sprint.",
+  "processed": false
+}

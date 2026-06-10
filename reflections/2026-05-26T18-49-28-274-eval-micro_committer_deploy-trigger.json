@@ -1,0 +1,70 @@
+{
+  "timestamp": "2026-05-26T18-49-28-274",
+  "project_name": "voltron-eval-harness",
+  "project_type": "general",
+  "session_summary": "Eval micro_committer/deploy-trigger (micro_committer) — AUT=deploy-trigger. Aggregates: ",
+  "agents_used": [
+    "deploy-trigger"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "deploy-trigger",
+      "worked_well": "All rubric criteria met.",
+      "needs_improvement": "",
+      "suggested_change": "No criteria failed."
+    }
+  ],
+  "overall_notes": "",
+  "processed": false,
+  "eval_metadata": {
+    "task_id": "micro_committer/deploy-trigger",
+    "kind": "shape-instance",
+    "rubric_version": "1.0.0",
+    "rubric_path": "voltron-evals/rubrics/shapes/micro_committer.md",
+    "template_versions": {},
+    "template_hash": "sha256:35584872ef445df3fc9b22a8f39c3fddd2295dd4ead7baa4f6c2cb9c5e1b508a",
+    "scored_via": "programmatic",
+    "scores": {},
+    "programmatic": {
+      "turns_used": 6,
+      "done_line_present": false,
+      "max_turns_budget": 6,
+      "budget_utilization": 1,
+      "files_changed": [],
+      "file_count": 0,
+      "lines_added": 0,
+      "lines_deleted": 0,
+      "sub_dispatches": 0,
+      "sub_dispatch_targets": [],
+      "beads_created": [],
+      "beads_closed": [],
+      "beads_deps_count": 0,
+      "journal": {
+        "count": 0,
+        "kinds": {}
+      },
+      "reflection_submitted": false,
+      "docs_updated": null,
+      "editor_handoff_emitted": false,
+      "commit_dispatched_via_committer": false,
+      "has_step_lines": true,
+      "alexandria_calls": null,
+      "alexandria_call_before_first_write": null,
+      "first_file_write_step": null,
+      "test_command_exit": null,
+      "verdict_per_fixture": null,
+      "publish_action": {
+        "action": "multiple",
+        "saw_commit": true,
+        "saw_push": false,
+        "saw_pr_create": false,
+        "saw_branch_create": false,
+        "saw_deploy": true,
+        "changelog_touched": false,
+        "new_commit_sha": null
+      }
+    },
+    "judge_model": null,
+    "scorecard_path": "voltron-evals\\results\\micro_committer\\deploy-trigger\\2026-05-26T18-49-01-791\\scorecard.json"
+  }
+}

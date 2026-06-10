@@ -205,6 +205,8 @@ A `[VOLTRON] Auto-updated N file(s)` message appears in context when an update o
 
 Agents submit post-session reflections via `submit_reflection`. The scrum-master now submits reflections automatically at phase completion, after significant blockers, and at session end. Reflections accumulate in the `reflections/` directory and are automatically processed by a GitHub Actions workflow that runs **every Monday at 10:00 UTC**:
 
+**Write-only reflection submission (v3.13.1):** `submit_reflection` now only writes `reflections/<file>.json` locally and returns a saved-but-not-committed status — it no longer auto git add/commit/pushes. Reflections are gathered and submitted later via a dedicated reflections sweep / PR, so they no longer strand commits on protected `main` or pollute unrelated feature PRs.
+
 1. The `harness-engineer` agent reads all unprocessed reflections
 2. Groups feedback by agent and prioritizes by frequency
 3. Applies targeted improvements to `src/templates.js`
@@ -230,6 +232,8 @@ When the scrum-master invokes an agent, `run_agent_in_docker`:
 
 **Parallel dispatch (v3.12.1):** When multiple agents can run in parallel, Voltron exposes `run_agent_in_docker_batch` — a single MCP tool that accepts an array of dispatches and runs them in concurrent containers. This is the recommended path for any dependency-free fan-out (e.g. processing multiple bd-ready tasks at once), and sidesteps the per-MCP-server tool-call serialization that the Claude Code main session applies.
 
+**Bounded agent-result output (v3.13.1):** `run_agent_in_docker` and `run_agent_in_docker_batch` now return a size-bounded result — the returned output tail is capped at ~4000 characters (`MAX_TAIL_CHARS`) so results no longer overflow the tool-result limit. The full, untruncated transcript is still written to `.voltron/logs/` for inspection.
+
 **Authentication (v3.4.1):** The Docker tools mount `~/.claude/.credentials.json:ro` into the container so Claude Max OAuth login is reused for agent sessions. They deliberately do **not** mount `~/.claude` or `~/.claude.json` — the latter contains host-pathed MCP server registrations that hang the Linux container at startup (60–90s+). Auth resolution order:
 
 1. `~/.claude/.credentials.json` (mounted if present)
@@ -253,6 +257,8 @@ $env:GH_TOKEN = (gh auth token)
 ```
 
 The container entrypoint runs `gh auth setup-git` so HTTPS pushes and PR creation work without further configuration.
+
+**Zero-setup GitHub auth (v3.14.0):** Manual `GH_TOKEN` export is no longer required. After a one-time host `gh auth login`, Voltron derives a token from the host's `gh auth token` at dispatch and injects it into each agent container — so `committer` and `pr-opener` can push commits and open PRs with no manual `GH_TOKEN` and no relaunch. An explicit `GH_TOKEN`/`GITHUB_TOKEN` env override still takes precedence; set `VOLTRON_DISABLE_GH_AUTOTOKEN` to disable the auto-token entirely. See [`docs/voltron-gh-credentials-automount-plan.md`](docs/voltron-gh-credentials-automount-plan.md) for design details.
 
 ### Nested 3-tier dispatch (v3.8.0)
 

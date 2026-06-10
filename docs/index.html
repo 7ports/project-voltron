@@ -296,7 +296,7 @@
       <h1>Project Voltron</h1>
       <p>Specialized agent teams for Claude Code, served via MCP. Scaffold Unity, web, or general projects with battle-tested subagent templates — 51 micro-agents, Alexandria-aware, self-improving, and auto-updating.</p>
       <div class="badge-row">
-        <span class="badge">v3.13.0</span>
+        <span class="badge">v3.14.0</span>
         <span class="badge">MCP Server</span>
         <span class="badge">Unity</span>
         <span class="badge">Web / Fullstack</span>
@@ -753,7 +753,7 @@ node scripts/setup.js</code></pre>
           <div class="flow-icon">⚡</div>
           <div>
             <strong>Scaffold</strong>
-            <span>Run <code>scaffold_project</code> to write CLAUDE.md, agent files, Dockerfile, launch script, and auto-update hook for your project type — smart merge skips existing files and appends to existing CLAUDE.md. <strong>v3.13.0:</strong> Docker agent containers now inherit GitHub push credentials from the host via <code>GH_TOKEN</code>/<code>GITHUB_TOKEN</code> passthrough and <code>gh auth setup-git</code>, so <code>committer</code> and <code>pr-opener</code> can push from inside the container. Claude auth has also moved fully to a mounted <code>~/.claude/.credentials.json</code> (Windows: update manually; Unix: <code>claude setup-token</code>); pre-flight no longer probes the <code>CLAUDE_CODE_OAUTH_TOKEN</code> env var. The <code>/scrum-master</code> slash command is written to <code>.claude/commands/scrum-master.md</code> for every project type, and the auto-update hook self-heals a missing command file on already-scaffolded projects.</span>
+            <span>Run <code>scaffold_project</code> to write CLAUDE.md, agent files, Dockerfile, launch script, and auto-update hook for your project type — smart merge skips existing files and appends to existing CLAUDE.md. <strong>Recent updates:</strong> Docker agent containers now inherit GitHub push credentials from the host via <code>GH_TOKEN</code>/<code>GITHUB_TOKEN</code> passthrough and <code>gh auth setup-git</code>, so <code>committer</code> and <code>pr-opener</code> can push from inside the container. Claude auth has also moved fully to a mounted <code>~/.claude/.credentials.json</code> (Windows: update manually; Unix: <code>claude setup-token</code>); pre-flight no longer probes the <code>CLAUDE_CODE_OAUTH_TOKEN</code> env var. The <code>/scrum-master</code> slash command is written to <code>.claude/commands/scrum-master.md</code> for every project type, and the auto-update hook self-heals a missing command file on already-scaffolded projects. <strong>Reflections &amp; bounded results:</strong> <code>submit_reflection</code> is now write-only — it saves <code>reflections/&lt;file&gt;.json</code> locally and reports a saved-but-not-committed status instead of auto git add/commit/pushing, so reflections no longer strand commits on protected <code>main</code> or pollute feature PRs (they're gathered later via a reflections sweep / PR). And <code>run_agent_in_docker</code>/<code>_batch</code> now return a size-bounded result — the output tail is capped at ~4000 chars so results no longer overflow the tool-result limit, while the full transcript is still written to <code>.voltron/logs/</code>. <strong>v3.14.0:</strong> in-container <code>git push</code> and <code>gh</code> now authenticate <em>automatically</em> from the host's <code>gh</code> login — the MCP derives a token from <code>gh auth token</code> at dispatch and injects it, so after a one-time <code>gh auth login</code> no manual <code>GH_TOKEN</code> export is needed. An explicit <code>GH_TOKEN</code>/<code>GITHUB_TOKEN</code> env override still wins; opt out by setting <code>VOLTRON_DISABLE_GH_AUTOTOKEN</code>.</span>
           </div>
         </div>
         <div class="arrow">↓</div>
@@ -931,7 +931,7 @@ node scripts/setup.js</code></pre>
     <div class="container">
       <p>
         <a href="https://github.com/7ports/project-voltron">GitHub</a> &middot;
-        v3.13.0 &middot;
+        v3.14.0 &middot;
         MIT License &middot;
         Built by <a href="https://github.com/7ports">7ports</a>
       </p>

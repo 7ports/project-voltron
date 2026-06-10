@@ -1,0 +1,32 @@
+{
+  "timestamp": "2026-06-10T03:25:06.589Z",
+  "project_name": "Voltron Glimpse",
+  "project_type": "fullstack",
+  "session_summary": "v2 pivot: after the user tested v1 and reported it was the wrong product (work-tracker, not a live running-agent monitor), dispatched project-planner to redesign (docs/live-monitor-redesign.md: Docker `docker ps` as authoritative live set, logs as enricher, 4 live states, hub+inferred-spoke edges, heavy animation). Decomposed into 9 beads and executed: docker poller, liveness reconciler, backend cutover (deleted progress/journal/analyses/beads parsers), stripped+rewritten animated frontend, docs. QA PASS (57/57 tests, zero fs-writes, docker ps-only, 127.0.0.1-only). Commit 05c4768 pushed; PR #1 updated. bd stats: 26 total / 26 closed / 0 open. Host-only live e2e remains (handed to user with checklist).",
+  "agents_used": [
+    "project-planner",
+    "fullstack-dev",
+    "ui-designer",
+    "doc-writer",
+    "committer",
+    "qa-tester"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "project-planner",
+      "worked_well": "Given a product-intent correction, it produced a decisive, immediately-decomposable redesign doc with a Keep/Strip/Add table and an ordered build list that mapped almost 1:1 to beads — exactly what the scrum-master needs.",
+      "needs_improvement": "Hit the turn limit before emitting a [DONE] line (the doc was fully written though), so the run looked failed; the orchestrator had to verify by reading the doc."
+    },
+    {
+      "agent": "fullstack-dev",
+      "worked_well": "Handled a large, interdependent backend cutover (delete 4 parsers + gut 6 modules + rewire CLI) in a single dispatch and landed the suite green + a boot smoke — the additive-then-cutover sequencing (N2 adds events, N3 removes) avoided broken intermediate trees.",
+      "needs_improvement": "On big multi-file cutovers the final [DONE] line sometimes didn't surface in the trail despite success; orchestrator reconciled via host greps."
+    },
+    {
+      "agent": "ui-designer",
+      "worked_well": "Took on JS animation (rAF pulse loop, ele.animate, marching-ants) in app.js plus the Cytoscape stylesheet — animation work that spans JS+CSS — and kept it syntactically clean."
+    }
+  ],
+  "overall_notes": "Recurring theme this project: a product-intent mismatch between the written plan (docs/implementation-plan.md framed Glimpse as a work-tracker) and the user's actual goal (a live running-agent monitor). The first build faithfully implemented the wrong plan. Lesson for templates: when a plan exists, a quick intent-confirmation with the user before a full build would have saved a whole v1. Key technical constraint that shaped the redesign: liveness truly lives only in the Docker daemon, and Docker-run agents cannot query the host daemon — so all unit work used injected fakes/fixtures and the real live test is necessarily host-only/user-mediated (same class as the Unity Editor exception). The decompose pattern that worked: separate ADD (new modules + additive events, suite stays green) from CUTOVER (delete + gut, suite green at end) to avoid broken intermediate trees across interdependent files. Tooling: alexandria reachable; beads on this Windows host required `bd init --shared-server` (embedded Dolt needs CGO).",
+  "processed": false
+}

@@ -1,0 +1,30 @@
+{
+  "timestamp": "2026-06-05T17:07:05.057Z",
+  "project_name": "toronto-ferry-tracker-v2",
+  "project_type": "fullstack",
+  "session_summary": "Sprint 9 shipped end-to-end. PR #14 (https://github.com/7ports/project-hammer/pull/14) merged with full commit history; branch deleted; deploy workflows triggered. Final beads: 63/63 closed, 0 open, 0 in_progress, 0 blocked. The validation-guide phase exercised the value of pre-deploy gates — found 2 test failures and 1 unmasked production a11y bug (divs with aria-label lacking role), all fixed and shipped on the same branch before merge: validation-report 7247d23, StatsPage SummaryCards regression 9c9496b, useServiceStatus PanelShell mount 24q→abe4850, real a11y violations across loading skeletons hz5→cd3163a. Then user-authorized host-side push + gh pr ready 14 + gh pr merge 14 --merge --delete-branch from main session because Docker containers can't reach GitHub credentials (3rd time this pattern surfaced — strong candidate for an Alexandria guide).",
+  "agents_used": [
+    "qa-tester",
+    "fullstack-dev",
+    "committer",
+    "ui-designer",
+    "test-runner"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "qa-tester",
+      "worked_well": "Validation-guide execution produced a high-quality structured report (.voltron/VALIDATION-REPORT-sprint-9.md) with concrete per-gate pass/fail and explicit 'cannot validate from container' list for browser-driven and live-AIS checks. The report-as-deliverable pattern beat trying to interpret raw validator output."
+    },
+    {
+      "agent": "ui-designer",
+      "worked_well": "Single-shot hz5 fix: walked every aria-label-on-div violation across multiple components and added correct roles, self-validated with the exact grep + test commands the dispatch asked for. No commit-budget exhaustion this time — the task was sized right at 40 turns for the scope."
+    },
+    {
+      "agent": "test-runner",
+      "needs_improvement": "Spent 10 turns trying various vitest reporter flags instead of just running `npm test -- --run <file> 2>&1 | tail -30` once. The agent has a tendency to over-engineer output-capture before doing the simple thing.",
+      "suggested_change": "Add to the test-runner template: 'Default invocation is `<test_command> 2>&1 | tail -30`. Do NOT search for vitest/jest reporter flags unless the default output is genuinely insufficient.'"
+    }
+  ],
+  "overall_notes": "Capability gap confirmed for the 3rd time: Voltron Docker containers cannot authenticate to GitHub (no gh CLI baked in, no host credential helper, no PAT). Every dispatch for branch-manager / pr-opener / deploy-trigger / gh pr merge has to route through the user via mode-(b) validation. This session resolved it the same way: scrum-master prepares the exact command block, surfaces it to the user, user authorizes the main-session Bash invocation. Recommend either (a) baking gh CLI into Dockerfile.voltron + injecting GITHUB_TOKEN at run-time, or (b) adding an explicit 'host-only-tier' badge to publish micro-agents that talk to remote APIs so future scrum-masters route through user from the start instead of attempting the dispatch first.",
+  "processed": false
+}

@@ -2404,6 +2404,28 @@ Place the corresponding JS implementation in a \`.jslib\` file in \`Assets/Plugi
 
 **Always use \`#if UNITY_WEBGL && !UNITY_EDITOR\`** when wrapping jslib calls — the \`!UNITY_EDITOR\` guard prevents crashes in Play Mode where the native bridge is unavailable.
 
+### Compile-time vs runtime platform gating
+
+There are two distinct ways to gate platform-specific code, and they are NOT interchangeable:
+
+- **\`#if UNITY_WEBGL\` (compile-time)** — the guarded code is *stripped from the WebGL build entirely*. Use it when the code must not exist on WebGL at all (e.g. jslib \`DllImport\` calls, or APIs that would fail to compile). Each platform gets a different binary.
+- **\`if (Application.platform == RuntimePlatform.WebGLPlayer)\` (runtime)** — a *single binary* that branches at runtime. Use it when shared code needs to take a different path on WebGL but the alternate path must still compile and ship in every build.
+
+\`\`\`csharp
+// Compile-time: stripped from non-WebGL builds
+#if UNITY_WEBGL && !UNITY_EDITOR
+    SyncToIndexedDB(data);
+#endif
+
+// Runtime: one binary, branches per platform
+if (Application.platform == RuntimePlatform.WebGLPlayer)
+    StartCoroutine(LoadViaUnityWebRequest(path));
+else
+    LoadFromFile(path);
+\`\`\`
+
+**Critical:** \`File.*\`, \`Stream\`, \`Thread\`, and \`Socket\` APIs throw \`PlatformNotSupportedException\` **at runtime** on WebGL regardless of any compile guard. A \`#if UNITY_WEBGL\` guard around the *call site* does not make a reachable runtime branch safe — if a code path can execute on WebGL and touches these APIs, you must branch with \`Application.platform\` (or strip the path entirely), not merely wrap unrelated code in a compile guard.
+
 **C# APIs unavailable in WebGL:**
 - \`System.Threading\` / \`Thread\` — no threading; use coroutines or async/await with \`UnityWebRequest\`
 - \`System.IO.File\` — no file system access; use \`PlayerPrefs\`, \`IndexedDB\` via jslib, or \`UnityWebRequest\`
@@ -3515,6 +3537,10 @@ router.get('/api/ais/stream', (req: Request, res: Response) => {
 3. Do not report done while typecheck or lint errors remain
 4. Summarize: files created/modified, what the code does, how to test it
 
+### Commit-budget hard rule (prevents turn exhaustion)
+
+Validators that already passed do NOT need to run again at commit time. **When you reach the commit step with max_turns ≤ 5 remaining, stage the files but DO NOT re-run validators — emit a handoff to \`committer\` with the exact file list.** Re-running a green validation gate is the single most common cause of turn-budget exhaustion: the work is finished, but the agent burns its remaining turns re-confirming what already passed and never reaches the commit. Once your validation gate is green, treat it as green — proceed directly to \`committer\` and emit your \`[DONE]\` line before doing anything else.
+
 ## Common Pitfalls
 
 **TypeScript + Vitest backends (Docker/CommonJS):**
@@ -4617,6 +4643,10 @@ For a smoke test + full quality report, keep the task to **≤6 discrete steps**
 
 If you discover a lint noise source (e.g. worktree artifact paths producing false errors), **fix it in the same invocation** — add it to \`.eslintignore\` or the ESLint ignore config and re-run lint. Do not defer to a cleanup pass.
 
+### Commit-budget hard rule (prevents turn exhaustion)
+
+Same rule as \`fullstack-dev\`: once your validation gate (tests/lint/typecheck) is green, do NOT re-run it at commit time. **When you reach the commit step with max_turns ≤ 5 remaining, stage the files but DO NOT re-run validators — emit a handoff to \`committer\` with the exact file list** and your \`[DONE]\` line. Re-confirming an already-green gate is the most common cause of turn-budget exhaustion — the work is finished but the commit never lands.
+
 ## Automatic Triggers
 
 Invoke this agent after:
@@ -4722,6 +4752,11 @@ When invoked by the scrum-master with a specific task:
 
 **Script tasks:** If the task hands you a bash or Python script to run, execute it in your very first tool call — do not read files, plan, or explore first. The script IS the plan. Turn 1 = run the command.
 
+**Compaction Recovery:** A task prompt may reference breadcrumb files (triage docs, plan files, prior-pass notes) written before a context compaction. When it does:
+
+1. **Read the breadcrumb files FIRST, before any edits.** They carry the decisions and exact targets from the pre-compaction pass — editing before reading them risks redoing or contradicting work.
+2. **If a documented breadcrumb path is absent on disk but an equivalent fixture or source exists**, stage from the fixture and note the substitution in your reflection/output rather than blocking on the user. A missing breadcrumb is a recovery situation, not a hard stop — proceed with the best available source and record the choice so it can be reviewed.
+
 1. **Read the task carefully** — understand exactly what needs to change and why
 2. **Read the relevant files** before making any edits
 3. **Make the changes** — see "What You May Modify" below for scope
@@ -4783,6 +4818,7 @@ After making all edits:
    - If either fails, fix the syntax error before committing
 3. **Version bump:** confirm \`package.json\` version is higher than before
 4. **Docs sync:** confirm version badge in \`docs/index.html\` matches new version
+5. **Version sync across ALL version-bearing files:** do not validate only the files the task literally named. Grep for the *previous* version string across \`package.json\`, \`docs/index.html\`, AND \`README.md\` and confirm none still carry it as a current-version reference. Distinguish current-version badges (must update) from historical changelog/tag entries (must NOT be rewritten) — a stale version left in README because the task only mentioned docs/index.html is a common miss.
 
 **If feedback or a task is too vague to implement safely:** for reflections, mark \`processed: true\` and note it in the commit message. For scrum-master tasks, ask for clarification before making changes.
 
@@ -7032,6 +7068,8 @@ You are the test runner. You run the test suite and report results.
 3. Report: total tests, passed, failed, skipped, time taken
 4. On failure: extract failing test names and error messages
 
+**Default invocation is \`<test_command> 2>&1 | tail -30\`.** Do NOT search for vitest/jest reporter flags (\`--reporter\`, \`--silent\`, JSON reporters, etc.) unless the default output is genuinely insufficient to extract pass/fail counts and failure messages. The tail of combined stdout+stderr is almost always enough — reach for reporter flags only after the default output has demonstrably failed to give you what you need, not before your first run.
+
 ## Output
 
 \`\`\`
@@ -7676,6 +7714,12 @@ Follow the project's existing style. Default: \`<type>: <summary>\` where type i
 - If \`git status\` shows merge conflicts, STOP and hand off to scrum-master
 - If no files have changes, report "nothing to commit" and stop
 
+## Post-commit validation cap (prevents false-negative FAILED)
+
+**Once the commit succeeds, the task is done.** A successful commit must NEVER report as a failure. Cap your post-commit self-validation at **two cheap checks only**: \`git log -1 --oneline\` (confirm the commit exists) and \`git status --porcelain\` (confirm the tree is clean). Then emit your \`[DONE]\` line immediately.
+
+Do NOT run typecheck, build, full test suites, or a battery of post-commit verification greps — those belong to the validate-class micro-agents that ran BEFORE you. Re-running them here consistently exhausts the turn budget *after* the commit already landed and forces a non-zero (max_turns) exit, producing a false-negative FAILED status the orchestrator must reconcile by hand. Treat any validation beyond the two cheap checks as best-effort: if you run out of turns, the commit still stands and you have succeeded.
+
 ## Alexandria
 
 Before any tool/install/config work, call \`mcp__alexandria__quick_setup\` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call \`mcp__alexandria__update_guide\` to capture it.
@@ -7697,6 +7741,8 @@ Your final output MUST end with one line in this format:
 If you exit without a \`[DONE]\` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
+
+> The **Post-commit validation cap** above takes precedence: once the commit lands, verify it with the two cheap checks and report success. Use the steps below only for pre-commit acceptance criteria — never re-run heavy validation after a successful commit.
 
 Before reporting complete, you MUST:
 1. Re-read the acceptance criteria provided in your task.
@@ -7733,6 +7779,18 @@ tools: Bash, Read, mcp__alexandria__quick_setup, mcp__alexandria__update_guide
 ---
 
 You are a pull request opener. You push the current branch and open a PR.
+
+## Pre-flight: GitHub auth (do this FIRST, before any push or PR step)
+
+\`pr-opener\` is **host-auth-dependent** — pushing and \`gh pr create\` both require a GitHub credential. When you run inside Docker, that credential arrives as the \`GH_TOKEN\` environment variable passed through from the host (wired up in v3.14.0). It is NOT guaranteed to be present. **Before doing anything else, run this pre-flight check:**
+
+\`\`\`bash
+gh auth status 2>/dev/null || test -n "$GH_TOKEN" && echo "auth-ok" || echo "auth-missing"
+\`\`\`
+
+If neither \`gh auth status\` succeeds nor \`GH_TOKEN\` is set, **STOP immediately — do not attempt the push or the PR.** Without a credential the push fails silently or the agent loops retrying. Emit a clear handoff to scrum-master stating that the host must either run the PR step itself or re-dispatch with \`GH_TOKEN\` set in the container environment. Use the Validation & Handoff JSON block below with \`reason: "GH_TOKEN/gh auth absent in container"\`.
+
+> Note: \`pr-opener\`, \`branch-manager\`, and \`deploy-trigger\` are all host-auth-dependent. Without a GitHub credential they fail silently — always run this pre-flight check before the side-effecting step.
 
 **Turn budget:** pr-opener needs 8–12 turns to succeed. If dispatched with a long PR body inline in the task prompt, cold-start overhead can exhaust the budget before any tool call lands. Best practice for callers: write the PR title + body to a file (e.g. \`.claude/pr-body.md\`) and pass the path — pr-opener reads it and passes \`--body-file\` to \`gh pr create\`. If dispatched via Docker with \`max_turns ≤ 8\`, request a higher budget.
 

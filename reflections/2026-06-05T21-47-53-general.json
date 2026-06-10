@@ -33,5 +33,5 @@
     }
   ],
   "overall_notes": "Biggest friction: EVERY run_agent_in_docker and run_agent_in_docker_batch result overflowed the tool-result token limit because the MCP returns the full agent JSONL transcript (54k–2.3M chars), forcing me to grep the saved file for [DONE]/PASS/outcome on every dispatch. Filed a bead suggesting the MCP return a compact structured summary by default. Also: the bash-subshell pre-flight reports a false 'Token: NO' (subshell doesn't source the profile) — fixed this sprint by switching to a credentials.json presence check. Beads dolt remote push has been failing all session with 'no common ancestor / divergent histories' (filed voltron-jws; fix is bd bootstrap) — local bd state is correct but not syncing to the dolt remote. main is branch-protected (GH013) so all changes go via PR, and pushes must originate from the host until the v3.13.0 image with git creds is built. Tools touched: gh CLI, bd/dolt, docker, node, PowerShell. Updated Alexandria guide project-voltron-docker with the in-container GitHub-auth gotcha (issue #5).",
-  "processed": false
+  "processed": true
 }

@@ -30,5 +30,5 @@
     }
   ],
   "overall_notes": "Two recurring false-negative patterns the orchestrator had to reconcile by inspecting disk/git: (1) container exit 137 (SIGKILL, likely OOM) AFTER files were written and tests passed; (2) committer max_turns AFTER a successful commit. In both cases the bead was actually done — recommend the run_agent_in_docker_batch summary distinguish 'process killed' from 'work incomplete'. Also hit a shared-account 5-hour usage cap mid-wave (4 of 6 agents failed with 'session limit'); the survivors' work persisted and a simple re-dispatch after reset completed them. Cross-project isolation matters: Docker agents mount only the project repo, so fixtures from the sibling project-voltron/.voltron had to be staged host-side and tier lists inlined into task descriptions. beads required `bd init --shared-server` on this Windows host (embedded Dolt needs CGO). Tooling: alexandria reachable, stringer present but baseline skipped (greenfield).",
-  "processed": false
+  "processed": true
 }

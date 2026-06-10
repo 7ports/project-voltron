@@ -26,5 +26,5 @@
     }
   ],
   "overall_notes": "Capability gap confirmed for the 3rd time: Voltron Docker containers cannot authenticate to GitHub (no gh CLI baked in, no host credential helper, no PAT). Every dispatch for branch-manager / pr-opener / deploy-trigger / gh pr merge has to route through the user via mode-(b) validation. This session resolved it the same way: scrum-master prepares the exact command block, surfaces it to the user, user authorizes the main-session Bash invocation. Recommend either (a) baking gh CLI into Dockerfile.voltron + injecting GITHUB_TOKEN at run-time, or (b) adding an explicit 'host-only-tier' badge to publish micro-agents that talk to remote APIs so future scrum-masters route through user from the start instead of attempting the dispatch first.",
-  "processed": false
+  "processed": true
 }

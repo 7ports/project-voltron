@@ -28,5 +28,5 @@
     }
   ],
   "overall_notes": "Recurring theme this project: a product-intent mismatch between the written plan (docs/implementation-plan.md framed Glimpse as a work-tracker) and the user's actual goal (a live running-agent monitor). The first build faithfully implemented the wrong plan. Lesson for templates: when a plan exists, a quick intent-confirmation with the user before a full build would have saved a whole v1. Key technical constraint that shaped the redesign: liveness truly lives only in the Docker daemon, and Docker-run agents cannot query the host daemon — so all unit work used injected fakes/fixtures and the real live test is necessarily host-only/user-mediated (same class as the Unity Editor exception). The decompose pattern that worked: separate ADD (new modules + additive events, suite stays green) from CUTOVER (delete + gut, suite green at end) to avoid broken intermediate trees across interdependent files. Tooling: alexandria reachable; beads on this Windows host required `bd init --shared-server` (embedded Dolt needs CGO).",
-  "processed": false
+  "processed": true
 }

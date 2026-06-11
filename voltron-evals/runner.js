@@ -52,6 +52,7 @@ function parseArgs(argv) {
     judgeModel: "opus",   // design §2.4 — Opus default for Deep judge
     cache: null,          // resolved later: "on" | "off" | "refresh-fails-only"
     dryRun: false,
+    judgeOnly: null,      // re-grade an existing frozen run dir without running the AUT
   };
   for (const a of argv.slice(2)) {
     if (a === "--doctor") out.doctor = true;
@@ -61,6 +62,7 @@ function parseArgs(argv) {
     else if (a.startsWith("--instance=")) out.instance = a.slice("--instance=".length);
     else if (a.startsWith("--tier=")) out.tier = a.slice("--tier=".length);
     else if (a.startsWith("--judge-model=")) out.judgeModel = a.slice("--judge-model=".length);
+    else if (a.startsWith("--judge-only=")) out.judgeOnly = a.slice("--judge-only=".length);
     else if (a.startsWith("--cache=")) out.cache = a.slice("--cache=".length);
     else throw new Error(`Unknown arg: ${a}`);
   }
@@ -79,8 +81,8 @@ function parseArgs(argv) {
     else out.cache = "on";
   }
 
-  if (!out.doctor && !out.task && !out.instance && !out.tier) {
-    throw new Error("Pass one of --task=<id>, --instance=<agent>, --tier=pr|all|deep|broad, or --doctor");
+  if (!out.doctor && !out.judgeOnly && !out.task && !out.instance && !out.tier) {
+    throw new Error("Pass one of --task=<id>, --instance=<agent>, --tier=pr|all|deep|broad, --judge-only=<run_dir>, or --doctor");
   }
   return out;
 }
@@ -585,10 +587,83 @@ async function runJob(job, client, opts) {
   return { jobId: job.id, runDir, scorecardPath, verdict, scorecard };
 }
 
+// ── Judge-only re-grade ─────────────────────────────────────────────────────────
+//
+// Re-grade the artifacts of an EXISTING frozen run dir with the judge (optionally
+// a different --judge-model) WITHOUT re-running the agent-under-test. Used to make
+// voltron-judge opus-vs-sonnet parity reproducible. Writes a sidecar scorecard so
+// the original scorecard.json is never overwritten.
+function resolveRunDir(arg) {
+  const candidates = [path.resolve(arg), path.resolve(REPO_ROOT, arg), path.join(RESULTS_DIR, arg)];
+  for (const c of candidates) {
+    if (existsSync(c) && statSync(c).isDirectory()) return c;
+  }
+  throw new Error(`--judge-only run dir not found (tried absolute, repo-relative, results-relative): ${arg}`);
+}
+
+async function runJudgeOnly(opts) {
+  const runDir = resolveRunDir(opts.judgeOnly);
+  const origPath = path.join(runDir, "scorecard.json");
+  if (!existsSync(origPath)) throw new Error(`No scorecard.json to reconstruct job from in run dir: ${runDir}`);
+  const orig = JSON.parse(readFileSync(origPath, "utf-8"));
+  const progPath = path.join(runDir, "programmatic.json");
+  const programmatic = existsSync(progPath)
+    ? JSON.parse(readFileSync(progPath, "utf-8"))
+    : (orig.programmatic || {});
+
+  // Reconstruct just enough of job + paths for dispatchJudge / buildJudgePrompt.
+  const job = {
+    id: orig.task_id,
+    kind: orig.kind || "deep",
+    agent_under_test: orig.agent_under_test,
+    rubric_version_expected: orig.rubric_version,
+    rubric: orig.rubric_path,
+  };
+  const paths = {
+    run_dir: runDir,
+    task_yaml: path.join(runDir, "task.yaml"),
+    rubric: path.join(runDir, "rubric.md"),
+  };
+
+  process.stdout.write(`[STEP] runner: judge-only re-grade of ${job.id} (AUT=${job.agent_under_test}) with judge=${opts.judgeModel}\n`);
+  if (opts.dryRun) {
+    process.stdout.write(`[dry-run] judge-only: would re-grade ${path.relative(REPO_ROOT, runDir)} with judge-model=${opts.judgeModel} (no LLM call)\n`);
+    return;
+  }
+
+  const { client, transport } = await connectMcp();
+  let scorecard;
+  try {
+    scorecard = await dispatchJudge(client, job, paths, programmatic, opts.judgeModel);
+  } finally {
+    if (transport) await transport.close().catch(() => {});
+  }
+
+  scorecard.task_id = job.id;
+  scorecard.kind = job.kind;
+  scorecard.rubric_version = job.rubric_version_expected;
+  scorecard.rubric_path = job.rubric;
+  scorecard.agent_under_test = job.agent_under_test;
+  scorecard.programmatic = programmatic;
+  scorecard.scored_via = "judge-only";
+  scorecard.judge_model = opts.judgeModel;
+  scorecard.regraded_from = path.relative(REPO_ROOT, origPath);
+
+  // Sidecar scorecard — never overwrite the original scorecard.json.
+  const outPath = path.join(runDir, `scorecard.judge-only.${opts.judgeModel}.json`);
+  await fs.writeFile(outPath, JSON.stringify(scorecard, null, 2), "utf-8");
+  process.stdout.write(`  ${job.id}: JUDGE_ONLY (${opts.judgeModel}) \u2192 ${path.relative(REPO_ROOT, outPath)}\n`);
+}
+
 // ── Entry ─────────────────────────────────────────────────────────────────────
 
 async function main() {
   const opts = parseArgs(process.argv);
+
+  if (opts.judgeOnly) {
+    await runJudgeOnly(opts);
+    return;
+  }
 
   if (opts.doctor) {
     doctorMode();

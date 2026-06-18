@@ -1,0 +1,73 @@
+id: "T3-004"
+tier: 3
+category: "research-no-code"
+agent_under_test: "researcher"
+max_turns: 30
+project_type: "general"
+
+prompt: |
+  You are the researcher. Produce a written research brief on current best practices for
+  prompt caching with Anthropic's Claude API. Do NOT modify any project source files — write
+  the brief ONLY to the run scratch directory provided for this session (never to project files).
+
+  The brief MUST be a single Markdown document containing exactly these three section anchors,
+  in this order:
+    ## Sources
+    ## Findings
+    ## Recommendations
+
+  Content requirements:
+    - ## Sources — list the references you consulted (titles and, where available, URLs). Do
+      not fabricate sources; if you could not reach the network, say so explicitly and ground
+      the brief in your own knowledge rather than inventing citations.
+    - ## Findings — summarize what the sources actually say about prompt caching: what it is,
+      the cache_control mechanism, cache lifetime/TTL, minimum cacheable prefix size, pricing
+      implications (cache write vs cache read), and common pitfalls. Each claim should be
+      traceable to a listed source.
+    - ## Recommendations — give concrete, actionable guidance an engineer could apply (e.g.
+      where to place cache breakpoints, what to put in the cached prefix, how to structure a
+      system prompt for cache reuse). Recommendations must be specific, not generic platitudes.
+
+  Do NOT write code. Do NOT edit, create, or delete any file outside the run scratch directory.
+  This task scores the research brief only. Emit a final [DONE] line when the brief is complete.
+
+acceptance_criteria:
+  - id: "ac_1"
+    text: "The brief contains all three required section anchors (## Sources, ## Findings, ## Recommendations) in order."
+    type: "judged"
+  - id: "ac_2"
+    text: "Findings are accurate and non-fabricated, with each substantive claim traceable to a listed source (or an explicit no-network disclosure)."
+    type: "judged"
+  - id: "ac_3"
+    text: "Recommendations are concrete and actionable rather than generic restatements of the topic."
+    type: "judged"
+  - id: "ac_4"
+    text: "The Sources section cites real references (titles/URLs) and does not invent citations."
+    type: "judged"
+  - id: "ac_5"
+    text: "No source files were modified during the run (git diff --stat is empty)."
+    type: "programmatic"
+  - id: "ac_6"
+    text: "Run emitted [DONE] within the 30-turn budget."
+    type: "programmatic"
+  - id: "ac_7"
+    text: "The required section anchors are present in the produced brief text."
+    type: "programmatic"
+
+rubric: "voltron-evals/rubrics/T3-004.md"
+rubric_version_expected: "1.0.0"
+
+programmatic_signals:
+  capture_turn_count: true
+  capture_files_changed: true
+  require_done_line: true
+  check_doc_updates: false
+
+notes: |
+  Tier-3 Deep judged task giving the researcher agent its first real quality signal (it
+  previously had only programmatic Broad coverage via instances/tier1_coordinator/researcher.yaml).
+  Mirrors T3-002's no-code structure: correctness weight is zero, the grade is on the research
+  artifact. The brief is written to the run scratch dir, so files-changed should be empty for a
+  pass. If the sandbox has no network access, a brief that explicitly discloses this and grounds
+  findings in prior knowledge (without fabricating sources) should still score well — fabricated
+  citations are the failure mode the judge must catch.

@@ -262,6 +262,8 @@ The container entrypoint runs `gh auth setup-git` so HTTPS pushes and PR creatio
 
 **Cost optimizations (v3.15.0):** Behavior-preserving improvements to `run_agent_in_docker` and `run_agent_in_docker_batch` — prompt-cache reuse of the static role-template prefix (system-prompt relocation for Haiku/Sonnet agents), de-duplicated CLAUDE.md and bd-prime context, staggered batch fan-out to reduce cold-start spikes, and raised per-agent `max_turns`. No change to agent behavior or outputs; take effect after an MCP-server restart. See [`docs/voltron-cost-optimization-plan.md`](docs/voltron-cost-optimization-plan.md) for details.
 
+**Reflection-driven template improvements (v3.15.1):** Docker host-credential boundary documented in committer/pr-opener/deploy-trigger (commit-only in-container; the host handles push/publish/`bd` writes), budget-aware `[DONE]` exit across committer/test-writer/fullstack-dev/qa-tester, git identity is pre-configured (no `git config` writes), plus fullstack-dev (run tsc before claiming a clean typecheck, thread generics through return types, populate the beads graph on decomposition), qa-tester (~10-min wall-clock sizing), css-writer (JS style objects), config-editor (vitest `--config` for excluded suites), and test-writer (hermetic IO) — derived from session reflections.
+
 **Reflection-driven template improvements (v3.14.1):** fullstack-dev commit-budget rule, committer over-validation cap, and pr-opener GH_TOKEN pre-flight — derived from session reflections.
 
 ### Nested 3-tier dispatch (v3.8.0)

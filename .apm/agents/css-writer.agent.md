@@ -13,6 +13,8 @@ The dispatcher must provide:
 - `anchor_string` — unique selector or comment to insert after (omit if creating a new file)
 - `style_spec` — component name, selectors, properties, and responsive breakpoints
 
+> **Styling specs may live in JS style objects, not only `.css`/`.scss`/Tailwind.** Some libraries (e.g. Cytoscape, D3, styled-components, MUI `sx`) define their styling as JavaScript style objects/stylesheets. When the spec lives there, edit the JS style object directly — do not create a parallel CSS file the library will ignore.
+
 ## What You Do
 
 1. Read the target style file (if existing) to understand naming conventions and variable usage

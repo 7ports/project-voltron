@@ -1,0 +1,30 @@
+{
+  "timestamp": "2026-06-10T19:06:15.317Z",
+  "project_name": "project-voltron",
+  "project_type": "general",
+  "session_summary": "Large session: processed pending reflections (PR #45 v3.14.1 — 3 strong-signal template improvements + 9 reflections marked processed) and ran a full cost-optimization pass (research+audit+plan → docs, then implemented Tier A+B as PR #46 v3.15.0: prompt-cache prefix relocation, CLAUDE.md/bd-prime de-dup, exclude-dynamic-sections, staggered batch fan-out, per-agent max_turns). Tier C (model tiering) deferred to an eval-parity campaign per the hard no-behavior-change constraint. bd: 2 PRs open (#45, #46), B3 follow-up filed.",
+  "agents_used": [
+    "scrum-master",
+    "branch-manager",
+    "harness-engineer",
+    "project-planner",
+    "researcher",
+    "code-analyst",
+    "committer",
+    "git-state-reader"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "harness-engineer",
+      "worked_well": "Excellent surgical discipline on the cost-opt dispatch-path edits (A1-A5): preserved all other behavior, did byte-level identity proofs, respected no-commit boundaries, and correctly refused to falsify a historical version tag during the docs bump.",
+      "needs_improvement": "On the reflection-apply task, harness-engineer hit max_turns (30) doing multi-file edits (templates.js + 9 reflection JSONs) and never emitted [DONE] — though the work had actually landed (verified on host). Multi-file 'apply + mark processed' tasks need a higher budget or splitting.",
+      "suggested_change": "For reflection-processing / multi-file mark-and-edit tasks, dispatch with max_turns 40+, or split the template edits from the processed:true marking. The agent template could also note: do the edits first, validate cheaply, and leave bulk file-stamping last so a turn-limit doesn't lose the substantive work."
+    },
+    {
+      "agent": "committer",
+      "worked_well": "Reliable explicit-path staging across many PRs — consistently excluded unrelated untracked files (cost docs vs reflection docs) and verified the staged set before committing."
+    }
+  ],
+  "overall_notes": "Recurring orchestrator friction worth a template note: my version-bump validation criteria (stale==0 for old version strings) were too strict twice — agents correctly refused because the 'stale' hit was a legitimate historical feature-attribution tag (vX.Y.Z: in changelog prose), not the current-version badge. The validation clause should target the current-version badge specifically and explicitly allow historical version tags to remain. Batch result compaction (MAX_TAIL_CHARS) and the new compact batch summary table worked well this session. Tools: bd/dolt, gh, docker, node.",
+  "processed": true
+}

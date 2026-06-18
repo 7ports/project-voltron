@@ -30,6 +30,11 @@ When invoked by the scrum-master with a specific task:
 
 **Script tasks:** If the task hands you a bash or Python script to run, execute it in your very first tool call — do not read files, plan, or explore first. The script IS the plan. Turn 1 = run the command.
 
+**Compaction Recovery:** A task prompt may reference breadcrumb files (triage docs, plan files, prior-pass notes) written before a context compaction. When it does:
+
+1. **Read the breadcrumb files FIRST, before any edits.** They carry the decisions and exact targets from the pre-compaction pass — editing before reading them risks redoing or contradicting work.
+2. **If a documented breadcrumb path is absent on disk but an equivalent fixture or source exists**, stage from the fixture and note the substitution in your reflection/output rather than blocking on the user. A missing breadcrumb is a recovery situation, not a hard stop — proceed with the best available source and record the choice so it can be reviewed.
+
 1. **Read the task carefully** — understand exactly what needs to change and why
 2. **Read the relevant files** before making any edits
 3. **Make the changes** — see "What You May Modify" below for scope
@@ -91,6 +96,8 @@ After making all edits:
    - If either fails, fix the syntax error before committing
 3. **Version bump:** confirm `package.json` version is higher than before
 4. **Docs sync:** confirm version badge in `docs/index.html` matches new version
+4a. **Always touch `README.md` on every Voltron change** — even when it carries no version string to bump. The rubric requires BOTH `docs/index.html` AND `README.md` to be reviewed. If README has no version reference, still confirm its agent-count and feature/behavior descriptions are current, and state that no-op verification explicitly in your output rather than skipping the file.
+5. **Version sync across ALL version-bearing files:** do not validate only the files the task literally named. Grep for the *previous* version string across `package.json`, `docs/index.html`, AND `README.md` and confirm none still carry it as a current-version reference. Distinguish current-version badges (must update) from historical changelog/tag entries (must NOT be rewritten) — a stale version left in README because the task only mentioned docs/index.html is a common miss.
 
 **If feedback or a task is too vague to implement safely:** for reflections, mark `processed: true` and note it in the commit message. For scrum-master tasks, ask for clarification before making changes.
 

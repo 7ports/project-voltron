@@ -1,0 +1,21 @@
+{
+  "timestamp": "2026-06-15T19:09:07.280Z",
+  "project_name": "Voltron Glimpse",
+  "project_type": "web",
+  "session_summary": "Pre-deploy stress test of Voltron Glimpse. project-planner authored docs/stress-test-plan.md (11-vector methodology). qa-tester built a fake-driven harness under scripts/stress/ (no new runtime deps, temp-root-only writes, 127.0.0.1-only) and ran smoke (5/5 PASS) + abbreviated soak (6/6 PASS); npm test 132/132 green; V1 maxBuffer ceiling measured at ~6766 docker-ps rows. committer made c88453d (23 files), pushed to origin. bd stats: 67 total, 64 closed, 3 open (glimpse-mwm V11 host-smoke escalated to user; glimpse-1mm + glimpse-58g hardening findings filed as backlog).",
+  "agents_used": [
+    "project-planner",
+    "qa-tester",
+    "committer"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "qa-tester",
+      "worked_well": "Source-grounded the harness against real injection seams (pollDocker exec, createDockerLogTailer spawn, createReconciler timer); correctly classified ceilings vs findings and never edited app code under test.",
+      "needs_improvement": "The first qa-tester dispatch (build entire harness + run smoke in one go) hit the 10-minute container wall-clock cap mid-run. The agent has no awareness of the wall-clock budget vs the max_turns budget, so it front-loaded all file writing and ran out of time before the validation run.",
+      "suggested_change": "Add guidance to qa-tester (and the scrum-master sizing table) that container dispatches have a ~10-min wall-clock cap independent of max_turns; for build+run tasks, write files early and incrementally so a timeout leaves a runnable artifact, and prefer splitting 'build harness' from 'run+validate' into separate dispatches."
+    }
+  ],
+  "overall_notes": "Key orchestration lesson: the ~10-min container wall-clock cap is the real sizing constraint, not max_turns. The first build+run dispatch timed out, but because the workspace is mounted, all 13 harness files persisted — a focused re-dispatch (run+fix+report only) then completed in <2 min. Sizing future build+run tasks as two dispatches (build, then run/validate) avoids the wasted timeout. Tools used: alexandria not needed (no new tool setup this session).",
+  "processed": true
+}

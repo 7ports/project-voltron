@@ -1,0 +1,72 @@
+{
+  "timestamp": "2026-06-11T04-23-19-826",
+  "project_name": "voltron-eval-harness",
+  "project_type": "general",
+  "session_summary": "Eval T3-002 (orchestration-no-code) — AUT=code-analyst. Aggregates: correctness 0.5 / decomposition 1 / tier_discipline 1 / reflection_honesty null / doc_hygiene null",
+  "agents_used": [
+    "code-analyst",
+    "doc-writer"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "code-analyst",
+      "worked_well": "",
+      "needs_improvement": "correctness.no_code_changed: files_changed is not empty: a single workspace markdown file (.voltron/journal) was touched — no source code modified, so PARTIAL per the scale (markdown-only change), not MET (empty array).",
+      "suggested_change": "Address: correctness.no_code_changed (PARTIAL)"
+    }
+  ],
+  "overall_notes": "",
+  "processed": true,
+  "eval_metadata": {
+    "task_id": "T3-002",
+    "kind": "deep",
+    "rubric_version": "1.0.0",
+    "rubric_path": "voltron-evals/rubrics/T3-002.md",
+    "template_versions": {},
+    "template_hash": "sha256:0af401d6840150813b305674528b14066e1a739b17d22b7ab0a1b94360b36207",
+    "scored_via": "judge",
+    "scores": {
+      "correctness": 0.5,
+      "decomposition": 1,
+      "tier_discipline": 1,
+      "reflection_honesty": null,
+      "doc_hygiene": null
+    },
+    "programmatic": {
+      "turns_used": 13,
+      "done_line_present": true,
+      "max_turns_budget": 30,
+      "budget_utilization": 0.43333333333333335,
+      "files_changed": [
+        ".voltron/journal/2026-06-11.md"
+      ],
+      "file_count": 1,
+      "lines_added": 0,
+      "lines_deleted": 0,
+      "sub_dispatches": 11,
+      "sub_dispatch_targets": [
+        "doc-writer"
+      ],
+      "beads_created": [],
+      "beads_closed": [],
+      "beads_deps_count": 8,
+      "journal": {
+        "count": 0,
+        "kinds": {}
+      },
+      "reflection_submitted": false,
+      "docs_updated": null,
+      "editor_handoff_emitted": false,
+      "commit_dispatched_via_committer": false,
+      "has_step_lines": true,
+      "alexandria_calls": null,
+      "alexandria_call_before_first_write": null,
+      "first_file_write_step": null,
+      "test_command_exit": null,
+      "verdict_per_fixture": null,
+      "publish_action": null
+    },
+    "judge_model": "claude-opus-4-8",
+    "scorecard_path": "voltron-evals\\results\\T3-002\\2026-06-11T04-17-49-036\\scorecard.json"
+  }
+}

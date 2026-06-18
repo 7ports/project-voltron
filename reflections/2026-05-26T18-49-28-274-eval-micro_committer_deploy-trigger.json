@@ -15,7 +15,7 @@
     }
   ],
   "overall_notes": "",
-  "processed": false,
+  "processed": true,
   "eval_metadata": {
     "task_id": "micro_committer/deploy-trigger",
     "kind": "shape-instance",

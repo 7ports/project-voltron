@@ -1,0 +1,19 @@
+{
+  "timestamp": "2026-06-16T16:43:29.594Z",
+  "project_name": "Voltron Glimpse",
+  "project_type": "web",
+  "session_summary": "Published voltron-glimpse@0.1.0 to the npm registry. Path: deploy-trigger ran an auth-free `npm publish --dry-run` gate (SAFE: 24 files, 194.1kB, no leaks) → publish blocked on npm auth (host not logged in) → after npm login, publish still hit E403 (2FA/bypass-token required) → resolved with a Classic Automation token (bypass-2FA), publish succeeded (+ voltron-glimpse@0.1.0), verified live (shasum c4150de), tagged v0.1.0 and pushed. Recorded the gotcha as new Alexandria guide 'npm-publish-2fa-tokens'. bd stats: 74 total, 72 closed, 2 open (the two non-blocking hardening findings glimpse-1mm + glimpse-58g).",
+  "agents_used": [
+    "deploy-trigger"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "deploy-trigger",
+      "worked_well": "Cleanly executed the auth-free pre-publish gate (npm publish --dry-run + npm pack) and gave a precise SAFE-TO-PUBLISH verdict with file count and forbidden-path audit. Good fit for the validation half of a publish.",
+      "needs_improvement": "deploy-trigger runs in Docker, which has no host npm registry auth (only ~/.claude credentials are mounted), so it cannot perform the actual `npm publish` — the publish had to happen on the host. The agent template doesn't flag this auth boundary, so a naive dispatch to 'publish' would fail confusingly inside the container.",
+      "suggested_change": "Add to deploy-trigger's template: it can run auth-free publish validation (dry-run/pack) in-container, but actual registry/deploy actions requiring host credentials (npm publish, npm tokens, cloud auth) must be escalated to the host — emit a Verify/handoff line rather than attempting them. Also note npm's 2FA-or-bypass-token publish requirement."
+    }
+  ],
+  "overall_notes": "Repeated host-credential pattern this session (and prior V11): credentialed/irreversible outward actions — npm login, npm publish, npm 2FA tokens — cannot be delegated to Docker agents and are run on the host after the user supplies the credential. The orchestration value is the auth-free validation gate (dry-run) before the irreversible step. New Alexandria guide 'npm-publish-2fa-tokens' captures the Automation-token-bypasses-2FA gotcha (Classic 'Publish' tokens do NOT). Tools: npm, alexandria (guide created).",
+  "processed": true
+}

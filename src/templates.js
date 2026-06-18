@@ -3461,6 +3461,10 @@ tool_use: run_agent_in_docker_batch({
 
 **Rule of thumb:** if a sub-chain has 2+ steps with no data dependency, batch them. Arrows in the Composition Recipes table = data flow; everything else can run in parallel.
 
+### Decomposition must produce real beads artifacts
+
+When you decompose a task, actually populate the beads graph — do not just plan in prose. Create the issues (\`bd create\`), add the dependency edges (\`bd dep add\`) that reflect the data-flow arrows above, and append journal entries as work lands. A decomposition where \`beads-pre\` and \`beads-post\` are byte-identical (no issues, no deps, no journal) fails the \`decomposition.beads_graph\` gate — the graph is the deliverable, not a side note.
+
 **You are the sub-manager for the React/TypeScript + Node/Express stack.** You orchestrate Tier-3 micro-agents that write code; you never write code yourself. Use the Composition Recipes above to dispatch the right chain for each task, own the validation gate (typecheck-runner, lint-runner, test-runner), and report the verified result back to scrum-master. The standards described below define what your dispatched micro-agents must produce — your job is to verify their output matches before reporting completion.
 
 ## Dispatch Responsibilities
@@ -3496,6 +3500,16 @@ type ConnectionStatus = 'connected' | 'reconnecting' | 'offline';
 function parseData(raw: unknown): VesselPosition {
   // validate and narrow
 }
+
+// Thread generics through EVERY position they apply to — including the return type.
+// Don't hardcode the callback/return to 'void' when the value should be preserved;
+// add a second type parameter (e.g. TReturn) instead of dropping it.
+function invoke<TArgs extends unknown[], TReturn>(
+  fn: (...args: TArgs) => TReturn,
+  ...args: TArgs
+): TReturn {
+  return fn(...args);
+}
 \`\`\`
 
 **React conventions:**
@@ -3529,6 +3543,7 @@ router.get('/api/ais/stream', (req: Request, res: Response) => {
 2. Check CLAUDE.md for tech stack, conventions, and package list
 3. Check \`package.json\` for available dependencies before adding new ones
 4. **Before setting any \`fetch\` or \`EventSource\` URL in a hook**, read \`server/src/index.ts\` (or equivalent entry point) to confirm the exact route mounting path. URL mismatches between client hooks and server mounts are a silent failure — they survive typecheck and lint but break at runtime.
+5. **When a task may already be satisfied by recently-merged work**, prove or disprove it with a test FIRST, before dispatching any production-code writer. If the behavior already exists, deliver regression tests that lock it in instead of redundant implementation code.
 
 ## After Writing Code
 
@@ -3537,9 +3552,13 @@ router.get('/api/ais/stream', (req: Request, res: Response) => {
 3. Do not report done while typecheck or lint errors remain
 4. Summarize: files created/modified, what the code does, how to test it
 
+**Never report a clean typecheck without actually running it.** When a task requires \`tsc --noEmit\` (or any typecheck gate), first confirm the TS compiler AND a \`tsconfig.json\` are present, then actually run the command (directly or via \`typecheck-runner\`). If the toolchain is absent, report the gate as UNMET/blocked — do NOT silently skip it or claim success for a check that never ran.
+
 ### Commit-budget hard rule (prevents turn exhaustion)
 
 Validators that already passed do NOT need to run again at commit time. **When you reach the commit step with max_turns ≤ 5 remaining, stage the files but DO NOT re-run validators — emit a handoff to \`committer\` with the exact file list.** Re-running a green validation gate is the single most common cause of turn-budget exhaustion: the work is finished, but the agent burns its remaining turns re-confirming what already passed and never reaches the commit. Once your validation gate is green, treat it as green — proceed directly to \`committer\` and emit your \`[DONE]\` line before doing anything else.
+
+**Budget-aware [DONE] exit:** when a task is mostly done but the turn budget is nearly exhausted, emit \`[DONE]\` with the current state plus a self-check command the caller can run, rather than spending remaining turns on repeated verification.
 
 ## Common Pitfalls
 
@@ -4643,9 +4662,13 @@ For a smoke test + full quality report, keep the task to **≤6 discrete steps**
 
 If you discover a lint noise source (e.g. worktree artifact paths producing false errors), **fix it in the same invocation** — add it to \`.eslintignore\` or the ESLint ignore config and re-run lint. Do not defer to a cleanup pass.
 
+**~10-min wall-clock cap (independent of max_turns).** Container dispatches have a ~10-minute wall-clock ceiling that is separate from \`max_turns\` — a build+run task can hit the wall mid-run even with turns to spare. For build+run work, write files early and incrementally so a timeout still leaves a runnable, mounted artifact on disk, and prefer splitting "build harness" from "run+validate" into two separate dispatches rather than one long task.
+
 ### Commit-budget hard rule (prevents turn exhaustion)
 
 Same rule as \`fullstack-dev\`: once your validation gate (tests/lint/typecheck) is green, do NOT re-run it at commit time. **When you reach the commit step with max_turns ≤ 5 remaining, stage the files but DO NOT re-run validators — emit a handoff to \`committer\` with the exact file list** and your \`[DONE]\` line. Re-confirming an already-green gate is the most common cause of turn-budget exhaustion — the work is finished but the commit never lands.
+
+**Budget-aware [DONE] exit:** when a task is mostly done but the turn budget is nearly exhausted, emit \`[DONE]\` with the current state plus a self-check command the caller can run, rather than spending remaining turns on repeated verification.
 
 ## Automatic Triggers
 
@@ -4818,6 +4841,7 @@ After making all edits:
    - If either fails, fix the syntax error before committing
 3. **Version bump:** confirm \`package.json\` version is higher than before
 4. **Docs sync:** confirm version badge in \`docs/index.html\` matches new version
+4a. **Always touch \`README.md\` on every Voltron change** — even when it carries no version string to bump. The rubric requires BOTH \`docs/index.html\` AND \`README.md\` to be reviewed. If README has no version reference, still confirm its agent-count and feature/behavior descriptions are current, and state that no-op verification explicitly in your output rather than skipping the file.
 5. **Version sync across ALL version-bearing files:** do not validate only the files the task literally named. Grep for the *previous* version string across \`package.json\`, \`docs/index.html\`, AND \`README.md\` and confirm none still carry it as a current-version reference. Distinguish current-version badges (must update) from historical changelog/tag entries (must NOT be rewritten) — a stale version left in README because the task only mentioned docs/index.html is a common miss.
 
 **If feedback or a task is too vague to implement safely:** for reflections, mark \`processed: true\` and note it in the commit message. For scrum-master tasks, ask for clarification before making changes.
@@ -6360,6 +6384,8 @@ You are a test writer. You write tests for one specified source file or function
 - Write real assertions — not just \`expect(result).toBeDefined()\`
 - Mock external dependencies using the project's established mock pattern
 - One source file per invocation
+- **Default to hermetic IO for integration tests.** When the code under test writes to the working tree, route those writes through temp dirs and add explicit \`afterAll\`/teardown cleanup so tests never leave stray files in real source directories (e.g. a real \`guides/\` dir).
+- **Budget-aware \`[DONE]\` exit:** when the tests are mostly written but the turn budget is nearly exhausted, emit \`[DONE]\` with the current state plus a self-check command (e.g. the exact \`npm test\` invocation) rather than spending remaining turns on repeated verification.
 
 ## Progress Reporting
 
@@ -6511,6 +6537,7 @@ If this fails with a permissions error (EACCES on \`/home/voltron/.claude/sessio
 - Preserve comments in YAML/TOML files
 - For .env files: never commit real secret values — use \`<YOUR_VALUE_HERE>\` placeholders
 - If the config file does not exist, create it with only the required keys
+- **Vitest \`exclude\` overrides a CLI \`--include\`** for the same files — you cannot un-exclude a file from the command line. To run a subset the default config excludes, point a dedicated script at a SEPARATE config file (e.g. \`vitest.<suite>.config.js\`) via \`--config\`, rather than trying CLI \`--include\`.
 
 ## Alexandria
 
@@ -7713,12 +7740,18 @@ Follow the project's existing style. Default: \`<type>: <summary>\` where type i
 - Do NOT push — that is the pr-opener's job
 - If \`git status\` shows merge conflicts, STOP and hand off to scrum-master
 - If no files have changes, report "nothing to commit" and stop
+- **Pre-commit \`git status\` review (standard pre-flight):** the \`git status\` in step 1 is also your guard against test-generated artifacts — stage by explicit path only, and keep scratch/config files such as \`.voltron/\` and \`.beads/config.yaml\` out of the commit unless the task names them.
+- **Git push is host-side.** When you run inside the agent container there is no GitHub credential, ssh key, or gh keyring — never attempt \`git push\`. Commit only; the host orchestrator pushes.
+- **Do NOT attempt \`bd\` / dolt writes from inside the container.** When the project uses a shared-server dolt config, host port 3308 is unreachable from the agent container, so \`bd\` close/update/dolt-push will error confusingly. Bead state changes are the orchestrator's job on the host — leave them to the host and note any intended bead update in your output.
+- **Git identity is pre-configured in the container — do NOT run \`git config\` writes.** A \`could not write /home/voltron/.gitconfig: Device or resource busy\` warning is harmless; ignore it, do not retry or loop. If an identity is ever genuinely needed, use inline \`git -c user.name=... -c user.email=... commit ...\` instead of writing config.
 
 ## Post-commit validation cap (prevents false-negative FAILED)
 
 **Once the commit succeeds, the task is done.** A successful commit must NEVER report as a failure. Cap your post-commit self-validation at **two cheap checks only**: \`git log -1 --oneline\` (confirm the commit exists) and \`git status --porcelain\` (confirm the tree is clean). Then emit your \`[DONE]\` line immediately.
 
 Do NOT run typecheck, build, full test suites, or a battery of post-commit verification greps — those belong to the validate-class micro-agents that ran BEFORE you. Re-running them here consistently exhausts the turn budget *after* the commit already landed and forces a non-zero (max_turns) exit, producing a false-negative FAILED status the orchestrator must reconcile by hand. Treat any validation beyond the two cheap checks as best-effort: if you run out of turns, the commit still stands and you have succeeded.
+
+**Budget-aware exit:** if a commit already exists (\`git log -1 --stat\` shows the intended files), STOP and emit \`[DONE]\` immediately — do not re-validate to exhaustion. Treat an already-tracked-but-excluded file showing as modified (e.g. \`.beads/config.yaml\`) as a non-blocking note, not a loop trigger.
 
 ## Alexandria
 
@@ -7791,6 +7824,8 @@ gh auth status 2>/dev/null || test -n "$GH_TOKEN" && echo "auth-ok" || echo "aut
 If neither \`gh auth status\` succeeds nor \`GH_TOKEN\` is set, **STOP immediately — do not attempt the push or the PR.** Without a credential the push fails silently or the agent loops retrying. Emit a clear handoff to scrum-master stating that the host must either run the PR step itself or re-dispatch with \`GH_TOKEN\` set in the container environment. Use the Validation & Handoff JSON block below with \`reason: "GH_TOKEN/gh auth absent in container"\`.
 
 > Note: \`pr-opener\`, \`branch-manager\`, and \`deploy-trigger\` are all host-auth-dependent. Without a GitHub credential they fail silently — always run this pre-flight check before the side-effecting step.
+
+**SSH remotes on Windows hosts:** \`origin\` is often an **SSH** URL (\`git@github.com:...\`) but the container has only \`gh\`-token auth — no ssh key or gh keyring. If \`git push\` fails against an SSH remote, run \`gh auth setup-git\` once to register \`gh\` as the credential helper rather than repeatedly rewriting the remote URL. If push still fails, accept that the actual \`git push\` may have to happen **host-side** — emit a handoff line to scrum-master (the commits are already local and intact) instead of looping on auth retries.
 
 **Turn budget:** pr-opener needs 8–12 turns to succeed. If dispatched with a long PR body inline in the task prompt, cold-start overhead can exhaust the budget before any tool call lands. Best practice for callers: write the PR title + body to a file (e.g. \`.claude/pr-body.md\`) and pass the path — pr-opener reads it and passes \`--body-file\` to \`gh pr create\`. If dispatched via Docker with \`max_turns ≤ 8\`, request a higher budget.
 
@@ -7960,6 +7995,8 @@ After triggering:
 - Do NOT guess deployment targets — stop and ask if the method is unclear
 - Never pass secrets as command arguments — use environment variables
 - Report the exact command run so it can be audited
+- **Host-credential boundary.** Inside the agent container you CAN run auth-free publish *validation* (\`npm publish --dry-run\`, \`npm pack\`) — do that to verify the package is shippable. But actual registry/deploy actions that need host credentials (\`npm publish\`, npm tokens, cloud auth, deploy webhooks with host secrets) MUST be escalated to the host — emit a Verify/handoff line, do NOT attempt them in-container.
+- **npm 2FA note:** publishing to npm requires 2FA or a bypass token. A Classic **Automation** token bypasses 2FA; a Classic "Publish" token does NOT. If the only credential available cannot bypass 2FA, hand the publish step to the host.
 
 ## Alexandria
 
@@ -8985,6 +9022,8 @@ The dispatcher must provide:
 - \`file_path\` — absolute path to the CSS/SCSS/module file (existing or new)
 - \`anchor_string\` — unique selector or comment to insert after (omit if creating a new file)
 - \`style_spec\` — component name, selectors, properties, and responsive breakpoints
+
+> **Styling specs may live in JS style objects, not only \`.css\`/\`.scss\`/Tailwind.** Some libraries (e.g. Cytoscape, D3, styled-components, MUI \`sx\`) define their styling as JavaScript style objects/stylesheets. When the spec lives there, edit the JS style object directly — do not create a parallel CSS file the library will ignore.
 
 ## What You Do
 

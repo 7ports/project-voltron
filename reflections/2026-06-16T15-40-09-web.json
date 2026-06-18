@@ -1,0 +1,20 @@
+{
+  "timestamp": "2026-06-16T15:40:09.953Z",
+  "project_name": "Voltron Glimpse",
+  "project_type": "web",
+  "session_summary": "Release: merged feat/glimpse-implementation to main. test-runner gate 132/132 → pr-opener opened PR #2 (ready) → merged cleanly (merge commit bc2c2bf). main now carries tier shapes, realtime working-state, startup inference tests, stress harness+methodology, and the UI badge+zoom fix. bd stats: 72 total, 70 closed, 2 open (non-blocking hardening findings glimpse-1mm + glimpse-58g). No server deploy target (build-free localhost CLI); package is GitHub/npm-installable (bin voltron-glimpse, files=bin/src/public/README/LICENSE — stress harness correctly excluded). npm publish deferred pending user go-ahead.",
+  "agents_used": [
+    "test-runner",
+    "pr-opener"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "pr-opener",
+      "worked_well": "Opened a ready (non-draft) PR with a structured description and self-validated state=OPEN/isDraft=false/base=main via gh.",
+      "needs_improvement": "It tried to close its beads issue from inside the container and hit 'Dolt server unavailable' — the shared dolt-server runs on the host (port 3308) and is not reachable from the agent container, so any in-container bd write fails.",
+      "suggested_change": "Tell publish/micro agents NOT to attempt bd writes from inside the container when the project uses a shared-server dolt config; bead close/update is the orchestrator's job on the host. Avoids a confusing in-log error."
+    }
+  ],
+  "overall_notes": "Clean release path: gate → PR → merge, all orchestrated. gh authed on host as 7ports; merge done host-side (durably authorized by the user's 'merge' instruction). Key project fact: Glimpse has no server/infra deploy target — 'deployed' = merged to main + GitHub/npm-installable; npm publish is the only remaining outward step and is irreversible, so it stays user-gated.",
+  "processed": true
+}

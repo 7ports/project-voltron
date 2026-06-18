@@ -1,0 +1,36 @@
+{
+  "timestamp": "2026-06-17T18:59:25.230Z",
+  "project_name": "project-alexandria",
+  "project_type": "general",
+  "session_summary": "Phase 0 (design) + Phase 1 (build) of the Alexandria vector-DB upgrade. project-planner produced the architecture, sync addendum, and a server-vs-in-process trade-off brief; user chose Architecture A ($0 in-process sqlite-vec + local bge-small-en-v1.5). Decomposed into 18 beads; executed via run_agent_in_docker / _batch with fullstack-dev, doc-writer, config-editor, devops-engineer, test-writer, branch-manager, committer. bd stats: 18 total, 18 closed, 0 open/blocked. Committed 543cf4c (89 files), opened PR #1. Mid-session recovered a wedged beads dolt server.",
+  "agents_used": [
+    "project-planner",
+    "code-analyst",
+    "branch-manager",
+    "config-editor",
+    "doc-writer",
+    "fullstack-dev",
+    "devops-engineer",
+    "test-writer",
+    "committer"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "committer",
+      "needs_improvement": "Hit max_turns (15) and exited code 1 even though the commit succeeded — it burned turns re-checking a tracked .beads/config.yaml that kept showing modified, and hit a 'could not write /home/voltron/.gitconfig: Device or resource busy' error when trying to set git identity. Reported as FAILED despite success.",
+      "suggested_change": "Give committer a higher default turn budget for large/staged commits, teach it that git identity is pre-configured (don't attempt git config writes; use 'git -c user.x=' inline if needed), and have it treat an already-tracked-but-excluded file as a non-blocking note rather than looping on it. Also: detect 'commit already created' and emit [DONE] instead of re-validating to exhaustion."
+    },
+    {
+      "agent": "scrum-master",
+      "needs_improvement": "Several index.js-editing tasks (T5/T6/T7/T4a) were dependency-independent in beads but all mutated the same file, forcing manual serialization to avoid clobbering. The bead graph didn't capture file-level write contention.",
+      "suggested_change": "Support a 'resource/file-contention' annotation on beads so bd ready won't surface two tasks that write the same file as concurrently runnable; or document a scrum-master pattern for same-file serialization."
+    },
+    {
+      "agent": "committer",
+      "needs_improvement": "pr-opener/committer in Docker can't push to GitHub (no ssh key / gh keyring in container) — push+PR had to be done from the main session.",
+      "suggested_change": "Document that publish-layer agents (pr-opener, deploy-trigger) needing remote credentials should run in the main session, or mount gh/ssh creds into the container."
+    }
+  ],
+  "overall_notes": "Tooling discoveries worth recording: (1) beads on Windows needs dolt.shared-server config or it auto-starts competing per-project dolt servers that deadlock on the data-dir lock; recovery = kill stray dolt (keep shared 3308), repin via .beads/dolt-server.port, set dolt.auto-start:false. (2) `git config --global core.longpaths true` fixes dolt git-remote-cache 'Filename too long' push failures on Windows. (3) Embedded Dolt requires CGO; use server mode. (4) better-sqlite3 + sqlite-vec prebuilts install cleanly in the Linux agent container; sqlite-vec vec0 rejects JS Number primary keys — bind rowid as BigInt. (5) @huggingface/transformers@3 is ESM-only; from a CommonJS lib load it via dynamic import(); mcp-server root was ESM so lib/ was scoped CJS via lib/package.json. These were captured in the new guides vector-db-options + embeddings-local-vs-hosted and should also inform the go-stringer/beads Alexandria guides. Alexandria tools (search_knowledge etc.) and project-voltron MCP tools are NOT mounted inside agent containers — design/baseline agents persist outputs to .voltron/analyses instead of calling update_guide/submit_analysis.",
+  "processed": true
+}

@@ -1,0 +1,32 @@
+{
+  "timestamp": "2026-06-18T17:14:25.262Z",
+  "project_name": "project-alexandria",
+  "project_type": "general",
+  "session_summary": "Phase: Pre-merge verification of the Alexandria vector-DB PR (#1), then committed an integration harness as a separate cached CI job. Verified clean-room install (better-sqlite3 native build) + full suite (28/28). Found & fixed stale committed manifest/README (d633a4a). Per user choice, split vitest so default `npm test` = 23 fast unit tests and a dedicated `test:integration` (via a separate vitest.integration.config.js) runs 5 real-pipeline integration tests, added a cached `integration-tests` CI job (actions/cache for the ~128MB embedding model), and fixed a test-isolation bug (e2e test wrote into the real guides/ dir; now cleans up). Commit 69f61d1 pushed. bd stats: 25 total / 25 closed / 0 open / 0 blocked.",
+  "agents_used": [
+    "test-writer",
+    "test-runner",
+    "file-patch-runner",
+    "config-editor",
+    "ci-workflow-writer",
+    "committer"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "config-editor",
+      "needs_improvement": "Used a config-level `exclude` glob to keep integration tests out of the default vitest run, but vitest's config `exclude` ALSO suppresses a CLI `--include` for the same files — so the companion `test:integration` script (vitest run --include ...) collected 0 tests. The robust pattern is a SEPARATE vitest config file for the integration-only run.",
+      "suggested_change": "Add a note to config-editor (and any vitest-aware agent): to run a subset that the default config excludes, point a dedicated script at a separate `vitest.<suite>.config.js` via `--config`, rather than relying on CLI `--include` to override a config `exclude`."
+    },
+    {
+      "agent": "test-writer",
+      "needs_improvement": "First e2e test invoked the real writeKnowledge, which writes into the repo's actual guides/ dir, leaving a stray file (no test isolation). On the follow-up hermetic fix it hit max_turns (30) — it had actually completed correct work (separate integration config + afterAll cleanup) but spent its whole budget rediscovering the exclude/include interaction and re-verifying; it exited without [DONE] despite the work being right.",
+      "suggested_change": "test-writer should default to hermetic IO for integration tests (temp dirs / explicit afterAll cleanup) when the code under test writes to the working tree. Also: when a task is mostly done but the turn budget is nearly exhausted, emit [DONE] with the current state + a self-check command rather than spending remaining turns on repeated verification."
+    },
+    {
+      "agent": "committer",
+      "worked_well": "Staging by explicit path with a hard MUST-NOT list cleanly kept .beads/config.yaml and .voltron/ out of the commit; the post-commit `show --stat` self-check confirmed exactly the intended 6 files."
+    }
+  ],
+  "overall_notes": "Tools: vitest 2.x (config `exclude` overrides CLI `--include` — use a separate `--config` file for excluded subsets — reusable, worth an Alexandria guide post-merge), better-sqlite3 (native build clean on ubuntu CI image), @huggingface/transformers (bge-small ~128MB; cache via actions/cache keyed on model). Orchestration note: Docker agents cannot push (no git creds) — in-container commit + host push remains the working pattern. Pre-commit `git status` review caught a test-generated artifact before it was committed — worth making a standard committer pre-flight.",
+  "processed": true
+}

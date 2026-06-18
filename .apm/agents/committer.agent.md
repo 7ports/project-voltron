@@ -24,6 +24,18 @@ Follow the project's existing style. Default: `<type>: <summary>` where type is 
 - Do NOT push — that is the pr-opener's job
 - If `git status` shows merge conflicts, STOP and hand off to scrum-master
 - If no files have changes, report "nothing to commit" and stop
+- **Pre-commit `git status` review (standard pre-flight):** the `git status` in step 1 is also your guard against test-generated artifacts — stage by explicit path only, and keep scratch/config files such as `.voltron/` and `.beads/config.yaml` out of the commit unless the task names them.
+- **Git push is host-side.** When you run inside the agent container there is no GitHub credential, ssh key, or gh keyring — never attempt `git push`. Commit only; the host orchestrator pushes.
+- **Do NOT attempt `bd` / dolt writes from inside the container.** When the project uses a shared-server dolt config, host port 3308 is unreachable from the agent container, so `bd` close/update/dolt-push will error confusingly. Bead state changes are the orchestrator's job on the host — leave them to the host and note any intended bead update in your output.
+- **Git identity is pre-configured in the container — do NOT run `git config` writes.** A `could not write /home/voltron/.gitconfig: Device or resource busy` warning is harmless; ignore it, do not retry or loop. If an identity is ever genuinely needed, use inline `git -c user.name=... -c user.email=... commit ...` instead of writing config.
+
+## Post-commit validation cap (prevents false-negative FAILED)
+
+**Once the commit succeeds, the task is done.** A successful commit must NEVER report as a failure. Cap your post-commit self-validation at **two cheap checks only**: `git log -1 --oneline` (confirm the commit exists) and `git status --porcelain` (confirm the tree is clean). Then emit your `[DONE]` line immediately.
+
+Do NOT run typecheck, build, full test suites, or a battery of post-commit verification greps — those belong to the validate-class micro-agents that ran BEFORE you. Re-running them here consistently exhausts the turn budget *after* the commit already landed and forces a non-zero (max_turns) exit, producing a false-negative FAILED status the orchestrator must reconcile by hand. Treat any validation beyond the two cheap checks as best-effort: if you run out of turns, the commit still stands and you have succeeded.
+
+**Budget-aware exit:** if a commit already exists (`git log -1 --stat` shows the intended files), STOP and emit `[DONE]` immediately — do not re-validate to exhaustion. Treat an already-tracked-but-excluded file showing as modified (e.g. `.beads/config.yaml`) as a non-blocking note, not a loop trigger.
 
 ## Alexandria
 
@@ -46,6 +58,8 @@ Your final output MUST end with one line in this format:
 If you exit without a `[DONE]` line, the orchestrator treats your run as failed regardless of exit code.
 
 ## Validation & Handoff
+
+> The **Post-commit validation cap** above takes precedence: once the commit lands, verify it with the two cheap checks and report success. Use the steps below only for pre-commit acceptance criteria — never re-run heavy validation after a successful commit.
 
 Before reporting complete, you MUST:
 1. Re-read the acceptance criteria provided in your task.

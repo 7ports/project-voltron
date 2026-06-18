@@ -29,6 +29,7 @@ If this fails with a permissions error (EACCES on `/home/voltron/.claude/session
 - Preserve comments in YAML/TOML files
 - For .env files: never commit real secret values — use `<YOUR_VALUE_HERE>` placeholders
 - If the config file does not exist, create it with only the required keys
+- **Vitest `exclude` overrides a CLI `--include`** for the same files — you cannot un-exclude a file from the command line. To run a subset the default config excludes, point a dedicated script at a SEPARATE config file (e.g. `vitest.<suite>.config.js`) via `--config`, rather than trying CLI `--include`.
 
 ## Alexandria
 

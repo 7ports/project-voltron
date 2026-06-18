@@ -1,0 +1,22 @@
+{
+  "timestamp": "2026-06-16T16:52:26.933Z",
+  "project_name": "Voltron Glimpse",
+  "project_type": "web",
+  "session_summary": "Addressed the two post-release hardening findings. fullstack-dev fixed both in parallel (run_agent_in_docker_batch, 193s wall — genuinely concurrent, disjoint files): glimpse-1mm (src/parsers/logs.js + src/watcher.js — offset-tail now resets on truncation offset>size and on inode-change rotation, EOF-seeding preserved) and glimpse-58g (src/transport/wsServer.js — 1 MiB bufferedAmount cap terminates stalled WS consumers). test-runner combined-tree gate 137/137 (+5 regression tests); committer 20e15d0; PR #3 merged to main (f2b1fe7). bd: backlog empty (all findings closed). npm package still at 0.1.0 — fixes are on main but not republished; 0.1.1 bump+publish is an open optional follow-up.",
+  "agents_used": [
+    "fullstack-dev",
+    "test-runner",
+    "committer",
+    "pr-opener"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "fullstack-dev",
+      "worked_well": "Two independent fullstack-dev dispatches ran truly in parallel via run_agent_in_docker_batch (disjoint files, ~193s combined) and each added its own regression tests. Pre-computed anchors (exact line refs for tailLog early-return and safeSend) kept both well under the turn budget.",
+      "needs_improvement": "Each parallel agent ran `npm test` against its own concurrent snapshot of the shared workspace mount, so their reported totals diverged (137 vs 135) — neither reflected the final combined tree. Not a bug, but a parallel-on-shared-mount artifact.",
+      "suggested_change": "When batching parallel agents that edit the same repo and each runs the test suite, always follow with a single test-runner gate on the combined tree before commit (did this; worked). Worth codifying in the scrum-master template as a standard post-parallel-edit step."
+    }
+  ],
+  "overall_notes": "Clean parallel-fix pattern: batch two disjoint-file fixes → unified test-runner gate on the combined mount → single committer → PR → merge. The combined-tree gate is essential because parallel agents on one workspace mount each test a partial snapshot. Backlog fully clear. Reminder surfaced to user: main has the fixes but npm is still 0.1.0 (republish is optional/irreversible, needs the automation-token path from guide 'npm-publish-2fa-tokens').",
+  "processed": true
+}

@@ -22,6 +22,8 @@ After triggering:
 - Do NOT guess deployment targets — stop and ask if the method is unclear
 - Never pass secrets as command arguments — use environment variables
 - Report the exact command run so it can be audited
+- **Host-credential boundary.** Inside the agent container you CAN run auth-free publish *validation* (`npm publish --dry-run`, `npm pack`) — do that to verify the package is shippable. But actual registry/deploy actions that need host credentials (`npm publish`, npm tokens, cloud auth, deploy webhooks with host secrets) MUST be escalated to the host — emit a Verify/handoff line, do NOT attempt them in-container.
+- **npm 2FA note:** publishing to npm requires 2FA or a bypass token. A Classic **Automation** token bypasses 2FA; a Classic "Publish" token does NOT. If the only credential available cannot bypass 2FA, hand the publish step to the host.
 
 ## Alexandria
 

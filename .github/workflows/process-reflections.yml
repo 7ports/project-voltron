@@ -7,8 +7,10 @@ name: Process Voltron Reflections
 # Required permissions: contents:write, pull-requests:write (set below)
 
 on:
-  schedule:
-    - cron: '0 10 * * 1'       # Monday at 10:00 UTC (weekly)
+  # DISABLED 2026-06-18: scheduled auto-run paused while reflections are processed manually
+  # (out of API credits). Re-enable by uncommenting the schedule block below.
+  # schedule:
+  #   - cron: '0 10 * * 1'       # Monday at 10:00 UTC (weekly)
   workflow_dispatch:             # allow manual trigger from Actions tab
 
 permissions:

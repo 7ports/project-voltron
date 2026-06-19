@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>The Voltron Engine — Self-improving agent orchestration for Claude Code</title>
-  <meta name="description" content="Project Voltron is an orchestration engine that drives Claude Code with a real three-tier agent team — each specialist in its own Docker container — and rewrites its own agents from what it learns in the field.">
+  <title>The Voltron Engine: Self-improving agent orchestration for Claude Code</title>
+  <meta name="description" content="Project Voltron is an orchestration engine that drives Claude Code with a real three-tier agent team, with each specialist in its own Docker container, and rewrites its own agents from what it learns in the field.">
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
   <link rel="stylesheet" href="styles/tokens.css">
   <link rel="stylesheet" href="styles/main.css">
@@ -14,11 +14,11 @@
   <!-- Skip link: first focusable element -->
   <a class="skip-link" href="#main">Skip to main content</a>
 
-  <!-- ============ Section 0 — Sticky nav ============ -->
+  <!-- ============ Section 0: Sticky nav ============ -->
   <header>
     <nav class="site-nav" aria-label="Primary">
       <div class="container site-nav__inner">
-        <a class="site-nav__brand" href="#top" aria-label="The Voltron Engine — home">
+        <a class="site-nav__brand" href="#top" aria-label="The Voltron Engine, home">
           <img src="assets/logo.svg" alt="" width="28" height="28">
           <span>Voltron&nbsp;Engine</span>
         </a>
@@ -39,15 +39,15 @@
 
   <main id="main">
 
-    <!-- ============ Section 1 — Hero ============ -->
+    <!-- ============ Section 1: Hero ============ -->
     <section id="hero" class="hero" aria-labelledby="hero-title">
       <div class="container">
         <!-- Phase-2 animated centerpiece attaches here. Static logo is the Phase-1 baseline. -->
         <div id="hero-centerpiece" class="hero__centerpiece" data-centerpiece="logo">
-          <img src="assets/logo.svg" alt="The Voltron Engine logo — a V/A ambigram of units converging into one core" width="224" height="224">
+          <img src="assets/logo.svg" alt="The Voltron Engine logo: a V/A ambigram of units converging into one core" width="224" height="224">
         </div>
         <h1 id="hero-title" class="hero__title text-gradient">V for all and All for one</h1>
-        <p class="hero__tagline">Many agents. One engine. An orchestration engine that drives Claude Code — and rewrites its own playbook.</p>
+        <p class="hero__tagline">Many agents. One engine. An orchestration engine that drives Claude Code and rewrites its own playbook.</p>
         <p class="hero__subline">One coordinator. Fifty-one specialists. Real containers.</p>
         <div class="hero__actions">
           <a class="btn btn--primary" href="#install">Get started</a>
@@ -56,19 +56,19 @@
       </div>
     </section>
 
-    <!-- ============ Section 2 — One-line "what is this" ============ -->
+    <!-- ============ Section 2: One-line "what is this" ============ -->
     <section id="what" class="section whatis" aria-label="What is Project Voltron">
       <div class="container">
-        <p>Project Voltron is an orchestration engine that drives Claude Code with a real three-tier agent team — each specialist running in its own Docker container — and then grades and rewrites those agents from what it learns in the field.</p>
+        <p>Project Voltron is an orchestration engine that drives Claude Code with a real three-tier agent team, with each specialist running in its own Docker container, and then grades and rewrites those agents from what it learns in the field.</p>
       </div>
     </section>
 
-    <!-- ============ Section 3 — Three Pillars ============ -->
+    <!-- ============ Section 3: Three Pillars ============ -->
     <section id="pillars" class="section" aria-labelledby="pillars-title">
       <div class="container">
         <p class="section__eyebrow">Why it's different</p>
         <h2 id="pillars-title" class="section__title">Three pillars</h2>
-        <p class="section__lead">The elevator pitch as three scannable claims — each backed by the mechanism beneath it.</p>
+        <p class="section__lead">The elevator pitch as three scannable claims, each backed by the mechanism beneath it.</p>
 
         <div class="grid grid--3">
           <article class="pillar card card--accent">
@@ -78,7 +78,7 @@
             </svg>
             <h3>Compose, don't prompt</h3>
             <span class="pillar__claim">A real org chart, enforced in code.</span>
-            <p>A depth-bounded three-tier hierarchy — coordinator → sub-manager → micro-agent — capped at depth 3 by the runtime, not by convention. Sub-managers compose single-verb micro-agents; the "never DIY" rule is baked into every template. 73 templates, 73 jobs, zero improvised monoliths.</p>
+            <p>A depth-bounded three-tier hierarchy (coordinator → sub-manager → micro-agent) capped at depth 3 by the runtime, not by convention. Sub-managers compose single-verb micro-agents; the "never DIY" rule is baked into every template. 73 templates, 73 jobs, zero improvised monoliths.</p>
           </article>
 
           <article class="pillar card card--accent">
@@ -87,7 +87,7 @@
             </svg>
             <h3>Real isolation, real parallelism</h3>
             <span class="pillar__claim">Every agent gets its own container running the real Claude CLI.</span>
-            <p>Throwaway Docker containers, the actual <code>claude</code> binary, the repo bind-mounted, OAuth credentials read-only. Not an in-process SDK call. Fan out eight agents in one batch call — with a head-start gate that shares one prompt-cache write across the fleet. Tuned to Anthropic prompt-cache economics at the dispatch layer.</p>
+            <p>Throwaway Docker containers, the actual <code>claude</code> binary, the repo bind-mounted, OAuth credentials read-only. Not an in-process SDK call. Fan out eight agents in one batch call, with a head-start gate that shares one prompt-cache write across the fleet. Tuned to Anthropic prompt-cache economics at the dispatch layer.</p>
           </article>
 
           <article class="pillar card card--accent">
@@ -95,14 +95,14 @@
               <path d="M20 5 A8 8 0 1 0 21 12"/><path d="M20 5 L20 10 L15 10"/><path d="M8 14 L11 11 L13 13 L16 9"/>
             </svg>
             <h3>It improves itself</h3>
-            <span class="pillar__claim">Voltron rewrites its own agents — and grades them before they ship.</span>
+            <span class="pillar__claim">Voltron rewrites its own agents and grades them before they ship.</span>
             <p>After each production session, agents submit structured reflections. A CI job runs the harness-engineer agent, which edits <code>src/templates.js</code>, bumps the version, and opens a PR. Before any updated agent ships, the voltron-evals harness regrades it through the same live dispatch path it uses in production. No other orchestrator self-modifies through a reviewed, regression-graded pipeline.</p>
           </article>
         </div>
       </div>
     </section>
 
-    <!-- ============ Section 4 — "See it run": living dispatch graph ============ -->
+    <!-- ============ Section 4: "See it run" living dispatch graph ============ -->
     <section id="dispatch" class="section" aria-labelledby="dispatch-title">
       <div class="container">
         <p class="section__eyebrow">See it run</p>
@@ -112,7 +112,7 @@
         <figure id="dispatch-graph-canvas" class="dispatch-graph" data-graph="tier-topology">
           <!-- Phase-2 force-graph mounts here. Static tier SVG is the Phase-1 baseline. -->
           <svg viewBox="0 0 720 300" role="img" aria-label="Tier topology: one coordinator dispatches to three sub-managers, which dispatch to many micro-agents">
-            <title>Voltron dispatch topology — coordinator to sub-managers to micro-agents</title>
+            <title>Voltron dispatch topology: coordinator to sub-managers to micro-agents</title>
             <!-- edges -->
             <g stroke="var(--border)" stroke-width="2" fill="none">
               <path d="M360 50 L180 140"/><path d="M360 50 L360 140"/><path d="M360 50 L540 140"/>
@@ -141,12 +141,12 @@
       </div>
     </section>
 
-    <!-- ============ Section 5 — Quickstart / Install ============ -->
+    <!-- ============ Section 5: Quickstart / Install ============ -->
     <section id="install" class="section" aria-labelledby="install-title">
       <div class="container">
         <p class="section__eyebrow">Quickstart</p>
         <h2 id="install-title" class="section__title">Three commands from zero to a full agent team</h2>
-        <p class="section__lead">Prerequisites: <strong>Docker</strong> installed and running (specialists execute in containers), and <a href="https://github.com/gastownhall/beads">beads</a> for dependency-aware task tracking. You run Claude Code normally on your desktop — Docker is handled behind the scenes.</p>
+        <p class="section__lead">Prerequisites: <strong>Docker</strong> installed and running (specialists execute in containers), and <a href="https://github.com/gastownhall/beads">beads</a> for dependency-aware task tracking. You run Claude Code normally on your desktop, and Docker is handled behind the scenes.</p>
 
         <div class="grid grid--3">
           <article class="card">
@@ -168,7 +168,7 @@ node scripts/setup.js</code></pre>
 
 "Scaffold this Unity project
  with Voltron agents"</code></pre>
-            <p>Agent files are written straight to <code>.claude/agents/</code> — no manual copy-paste. Smart merge preserves your existing files.</p>
+            <p>Agent files are written straight to <code>.claude/agents/</code>, with no manual copy-paste. Smart merge preserves your existing files.</p>
           </article>
 
           <article class="card">
@@ -185,7 +185,7 @@ node scripts/setup.js</code></pre>
       </div>
     </section>
 
-    <!-- ============ Section 6 — How you actually use it ============ -->
+    <!-- ============ Section 6: How you actually use it ============ -->
     <section id="workflow" class="section" aria-labelledby="workflow-title">
       <div class="container">
         <p class="section__eyebrow">How you use it</p>
@@ -202,7 +202,7 @@ node scripts/setup.js</code></pre>
           <li class="flow__step">
             <div>
               <strong>Plan</strong>
-              <span>Invoke <code>/scrum-master</code> in your main session with a project plan. It decomposes the work into agent-sized tasks with dependencies and acceptance criteria, tracked as a real DAG in beads — and never implements anything itself.</span>
+              <span>Invoke <code>/scrum-master</code> in your main session with a project plan. It decomposes the work into agent-sized tasks with dependencies and acceptance criteria, tracked as a real DAG in beads, and never implements anything itself.</span>
             </div>
           </li>
           <li class="flow__step">
@@ -221,7 +221,7 @@ node scripts/setup.js</code></pre>
       </div>
     </section>
 
-    <!-- ============ Section 7 — Meet the team ============ -->
+    <!-- ============ Section 7: Meet the team ============ -->
     <section id="team" class="section" aria-labelledby="team-title">
       <div class="container">
         <p class="section__eyebrow">Meet the team</p>
@@ -235,13 +235,13 @@ node scripts/setup.js</code></pre>
               <circle cx="12" cy="4" r="2.5"/><circle cx="5" cy="20" r="2"/><circle cx="12" cy="20" r="2"/><circle cx="19" cy="20" r="2"/>
               <path d="M12 6.5 L5 18"/><path d="M12 6.5 L12 18"/><path d="M12 6.5 L19 18"/>
             </svg>
-            <h3>Tier 1 — Coordinators</h3>
+            <h3>Tier 1: Coordinators</h3>
             <span>Decompose &amp; delegate · never implement</span>
           </div>
           <div class="grid grid--3">
             <div class="card"><h3>scrum-master</h3><p>Slash command in your main session. Breaks work into agent-sized tasks with dependencies and acceptance criteria; dispatches specialists; tracks progress in beads.</p></div>
             <div class="card"><h3>project-planner</h3><p>Researches tech stacks, designs architecture, defines data models and API contracts. Produces the plan the scrum-master decomposes.</p></div>
-            <div class="card"><h3>code-analyst</h3><p>Directs all 11 Inspect-layer micro-agents to audit a codebase — coverage gaps, dead code, API shapes, dependency health — into persisted reports.</p></div>
+            <div class="card"><h3>code-analyst</h3><p>Directs all 11 Inspect-layer micro-agents to audit a codebase (coverage gaps, dead code, API shapes, dependency health) into persisted reports.</p></div>
           </div>
         </div>
 
@@ -252,17 +252,17 @@ node scripts/setup.js</code></pre>
               <path d="M12 2 L12 6"/><circle cx="12" cy="9" r="2.5"/><circle cx="7" cy="20" r="2"/><circle cx="17" cy="20" r="2"/>
               <path d="M12 11.5 L7 18"/><path d="M12 11.5 L17 18"/>
             </svg>
-            <h3>Tier 2 — Sub-managers</h3>
+            <h3>Tier 2: Sub-managers</h3>
             <span>Own a domain · compose micro-agents · never DIY</span>
           </div>
           <div class="grid grid--4">
-            <div class="card"><h3>fullstack-dev</h3><p>React/TypeScript front end and Node/Express back end — components, APIs, hooks, data flow.</p></div>
+            <div class="card"><h3>fullstack-dev</h3><p>React/TypeScript front end and Node/Express back end: components, APIs, hooks, data flow.</p></div>
             <div class="card"><h3>devops-engineer</h3><p>Terraform, CI/CD pipelines, Docker, and cloud deploys. Infrastructure as code.</p></div>
             <div class="card"><h3>ui-designer</h3><p>CSS architecture, responsive mobile-first layouts, theming, and accessibility.</p></div>
             <div class="card"><h3>qa-tester</h3><p>Vitest/Playwright tests, Lighthouse audits, bundle analysis, and quality gates.</p></div>
-            <div class="card"><h3>csharp-dev</h3><p>Unity MonoBehaviours, ScriptableObjects, and gameplay systems — clean, performant C#.</p></div>
-            <div class="card"><h3>doc-writer</h3><p>Owns prose — README, CHANGELOG, ADRs, API reference, and diagrams.</p></div>
-            <div class="card"><h3>harness-engineer</h3><p>Owns all Voltron repo edits — agent templates, Dockerfile, MCP server — and processes reflections into template improvements.</p></div>
+            <div class="card"><h3>csharp-dev</h3><p>Unity MonoBehaviours, ScriptableObjects, and gameplay systems in clean, performant C#.</p></div>
+            <div class="card"><h3>doc-writer</h3><p>Owns prose: README, CHANGELOG, ADRs, API reference, and diagrams.</p></div>
+            <div class="card"><h3>harness-engineer</h3><p>Owns all Voltron repo edits (agent templates, Dockerfile, MCP server) and processes reflections into template improvements.</p></div>
             <div class="card"><h3>scene-architect · shader-artist</h3><p>Unity Editor-bound managers dispatched via the host <code>Agent</code> tool when a live Editor is required.</p></div>
           </div>
         </div>
@@ -274,7 +274,7 @@ node scripts/setup.js</code></pre>
               <circle cx="12" cy="12" r="3"/><path d="M12 2 L12 5"/><path d="M12 19 L12 22"/><path d="M2 12 L5 12"/><path d="M19 12 L22 12"/>
               <path d="M5.6 5.6 L7.7 7.7"/><path d="M16.3 16.3 L18.4 18.4"/>
             </svg>
-            <h3>Tier 3 — Micro-agents</h3>
+            <h3>Tier 3: Micro-agents</h3>
             <span>51 focused workers · one verb on one noun · tagged <code>nestable: false</code></span>
           </div>
           <div class="grid grid--4">
@@ -295,32 +295,32 @@ node scripts/setup.js</code></pre>
       </div>
     </section>
 
-    <!-- ============ Section 8 — The Voltron Engine ============ -->
+    <!-- ============ Section 8: The Voltron Engine ============ -->
     <section id="engine" class="section" aria-labelledby="engine-title">
       <div class="container">
         <p class="section__eyebrow">The differentiator</p>
         <h2 id="engine-title" class="section__title">The Voltron Engine</h2>
-        <p class="section__lead">The machinery beneath the templates — the reason Project Voltron is more than a bundle of markdown files. A self-modifying, self-evaluating orchestration engine: agents are versioned markdown, execution is real Docker containers running the real <code>claude</code> CLI, and the system rewrites and regrades its own agent definitions from production feedback. The templates are what the engine produces; the engine is what you adopt.</p>
+        <p class="section__lead">The machinery beneath the templates, and the reason Project Voltron is more than a bundle of markdown files. A self-modifying, self-evaluating orchestration engine: agents are versioned markdown, execution is real Docker containers running the real <code>claude</code> CLI, and the system rewrites and regrades its own agent definitions from production feedback. The templates are what the engine produces; the engine is what you adopt.</p>
 
         <div class="grid grid--3">
           <article class="component card"><h3>Three-tier hierarchy</h3><p>A real org chart in code: coordinator decomposes, sub-managers own domains, micro-agents do one focused edit each. Depth-capped at 3 by the runtime; 73 templates.</p></article>
           <article class="component card"><h3>Docker-isolated execution</h3><p>Each agent runs in a throwaway container with the actual <code>claude</code> CLI, not an in-process SDK call. Full transcript captured; auth minimal by design.</p></article>
-          <article class="component card"><h3>Parallel batch dispatch</h3><p>Fan out 2–8 agents in one MCP call, with a head-start gate that shares one prompt-cache write across the whole fleet.</p></article>
+          <article class="component card"><h3>Parallel batch dispatch</h3><p>Fan out 2 to 8 agents in one MCP call, with a head-start gate that shares one prompt-cache write across the whole fleet.</p></article>
           <article class="component card"><h3>Nested Docker-out-of-Docker</h3><p>Tier-2 agents inside containers can spawn Tier-3 siblings via the mounted host socket. Real containers all the way down.</p></article>
           <article class="component card"><h3>Dependency-graph tracking</h3><p>Work is a real DAG on a versioned Dolt database (beads), not a TODO list. Dependency-aware planning is a first-class substrate.</p></article>
           <article class="component card"><h3>Post-session reflection loop</h3><p>Agents submit structured feedback; CI runs the harness-engineer to edit templates, bump the version, and open a PR. The product rewrites itself from field data.</p></article>
           <article class="component card"><h3>MCP-as-delivery channel</h3><p>The engine ships as an MCP server that augments Claude Code directly. Install means scaffolding versioned templates into your repo with an auto-update channel.</p></article>
           <article class="component card"><h3>voltron-evals regression harness</h3><p>Agents are graded through the live MCP dispatch path they run in production, scored by deterministic signals plus a Sonnet judge. Voltron ships a graded regression suite for its own prompts.</p></article>
-          <article class="component card"><h3>Alexandria cross-project memory</h3><p>Tool and setup knowledge flows out of every session into a shared, searchable guide store — a second self-improving substrate alongside the reflection loop.</p></article>
+          <article class="component card"><h3>Alexandria cross-project memory</h3><p>Tool and setup knowledge flows out of every session into a shared, searchable guide store: a second self-improving substrate alongside the reflection loop.</p></article>
         </div>
       </div>
     </section>
 
-    <!-- ============ Section 9 — How it improves itself ============ -->
+    <!-- ============ Section 9: How it improves itself ============ -->
     <section id="improve" class="section" aria-labelledby="improve-title">
       <div class="container">
         <p class="section__eyebrow">Self-improvement</p>
-        <h2 id="improve-title" class="section__title">It rewrites its own agents — and grades them first</h2>
+        <h2 id="improve-title" class="section__title">It rewrites its own agents and grades them first</h2>
         <p class="section__lead">The novel triad: a reflection loop feeds an automated PR pipeline, an in-repo judge regression-grades every change before it ships, and a cross-project memory accrues operational knowledge. No other orchestrator self-modifies through a reviewed pipeline.</p>
 
         <ol class="flow" style="list-style:none;">
@@ -332,52 +332,28 @@ node scripts/setup.js</code></pre>
       </div>
     </section>
 
-    <!-- ============ Section 10 — Competitive positioning ============ -->
-    <section id="compare" class="section" aria-labelledby="compare-title">
-      <div class="container">
-        <p class="section__eyebrow">Positioning</p>
-        <h2 id="compare-title" class="section__title">Not a library you write apps against</h2>
-        <p class="section__lead">Most orchestrators — LangGraph, CrewAI, AutoGen — are Python libraries you build an application against. The Voltron Engine augments the real coding agent itself. We don't replace your coding agent; we give it a self-improving team.</p>
-
-        <div class="compare">
-          <table>
-            <thead>
-              <tr><th scope="col">Dimension</th><th scope="col">Library orchestrators</th><th scope="col">The Voltron Engine</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>What you write</td><td>A Python application against an SDK</td><td>Declarative markdown agents, scaffolded into your repo</td></tr>
-              <tr><td>Execution</td><td>In-process function calls</td><td>Real Docker containers running the real <code>claude</code> CLI</td></tr>
-              <tr><td>"Install"</td><td><code>pip install</code> a framework</td><td>Scaffold versioned templates with an auto-update channel</td></tr>
-              <tr><td>Improvement</td><td>You refactor your own code</td><td>The engine rewrites &amp; regrades its own agents from field data</td></tr>
-              <tr><td>Relationship to your agent</td><td>Replaces it with framework glue</td><td>Augments Claude Code with a self-improving team</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- ============ Section 11 — Architecture & internals ============ -->
+    <!-- ============ Section 10: Architecture & internals ============ -->
     <section id="architecture" class="section" aria-labelledby="arch-title">
       <div class="container">
         <p class="section__eyebrow">Architecture &amp; internals</p>
         <h2 id="arch-title" class="section__title">Depth, with honesty</h2>
-        <p class="section__lead">The tier model, Docker isolation, nested dispatch, the beads DAG, and the cost/cache optimizations — plus the trust boundary they depend on.</p>
+        <p class="section__lead">The tier model, Docker isolation, nested dispatch, the beads DAG, and the cost/cache optimizations, plus the trust boundary they depend on.</p>
 
         <ul class="internals-list">
           <li><strong>Tier model &amp; depth cap</strong><span>Sub-managers (Tier 2) may dispatch micro-agents (Tier 3) but micro-agents cannot dispatch further. The depth-cap guard in <code>run_agent_in_docker</code> refuses any 4th-tier launch, and every Tier-3 template is tagged <code>nestable: false</code>.</span></li>
           <li><strong>Nested Docker-out-of-Docker</strong><span>The MCP server resolves host paths via <code>VOLTRON_HOST_ROOT</code> / <code>VOLTRON_HOST_HOME</code> / <code>VOLTRON_HOST_TMPDIR</code> so the inner <code>docker run</code> sees the real host filesystem, mounts the Docker socket, and generates a <code>container-mcp.json</code> so the nested Claude Code has its own project-voltron MCP.</span></li>
           <li><strong>Cost &amp; cache-aware dispatch</strong><span>A cacheable system-prompt prefix, de-duplicated CLAUDE.md / bd-prime context, staggered batch fan-out, and a bounded ~4&nbsp;KB result tail. Tuned to Anthropic prompt-cache economics at the harness layer.</span></li>
-          <li><strong>Dependency-aware planning</strong><span>Tasks are a real DAG on a versioned Dolt database via beads — what blocks what is first-class, not a flat TODO list.</span></li>
+          <li><strong>Dependency-aware planning</strong><span>Tasks are a real DAG on a versioned Dolt database via beads, so what blocks what is first-class, not a flat TODO list.</span></li>
         </ul>
 
         <div class="callout" role="note">
-          <strong>Security disclosure — trusted machines only.</strong>
+          <strong>Security disclosure: trusted machines only.</strong>
           <p>To make nested dispatch work, <code>/var/run/docker.sock</code> is mounted into every agent container. Inside a container, having that socket is equivalent to root on the host: an agent can launch privileged containers, mount any host path, and read or write anything the Docker daemon can. Only run Voltron on a trusted developer machine, and only with prompts you trust. Do not point it at untrusted user input, public webhooks, or shared CI without a hardened sandbox in front.</p>
         </div>
       </div>
     </section>
 
-    <!-- ============ Section 12 — MCP tools / reference ============ -->
+    <!-- ============ Section 11: MCP tools / reference ============ -->
     <section id="tools" class="section" aria-labelledby="tools-title">
       <div class="container">
         <p class="section__eyebrow">Reference</p>
@@ -390,11 +366,11 @@ node scripts/setup.js</code></pre>
             <tbody>
               <tr><td><code>scaffold_project</code></td><td>Write agent templates, Dockerfile, and CLAUDE.md sections to disk (unity, web, fullstack, or general) with smart merge.</td></tr>
               <tr><td><code>scaffold_unity_project</code></td><td>Scaffold the Unity-specific agent team and Editor-exception configuration.</td></tr>
-              <tr><td><code>setup_voltron</code></td><td>Verify and repair the installation from within Claude Code — updates the allowlist and reports MCP/Docker status.</td></tr>
+              <tr><td><code>setup_voltron</code></td><td>Verify and repair the installation from within Claude Code; updates the allowlist and reports MCP/Docker status.</td></tr>
               <tr><td><code>list_templates</code></td><td>List all templates, optionally filtered by project type; shows each agent's default model tier.</td></tr>
               <tr><td><code>get_template</code></td><td>Retrieve the full content of a specific template.</td></tr>
-              <tr><td><code>run_agent_in_docker</code></td><td>Launch a specialist agent inside a Docker container with full permissions — called by the scrum-master.</td></tr>
-              <tr><td><code>run_agent_in_docker_batch</code></td><td>Launch 2–8 specialist agents in parallel containers in one MCP call; bypasses main-session serialization.</td></tr>
+              <tr><td><code>run_agent_in_docker</code></td><td>Launch a specialist agent inside a Docker container with full permissions; called by the scrum-master.</td></tr>
+              <tr><td><code>run_agent_in_docker_batch</code></td><td>Launch 2 to 8 specialist agents in parallel containers in one MCP call; bypasses main-session serialization.</td></tr>
               <tr><td><code>update_progress</code></td><td>Log a task status change (queued, in_progress, completed, failed, blocked).</td></tr>
               <tr><td><code>get_progress</code></td><td>View a formatted progress summary or detailed task table in the chat window.</td></tr>
               <tr><td><code>append_journal</code> · <code>get_journal</code></td><td>Append to and read the per-session work journal.</td></tr>
@@ -411,7 +387,7 @@ node scripts/setup.js</code></pre>
 
   </main>
 
-  <!-- ============ Section 13 — Footer ============ -->
+  <!-- ============ Section 12: Footer ============ -->
   <footer id="footer" class="site-footer">
     <div class="container">
       <div class="site-footer__brand">

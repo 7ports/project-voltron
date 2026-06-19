@@ -24,6 +24,7 @@
         </a>
         <ul class="site-nav__links">
           <li><a href="#pillars">Why</a></li>
+          <li><a href="#glimpse">Glimpse</a></li>
           <li><a href="#install">Install</a></li>
           <li><a href="#team">Team</a></li>
           <li><a href="#engine">The Engine</a></li>
@@ -138,6 +139,35 @@
           </svg>
           <figcaption>1 → N → 51: the real tier graph. Tier colors mean tier-1 / tier-2 / tier-3 everywhere on this page.</figcaption>
         </figure>
+      </div>
+    </section>
+
+    <!-- ============ Section 4b: voltron-glimpse (the live, runnable graph) ============ -->
+    <section id="glimpse" class="section" aria-labelledby="glimpse-title">
+      <div class="container">
+        <p class="section__eyebrow">See it for real</p>
+        <h2 id="glimpse-title" class="section__title">voltron-glimpse: the dispatch graph, alive</h2>
+        <p class="section__lead">The topology above is the map. <strong>voltron-glimpse</strong> is the territory: a real-time, read-only visualizer you run at the root of any Voltron project. A browser opens to a live animated graph of the agents whose Docker containers are running right now, plus the dispatch connections inferred between them. No setup, no writes, no history. Just a window onto what the engine is doing this second.</p>
+
+        <div class="grid grid--3">
+          <article class="component card"><h3>One node per live container</h3><p>Every running <code>voltron-*</code> container becomes a node. Nodes pulse vivid green while working, then flash green for a clean exit or red for an error before fading out. The graph empties as the fleet finishes.</p></article>
+          <article class="component card"><h3>Size encodes tier</h3><p>Node size maps to the same tier model as the rest of this page: Tier 1 orchestrators are largest, Tier 3 micro-agents smallest. The shape of a dispatch wave is legible at a glance.</p></article>
+          <article class="component card"><h3>Inferred dispatch edges</h3><p>Dashed edges run from a synthetic scrum-master hub with a marching-ants animation, reconstructed from container timing. Hover or click any node for a detail card: agent name, container, dispatch time, the current <code>[STEP N]</code> or <code>[DONE]</code> from the log tail, and exit code.</p></article>
+        </div>
+
+        <p class="section__lead">Run it with no install at the root of a project that is dispatching agents:</p>
+        <pre class="code-block"><code>npx github:7ports/voltron-glimpse  <span class="code-comment"># opens http://127.0.0.1:7424</span></code></pre>
+        <p>Prefer it on your PATH? <code>npm install -g github:7ports/voltron-glimpse</code>, then run <code>voltron-glimpse</code> at any project root. Node&nbsp;20+ and Docker are required for the primary live mode.</p>
+
+        <div class="hero__actions">
+          <a class="btn btn--primary" href="https://github.com/7ports/voltron-glimpse">voltron-glimpse on GitHub</a>
+          <a class="btn" href="#install">Install Voltron first</a>
+        </div>
+
+        <div class="callout" role="note">
+          <strong>Honest about what it is.</strong>
+          <p>voltron-glimpse is strictly read-only: it never touches <code>.voltron/</code> or <code>.beads/</code>. It is present-tense only, showing what is live now rather than replaying history. Dispatch edges are inferred from container timing, not declared by the agents. And it binds to localhost with no auth and no remote exposure, so it stays a tool for the trusted machine where your agents already run.</p>
+        </div>
       </div>
     </section>
 

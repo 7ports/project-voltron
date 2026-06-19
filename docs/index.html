@@ -67,9 +67,7 @@
     <!-- ============ Section 3: Three Pillars ============ -->
     <section id="pillars" class="section" aria-labelledby="pillars-title">
       <div class="container">
-        <p class="section__eyebrow">Why it's different</p>
-        <h2 id="pillars-title" class="section__title">Three pillars</h2>
-        <p class="section__lead">The elevator pitch as three scannable claims, each backed by the mechanism beneath it.</p>
+        <h2 id="pillars-title" class="section__title">Three Pillars</h2>
 
         <div class="grid grid--3">
           <article class="pillar card card--accent">
@@ -148,6 +146,21 @@
         <p class="section__eyebrow">See it for real</p>
         <h2 id="glimpse-title" class="section__title">voltron-glimpse: the dispatch graph, alive</h2>
         <p class="section__lead">The topology above is the map. <strong>voltron-glimpse</strong> is the territory: a real-time, read-only visualizer you run at the root of any Voltron project. A browser opens to a live animated graph of the agents whose Docker containers are running right now, plus the dispatch connections inferred between them. No setup, no writes, no history. Just a window onto what the engine is doing this second.</p>
+
+        <div class="glimpse-gallery">
+          <figure class="glimpse-shot">
+            <img src="assets/glimpse/glimpse-1.png" loading="lazy" width="453" height="447" alt="voltron-glimpse close view: a green Docker-connected badge sits at the top while the PROJECT-ALEXANDRIA panel shows two green fullstack-dev micro-agents marked working, each linked by dashed green dispatch edges to a cyan scrum-master node. A separate PROJECT-VOLTRON panel holds a yellow scrum-master, and a VOLTRON-GLIMPSE panel holds a blue scrum-master. A legend keys live state, tier size, and inferred edges.">
+            <figcaption>A single dispatch wave up close: micro-agents pulse green while working, linked by dashed edges to their scrum-master hub.</figcaption>
+          </figure>
+          <figure class="glimpse-shot">
+            <img src="assets/glimpse/glimpse-2.png" loading="lazy" width="627" height="319" alt="voltron-glimpse zoomed out: three project graphs are visible at once, with a large active PROJECT-VOLTRON graph centered. A green Tier 1 orchestrator fans dashed dispatch edges down to a yellow scrum-master and other nodes, while smaller VOLTRON-GLIMPSE and PROJECT-ALEXANDRIA graphs sit above. The left legend lists live state, tier sizes, edges, and the active projects.">
+            <figcaption>Several projects at once: node size encodes tier, so the shape of each dispatch wave reads at a glance.</figcaption>
+          </figure>
+          <figure class="glimpse-shot">
+            <img src="assets/glimpse/glimpse-3.png" loading="lazy" width="627" height="319" alt="voltron-glimpse multi-project overview: a cyan PROJECT-ALEXANDRIA scrum-master with green micro-agents sits top right, a VOLTRON-GLIMPSE panel sits left, and below a large PROJECT-VOLTRON graph shows a yellow scrum-master hub fanning dashed edges out to several Tier 3 micro-agent nodes, both green squares and circles.">
+            <figcaption>A scrum-master hub fanning work out to a fleet of Tier 3 micro-agents across live containers.</figcaption>
+          </figure>
+        </div>
 
         <div class="grid grid--3">
           <article class="component card"><h3>One node per live container</h3><p>Every running <code>voltron-*</code> container becomes a node. Nodes pulse vivid green while working, then flash green for a clean exit or red for an error before fading out. The graph empties as the fleet finishes.</p></article>

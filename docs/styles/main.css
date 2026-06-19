@@ -384,6 +384,54 @@ h3 {
   margin-top: var(--space-4);
 }
 
+/* ----- Glimpse screenshot gallery (section 4) ----- */
+.glimpse-gallery {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
+  margin: var(--space-6) 0;
+}
+
+@media (min-width: 720px) {
+  .glimpse-gallery {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  /* Lead the gallery with the close-up shot full width. */
+  .glimpse-gallery .glimpse-shot:first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+.glimpse-shot {
+  margin: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  overflow: hidden;
+}
+
+.glimpse-shot:first-child {
+  box-shadow: var(--glow-core);
+}
+
+.glimpse-shot img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.glimpse-shot figcaption {
+  color: var(--text-muted);
+  font-size: var(--step--1);
+  margin-top: var(--space-3);
+  padding: 0 var(--space-1);
+}
+
 /* ----- Code blocks ----- */
 .code-block {
   background: #04060c;

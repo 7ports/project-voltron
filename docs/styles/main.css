@@ -715,3 +715,89 @@ tbody tr:last-child td {
   padding: 0.15rem 0.7rem;
   color: var(--text-muted);
 }
+
+/* ----- Phase-2 hero assembly + dispatch graph (centerpiece.js) ----- */
+.hero__centerpiece {
+  position: relative;
+}
+
+/* The GSAP assembly stage layers over the static logo. Animated via
+   transform / opacity only (compositor-friendly). */
+.hero__stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  will-change: opacity, transform;
+}
+
+.hero__stage-svg {
+  width: clamp(8rem, 30vw, 14rem);
+  height: clamp(8rem, 30vw, 14rem);
+  overflow: visible;
+}
+
+/* Once resolved onto the logo, idle with a subtle pulse. This is a CSS
+   animation (not GSAP), so the hero timeline can be torn down after the
+   force-graph handoff without losing the idle. */
+.hero__centerpiece.is-formed img {
+  animation: heroPulse 4.5s ease-in-out infinite;
+}
+
+@keyframes heroPulse {
+  0%, 100% { transform: scale(1); filter: drop-shadow(var(--glow-core)); }
+  50% { transform: scale(1.02); filter: drop-shadow(0 0 56px rgba(34, 211, 238, 0.5)); }
+}
+
+/* Replay control (centered by the hero's text-align: center). */
+.hero__replay {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-6);
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.3rem 0.9rem;
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.hero__replay:hover,
+.hero__replay:focus-visible {
+  color: var(--text);
+  border-color: var(--engine-core);
+}
+
+/* Live force-graph cross-fade in section 4 (handoff from the static SVG). */
+.dispatch-graph__live {
+  width: 100%;
+  min-height: 280px;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+.dispatch-graph.is-live .dispatch-graph__live {
+  opacity: 1;
+}
+
+.dispatch-graph.is-live > svg {
+  display: none;
+}
+
+.dispatch-graph__live canvas {
+  display: block;
+  margin: 0 auto;
+}
+
+/* Reduced motion: no idle pulse, no assembly stage, no replay affordance. */
+@media (prefers-reduced-motion: reduce) {
+  .hero__centerpiece.is-formed img { animation: none; }
+  .hero__stage { display: none; }
+  .hero__replay { display: none; }
+}

@@ -1,4 +1,4 @@
-/* Voltron Engine Rebrand — Design Tokens */
+/* Voltron Engine Rebrand - Design Tokens */
 /* Single source of truth for the brand system */
 
 /* Font imports from Google Fonts */
@@ -37,7 +37,7 @@
   /* Glow Effects */
   --glow-core: 0 0 40px rgba(34, 211, 238, 0.35);
 
-  /* Type Scale — Responsive with clamp() */
+  /* Type Scale - Responsive with clamp() */
   --step--1: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
   --step-0: clamp(1rem, 1rem + 0.5vw, 1.125rem);
   --step-1: clamp(1.125rem, 1rem + 0.75vw, 1.375rem);
@@ -51,7 +51,7 @@
   --leading-tight: 1.2;
   --leading-normal: 1.6;
 
-  /* Spacing — Rem ramp */
+  /* Spacing - Rem ramp */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;

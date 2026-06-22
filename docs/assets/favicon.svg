@@ -12,14 +12,14 @@
     </linearGradient>
   </defs>
 
-  <!-- BACK LAYER: inverted (flipped about y=16) copy — the A behind. Amber + dimmed so it recedes. -->
+  <!-- BACK LAYER: inverted (flipped about y=16) copy, the A behind. Amber + dimmed so it recedes. -->
   <g transform="translate(0,32) scale(1,-1)" opacity="0.45"
      fill="none" stroke="#f59e0b" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <path d="M6 26 L16 6 L26 26"/>
     <path d="M10 19 L22 19"/>
   </g>
 
-  <!-- FRONT LAYER: upright chevron — the V in front. -->
+  <!-- FRONT LAYER: upright chevron, the V in front. -->
   <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <path d="M6 26 L16 6 L26 26"/>
     <path d="M10 19 L22 19"/>

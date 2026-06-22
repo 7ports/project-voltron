@@ -801,3 +801,67 @@ tbody tr:last-child td {
   .hero__stage { display: none; }
   .hero__replay { display: none; }
 }
+
+/* =====================================================================
+   Phase-3 explanatory diagrams (tier-model, workflow, reflection loop,
+   eval harness, beads DAG). Hand-authored inline SVG, token-coloured.
+   Every diagram is fully legible as static SVG; motion is additive only.
+   ===================================================================== */
+.diagram {
+  margin: var(--space-7) auto 0;
+  max-width: 880px;
+}
+
+.diagram svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.diagram figcaption {
+  margin-top: var(--space-4);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--step--1);
+}
+
+/* Shared SVG primitives -------------------------------------------------- */
+.diagram text { font-family: var(--font-body); dominant-baseline: middle; }
+
+.dgm-node { fill: var(--surface-2); stroke: var(--border); stroke-width: 1.5; }
+.dgm-node--t1 { stroke: var(--tier-1); }
+.dgm-node--t2 { stroke: var(--tier-2); }
+.dgm-node--t3 { stroke: var(--tier-3); }
+.dgm-node--core { stroke: var(--engine-core); }
+.dgm-node--forge { stroke: var(--engine-forge); }
+.dgm-node--blocked { stroke: var(--text-muted); stroke-dasharray: 5 4; }
+
+.dgm-label { fill: var(--text); font-family: var(--font-display); font-weight: 600; font-size: 14px; }
+.dgm-sub { fill: var(--text-muted); font-family: var(--font-mono); font-size: 11px; }
+.dgm-mono { fill: var(--text); font-family: var(--font-mono); font-size: 11px; }
+.dgm-center { fill: var(--text); font-family: var(--font-display); font-weight: 700; font-size: 16px; }
+.dgm-num { fill: var(--tier-3); font-family: var(--font-mono); font-size: 11px; }
+
+.dgm-band { font-family: var(--font-display); font-weight: 700; font-size: 12px; letter-spacing: 0.08em; }
+.dgm-band--t1 { fill: var(--tier-1); }
+.dgm-band--t2 { fill: var(--tier-2); }
+.dgm-band--t3 { fill: var(--tier-3); }
+
+.dgm-edge { stroke: var(--text-muted); stroke-width: 1.5; fill: none; }
+.dgm-edge--dim { stroke: var(--border); stroke-width: 1.5; fill: none; }
+.dgm-bus { stroke: var(--tier-3); stroke-width: 2; fill: none; }
+.dgm-iso { fill: none; stroke: var(--border); stroke-dasharray: 4 3; }
+.dgm-ring { stroke: var(--tier-3); stroke-width: 1.5; stroke-dasharray: 4 5; fill: none; opacity: 0.7; }
+.dgm-rule { stroke: var(--border); stroke-width: 1; }
+
+.dgm-arrow { fill: var(--text-muted); }
+.dgm-arrowhead { fill: var(--text-muted); }
+
+.dgm-anno { fill: var(--text-muted); font-family: var(--font-body); font-style: italic; font-size: 12px; }
+.dgm-cap { fill: var(--tier-1); font-family: var(--font-mono); font-size: 12px; }
+.dgm-capsub { fill: var(--text-muted); font-family: var(--font-body); font-size: 11px; }
+
+.dgm-dot--done { fill: var(--tier-1); }
+.dgm-dot--ready { fill: var(--tier-3); }
+.dgm-dot--blocked { fill: var(--text-muted); }

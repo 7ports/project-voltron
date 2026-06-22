@@ -261,6 +261,89 @@ node scripts/setup.js</code></pre>
             </div>
           </li>
         </ol>
+
+        <figure class="diagram diagram--workflow" role="img" aria-labelledby="dgm-flow-t dgm-flow-d">
+          <svg viewBox="0 0 880 400" xmlns="http://www.w3.org/2000/svg">
+            <title id="dgm-flow-t">Scaffold, plan, dispatch, reflect</title>
+            <desc id="dgm-flow-d">Scaffold then plan then dispatch then reflect. The dispatch step fans out a parallel batch of isolated Docker containers, each running the real claude CLI, whose results converge into a single reflection.</desc>
+            <defs>
+              <marker id="arwFlow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 z" class="dgm-arrowhead"/>
+              </marker>
+            </defs>
+            <g class="dgm-edge">
+              <path d="M240 63 L334 63" marker-end="url(#arwFlow)"/>
+              <path d="M540 63 L634 63" marker-end="url(#arwFlow)"/>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--core" x="40" y="36" width="200" height="54" rx="9"/>
+              <text class="dgm-label" x="140" y="56" text-anchor="middle">1 : Scaffold</text>
+              <text class="dgm-sub" x="140" y="74" text-anchor="middle">scaffold_project</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--core" x="340" y="36" width="200" height="54" rx="9"/>
+              <text class="dgm-label" x="440" y="56" text-anchor="middle">2 : Plan</text>
+              <text class="dgm-sub" x="440" y="74" text-anchor="middle">scrum-master, beads DAG</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t2" x="640" y="36" width="200" height="54" rx="9"/>
+              <text class="dgm-label" x="740" y="56" text-anchor="middle">3 : Dispatch</text>
+              <text class="dgm-sub" x="740" y="74" text-anchor="middle">run_agent_in_docker_batch</text>
+            </g>
+            <path class="dgm-edge" d="M740 90 L740 140"/>
+            <line class="dgm-bus" x1="175" y1="140" x2="745" y2="140"/>
+            <text class="dgm-anno" x="175" y="130">parallel batch fan-out</text>
+            <g class="dgm-edge">
+              <path d="M175 140 L175 168" marker-end="url(#arwFlow)"/>
+              <path d="M365 140 L365 168" marker-end="url(#arwFlow)"/>
+              <path d="M555 140 L555 168" marker-end="url(#arwFlow)"/>
+              <path d="M745 140 L745 168" marker-end="url(#arwFlow)"/>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t3" x="110" y="170" width="130" height="86" rx="8"/>
+              <rect class="dgm-iso" x="120" y="178" width="110" height="70" rx="5"/>
+              <text class="dgm-sub" x="175" y="192" text-anchor="middle" style="fill:var(--engine-core)">Docker</text>
+              <text class="dgm-label" x="175" y="214" text-anchor="middle">fullstack</text>
+              <text class="dgm-sub" x="175" y="234" text-anchor="middle">claude CLI</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t3" x="300" y="170" width="130" height="86" rx="8"/>
+              <rect class="dgm-iso" x="310" y="178" width="110" height="70" rx="5"/>
+              <text class="dgm-sub" x="365" y="192" text-anchor="middle" style="fill:var(--engine-core)">Docker</text>
+              <text class="dgm-label" x="365" y="214" text-anchor="middle">ui-design</text>
+              <text class="dgm-sub" x="365" y="234" text-anchor="middle">claude CLI</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t3" x="490" y="170" width="130" height="86" rx="8"/>
+              <rect class="dgm-iso" x="500" y="178" width="110" height="70" rx="5"/>
+              <text class="dgm-sub" x="555" y="192" text-anchor="middle" style="fill:var(--engine-core)">Docker</text>
+              <text class="dgm-label" x="555" y="214" text-anchor="middle">devops</text>
+              <text class="dgm-sub" x="555" y="234" text-anchor="middle">claude CLI</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t3" x="680" y="170" width="130" height="86" rx="8"/>
+              <rect class="dgm-iso" x="690" y="178" width="110" height="70" rx="5"/>
+              <text class="dgm-sub" x="745" y="192" text-anchor="middle" style="fill:var(--engine-core)">Docker</text>
+              <text class="dgm-label" x="745" y="214" text-anchor="middle">qa-test</text>
+              <text class="dgm-sub" x="745" y="234" text-anchor="middle">claude CLI</text>
+            </g>
+            <text class="dgm-anno" x="460" y="276" text-anchor="middle">each container is isolated and runs the real claude CLI; file changes surface through the host volume mount</text>
+            <g class="dgm-edge--dim">
+              <path d="M175 256 L175 290"/>
+              <path d="M365 256 L365 290"/>
+              <path d="M555 256 L555 290"/>
+              <path d="M745 256 L745 290"/>
+            </g>
+            <line class="dgm-rule" x1="175" y1="290" x2="745" y2="290"/>
+            <path class="dgm-edge" d="M460 290 L460 318" marker-end="url(#arwFlow)"/>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--forge" x="330" y="320" width="260" height="54" rx="9"/>
+              <text class="dgm-label" x="460" y="340" text-anchor="middle">4 : Reflect</text>
+              <text class="dgm-sub" x="460" y="358" text-anchor="middle">submit_reflection -&gt; reflections/</text>
+            </g>
+          </svg>
+          <figcaption>Dispatch is the fan-out: one batch call launches a fleet of isolated containers in parallel, sharing a single prompt-cache write, then their results converge into one structured reflection.</figcaption>
+        </figure>
       </div>
     </section>
 
@@ -271,6 +354,88 @@ node scripts/setup.js</code></pre>
         <h2 id="team-title" class="section__title">A real org chart of specialists</h2>
         <p class="section__lead">Three tiers, each with a distinct role: coordinators decompose, sub-managers own a domain, micro-agents each do one focused job.</p>
 
+
+        <figure class="diagram diagram--tier" role="img" aria-labelledby="dgm-tier-t dgm-tier-d">
+          <svg viewBox="0 0 880 392" xmlns="http://www.w3.org/2000/svg">
+            <title id="dgm-tier-t">The Voltron tier model</title>
+            <desc id="dgm-tier-d">A single Tier 1 coordinator delegates to Tier 2 sub-managers, which each compose Tier 3 micro-agents. Sub-managers compose, they never do the work themselves. Depth is capped at three tiers: a fourth-tier dispatch is refused, and every micro-agent is tagged nestable false.</desc>
+            <defs>
+              <marker id="arwTier" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 z" class="dgm-arrowhead"/>
+              </marker>
+            </defs>
+            <g class="dgm-band">
+              <text class="dgm-band--t1" x="16" y="50">TIER 1</text>
+              <text class="dgm-band--t2" x="16" y="158">TIER 2</text>
+              <text class="dgm-band--t3" x="16" y="294">TIER 3</text>
+            </g>
+            <g>
+              <text class="dgm-sub" x="16" y="68">coordinator</text>
+              <text class="dgm-sub" x="16" y="176">sub-manager</text>
+              <text class="dgm-sub" x="16" y="312">micro-agent</text>
+            </g>
+            <g class="dgm-edge--dim">
+              <path d="M515 84 L290 137" marker-end="url(#arwTier)"/>
+              <path d="M515 84 L515 137" marker-end="url(#arwTier)"/>
+              <path d="M515 84 L740 137" marker-end="url(#arwTier)"/>
+              <path d="M290 189 L230 281" marker-end="url(#arwTier)"/>
+              <path d="M290 189 L350 281" marker-end="url(#arwTier)"/>
+              <path d="M515 189 L455 281" marker-end="url(#arwTier)"/>
+              <path d="M515 189 L575 281" marker-end="url(#arwTier)"/>
+              <path d="M740 189 L680 281" marker-end="url(#arwTier)"/>
+              <path d="M740 189 L800 281" marker-end="url(#arwTier)"/>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t1" x="405" y="30" width="220" height="54" rx="9"/>
+              <text class="dgm-label" x="515" y="51" text-anchor="middle">scrum-master</text>
+              <text class="dgm-sub" x="515" y="69" text-anchor="middle">decompose, delegate</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t2" x="215" y="139" width="150" height="50" rx="9"/>
+              <text class="dgm-label" x="290" y="164" text-anchor="middle">fullstack-dev</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t2" x="440" y="139" width="150" height="50" rx="9"/>
+              <text class="dgm-label" x="515" y="164" text-anchor="middle">ui-designer</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t2" x="665" y="139" width="150" height="50" rx="9"/>
+              <text class="dgm-label" x="740" y="164" text-anchor="middle">qa-tester</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t3" x="180" y="283" width="100" height="34" rx="7"/>
+              <text class="dgm-mono" x="230" y="300" text-anchor="middle">route-adder</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t3" x="300" y="283" width="100" height="34" rx="7"/>
+              <text class="dgm-mono" x="350" y="300" text-anchor="middle">type-definer</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t3" x="405" y="283" width="100" height="34" rx="7"/>
+              <text class="dgm-mono" x="455" y="300" text-anchor="middle">css-writer</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t3" x="525" y="283" width="100" height="34" rx="7"/>
+              <text class="dgm-mono" x="575" y="300" text-anchor="middle">token-writer</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t3" x="630" y="283" width="100" height="34" rx="7"/>
+              <text class="dgm-mono" x="680" y="300" text-anchor="middle">test-runner</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t3" x="750" y="283" width="100" height="34" rx="7"/>
+              <text class="dgm-mono" x="800" y="300" text-anchor="middle">lint-runner</text>
+            </g>
+            <g data-reveal>
+              <text class="dgm-anno" x="16" y="232">compose,</text>
+              <text class="dgm-anno" x="16" y="250">never DIY</text>
+            </g>
+            <line class="dgm-rule" x1="170" y1="346" x2="844" y2="346"/>
+            <text class="dgm-cap" x="170" y="370">max depth: 3 tiers</text>
+            <text class="dgm-capsub" x="320" y="370">a 4th-tier dispatch is refused by the runtime; every Tier 3 agent is nestable:false</text>
+          </svg>
+          <figcaption>One coordinator, a handful of domain sub-managers, many single-purpose micro-agents: an org chart enforced by the runtime, not by convention.</figcaption>
+        </figure>
         <!-- Tier 1 -->
         <div class="tier tier--1">
           <div class="tier__head">
@@ -372,6 +537,120 @@ node scripts/setup.js</code></pre>
           <li class="flow__step"><div><strong>voltron-evals regrades before merge</strong><span>The harness dispatches the updated agent through the same live MCP path it uses in production, scored by deterministic signals plus a self-preference-controlled Sonnet judge.</span></div></li>
           <li class="flow__step"><div><strong>Human reviews, merges, ships</strong><span>A reviewer approves the diff. On merge, the <code>UserPromptSubmit</code> auto-update hook silently refreshes installed agent files at the next session start.</span></div></li>
         </ol>
+
+        <figure class="diagram diagram--loop" role="img" aria-labelledby="dgm-loop-t dgm-loop-d">
+          <svg viewBox="0 0 760 510" xmlns="http://www.w3.org/2000/svg">
+            <title id="dgm-loop-t">The reflection self-improvement loop</title>
+            <desc id="dgm-loop-d">A clockwise cycle: live sessions submit reflections, which land in the reflections directory, where the CI harness-engineer groups them, edits templates.js, bumps the version, and the auto-update hook refreshes installed agents, feeding the next round of sessions.</desc>
+            <defs>
+              <marker id="arwLoop" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 z" class="dgm-arrowhead"/>
+              </marker>
+            </defs>
+            <circle class="dgm-ring" cx="380" cy="250" r="170"/>
+            <g class="dgm-arrow">
+              <path d="M-7 -6 L8 0 L-7 6 z" transform="translate(465,103) rotate(30)"/>
+              <path d="M-7 -6 L8 0 L-7 6 z" transform="translate(550,250) rotate(90)"/>
+              <path d="M-7 -6 L8 0 L-7 6 z" transform="translate(465,397) rotate(150)"/>
+              <path d="M-7 -6 L8 0 L-7 6 z" transform="translate(295,397) rotate(210)"/>
+              <path d="M-7 -6 L8 0 L-7 6 z" transform="translate(210,250) rotate(270)"/>
+              <path d="M-7 -6 L8 0 L-7 6 z" transform="translate(295,103) rotate(330)"/>
+            </g>
+            <text class="dgm-center" x="380" y="241" text-anchor="middle">Voltron rewrites</text>
+            <text class="dgm-center" x="380" y="263" text-anchor="middle">its own agents</text>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t2" x="305" y="53" width="150" height="54" rx="9"/>
+              <text class="dgm-num" x="314" y="66">1</text>
+              <text class="dgm-label" x="380" y="74" text-anchor="middle">submit_reflection</text>
+              <text class="dgm-sub" x="380" y="93" text-anchor="middle">from live sessions</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t2" x="452" y="138" width="150" height="54" rx="9"/>
+              <text class="dgm-num" x="461" y="151">2</text>
+              <text class="dgm-label" x="527" y="159" text-anchor="middle">reflections/</text>
+              <text class="dgm-sub" x="527" y="178" text-anchor="middle">JSON on disk</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t2" x="452" y="308" width="150" height="54" rx="9"/>
+              <text class="dgm-num" x="461" y="321">3</text>
+              <text class="dgm-label" x="527" y="329" text-anchor="middle">harness-engineer</text>
+              <text class="dgm-sub" x="527" y="348" text-anchor="middle">CI groups feedback</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t2" x="305" y="393" width="150" height="54" rx="9"/>
+              <text class="dgm-num" x="314" y="406">4</text>
+              <text class="dgm-label" x="380" y="414" text-anchor="middle">templates.js</text>
+              <text class="dgm-sub" x="380" y="433" text-anchor="middle">edit agent prose</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t2" x="158" y="308" width="150" height="54" rx="9"/>
+              <text class="dgm-num" x="167" y="321">5</text>
+              <text class="dgm-label" x="233" y="329" text-anchor="middle">version bump</text>
+              <text class="dgm-sub" x="233" y="348" text-anchor="middle">package.json</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t2" x="158" y="138" width="150" height="54" rx="9"/>
+              <text class="dgm-num" x="167" y="151">6</text>
+              <text class="dgm-label" x="233" y="159" text-anchor="middle">auto-update hook</text>
+              <text class="dgm-sub" x="233" y="178" text-anchor="middle">repo refreshed</text>
+            </g>
+          </svg>
+          <figcaption>Production feedback becomes a reviewed pull request that edits the agents themselves: the credibility centerpiece, a loop no other orchestrator closes automatically.</figcaption>
+        </figure>
+
+        <figure class="diagram diagram--eval" role="img" aria-labelledby="dgm-eval-t dgm-eval-d">
+          <svg viewBox="0 0 920 300" xmlns="http://www.w3.org/2000/svg">
+            <title id="dgm-eval-t">The eval harness flow</title>
+            <desc id="dgm-eval-d">An agent under test is dispatched through the live MCP path, producing artifacts that are scored by deterministic programmatic scorers and a voltron-judge in parallel, merged into a scorecard, then turned into a reflection that feeds back into the harness.</desc>
+            <defs>
+              <marker id="arwEval" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 z" class="dgm-arrowhead"/>
+              </marker>
+            </defs>
+            <text class="dgm-anno" x="460" y="26" text-anchor="middle">graded through the same live MCP dispatch path the agent runs in production</text>
+            <g class="dgm-edge">
+              <path d="M170 157 L191 157" marker-end="url(#arwEval)"/>
+              <path d="M345 157 L391 92" marker-end="url(#arwEval)"/>
+              <path d="M345 157 L391 208" marker-end="url(#arwEval)"/>
+              <path d="M585 92 L621 152" marker-end="url(#arwEval)"/>
+              <path d="M585 208 L621 162" marker-end="url(#arwEval)"/>
+              <path d="M775 157 L786 157" marker-end="url(#arwEval)"/>
+            </g>
+            <path class="dgm-ring" d="M850 184 C 850 262 95 262 95 184" marker-end="url(#arwEval)"/>
+            <text class="dgm-anno" x="472" y="258" text-anchor="middle">the scorecard becomes a reflection that feeds the loop</text>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t3" x="20" y="130" width="150" height="54" rx="9"/>
+              <text class="dgm-label" x="95" y="150" text-anchor="middle">agent under test</text>
+              <text class="dgm-sub" x="95" y="168" text-anchor="middle">live MCP dispatch</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node" x="195" y="130" width="150" height="54" rx="9"/>
+              <text class="dgm-label" x="270" y="150" text-anchor="middle">artifacts</text>
+              <text class="dgm-sub" x="270" y="168" text-anchor="middle">diffs, files, logs</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--core" x="395" y="66" width="190" height="52" rx="9"/>
+              <text class="dgm-label" x="490" y="85" text-anchor="middle">programmatic scorers</text>
+              <text class="dgm-sub" x="490" y="103" text-anchor="middle">deterministic signals</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t2" x="395" y="182" width="190" height="52" rx="9"/>
+              <text class="dgm-label" x="490" y="201" text-anchor="middle">voltron-judge</text>
+              <text class="dgm-sub" x="490" y="219" text-anchor="middle">Sonnet, self-pref aware</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--forge" x="625" y="130" width="150" height="54" rx="9"/>
+              <text class="dgm-label" x="700" y="150" text-anchor="middle">scorecard</text>
+              <text class="dgm-sub" x="700" y="168" text-anchor="middle">pass/fail + score</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t1" x="790" y="130" width="120" height="54" rx="9"/>
+              <text class="dgm-label" x="850" y="150" text-anchor="middle">reflection</text>
+              <text class="dgm-sub" x="850" y="168" text-anchor="middle">feeds the loop</text>
+            </g>
+          </svg>
+          <figcaption>Every agent is regression-graded the way it actually runs: dispatched through live MCP, scored by deterministic signals plus a self-preference-controlled judge.</figcaption>
+        </figure>
       </div>
     </section>
 
@@ -393,6 +672,80 @@ node scripts/setup.js</code></pre>
           <strong>Security disclosure: trusted machines only.</strong>
           <p>To make nested dispatch work, <code>/var/run/docker.sock</code> is mounted into every agent container. Inside a container, having that socket is equivalent to root on the host: an agent can launch privileged containers, mount any host path, and read or write anything the Docker daemon can. Only run Voltron on a trusted developer machine, and only with prompts you trust. Do not point it at untrusted user input, public webhooks, or shared CI without a hardened sandbox in front.</p>
         </div>
+
+        <figure class="diagram diagram--beads" role="img" aria-labelledby="dgm-beads-t dgm-beads-d">
+          <svg viewBox="0 0 960 380" xmlns="http://www.w3.org/2000/svg">
+            <title id="dgm-beads-t">A beads dependency graph</title>
+            <desc id="dgm-beads-d">A task DAG where an arrow from one task to another means the first blocks the second. Planning the API unblocks writing types and the migration, which unblock adding the route, which unblocks tests and docs, which unblock opening the pull request. Tasks are marked done, ready, or blocked.</desc>
+            <defs>
+              <marker id="arwBeads" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 z" class="dgm-arrowhead"/>
+              </marker>
+            </defs>
+            <g class="dgm-edge">
+              <path d="M160 190 L228 99" marker-end="url(#arwBeads)"/>
+              <path d="M160 190 L228 281" marker-end="url(#arwBeads)"/>
+              <path d="M370 95 L438 184" marker-end="url(#arwBeads)"/>
+              <path d="M370 285 L438 196" marker-end="url(#arwBeads)"/>
+              <path d="M580 190 L648 99" marker-end="url(#arwBeads)"/>
+              <path d="M580 190 L648 281" marker-end="url(#arwBeads)"/>
+              <path d="M790 95 L808 184" marker-end="url(#arwBeads)"/>
+              <path d="M790 285 L808 196" marker-end="url(#arwBeads)"/>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t1" x="20" y="162" width="140" height="56" rx="8"/>
+              <circle class="dgm-dot--done" cx="38" cy="178" r="5"/>
+              <text class="dgm-num" x="52" y="180">vol-1</text>
+              <text class="dgm-label" x="90" y="201" text-anchor="middle">plan API</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t1" x="230" y="67" width="140" height="56" rx="8"/>
+              <circle class="dgm-dot--done" cx="248" cy="83" r="5"/>
+              <text class="dgm-num" x="262" y="85">vol-2</text>
+              <text class="dgm-label" x="300" y="106" text-anchor="middle">write types</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t3" x="230" y="257" width="140" height="56" rx="8"/>
+              <circle class="dgm-dot--ready" cx="248" cy="273" r="5"/>
+              <text class="dgm-num" x="262" y="275">vol-3</text>
+              <text class="dgm-label" x="300" y="296" text-anchor="middle">migration</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--blocked" x="440" y="162" width="140" height="56" rx="8"/>
+              <circle class="dgm-dot--blocked" cx="458" cy="178" r="5"/>
+              <text class="dgm-num" x="472" y="180">vol-4</text>
+              <text class="dgm-label" x="510" y="201" text-anchor="middle">add route</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--blocked" x="650" y="67" width="140" height="56" rx="8"/>
+              <circle class="dgm-dot--blocked" cx="668" cy="83" r="5"/>
+              <text class="dgm-num" x="682" y="85">vol-5</text>
+              <text class="dgm-label" x="720" y="106" text-anchor="middle">write tests</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--blocked" x="650" y="257" width="140" height="56" rx="8"/>
+              <circle class="dgm-dot--blocked" cx="668" cy="273" r="5"/>
+              <text class="dgm-num" x="682" y="275">vol-6</text>
+              <text class="dgm-label" x="720" y="296" text-anchor="middle">update docs</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--blocked" x="810" y="162" width="140" height="56" rx="8"/>
+              <circle class="dgm-dot--blocked" cx="828" cy="178" r="5"/>
+              <text class="dgm-num" x="842" y="180">vol-7</text>
+              <text class="dgm-label" x="880" y="201" text-anchor="middle">open PR</text>
+            </g>
+            <g>
+              <circle class="dgm-dot--done" cx="210" cy="352" r="5"/>
+              <text class="dgm-capsub" x="222" y="353">done</text>
+              <circle class="dgm-dot--ready" cx="300" cy="352" r="5"/>
+              <text class="dgm-capsub" x="312" y="353">ready</text>
+              <circle class="dgm-dot--blocked" cx="400" cy="352" r="5"/>
+              <text class="dgm-capsub" x="412" y="353">blocked</text>
+              <text class="dgm-capsub" x="520" y="353">arrow: A -&gt; B means A blocks B</text>
+            </g>
+          </svg>
+          <figcaption>Work is a real dependency DAG on a versioned database, not a flat TODO list: what blocks what is first-class, so the planner only ever dispatches ready tasks.</figcaption>
+        </figure>
       </div>
     </section>
 
@@ -464,6 +817,7 @@ node scripts/setup.js</code></pre>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/MotionPathPlugin.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/MorphSVGPlugin.min.js"></script>
   <script src="scripts/centerpiece.js" defer></script>
+  <script src="scripts/diagrams.js" defer></script>
 
 </body>
 </html>

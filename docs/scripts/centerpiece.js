@@ -116,11 +116,9 @@
 
     // Register the free plugins if they loaded; everything degrades if absent.
     var hasMotionPath = !!window.MotionPathPlugin;
-    var hasMorph = !!window.MorphSVGPlugin;
     try {
       var toReg = [];
       if (hasMotionPath) toReg.push(window.MotionPathPlugin);
-      if (hasMorph) toReg.push(window.MorphSVGPlugin);
       if (toReg.length) gsap.registerPlugin.apply(gsap, toReg);
     } catch (e) { /* registration is best-effort */ }
 
@@ -243,23 +241,7 @@
       tl.to(pulse, { opacity: 0, duration: 0.2 }, 1.6);
     }
 
-    // 4) MorphSVG flourish (guarded): a crossbar seed snaps into the unifying
-    //    A-bar of the mark. Purely decorative; absence changes nothing.
-    if (hasMorph) {
-      var bar = document.createElementNS(SVGNS, 'path');
-      bar.setAttribute('d', 'M120 152 L136 152');
-      bar.setAttribute('stroke', 'url(#cpEdgeGrad)');
-      bar.setAttribute('stroke-width', '10');
-      bar.setAttribute('stroke-linecap', 'round');
-      bar.setAttribute('opacity', '0');
-      svg.appendChild(bar);
-      tl.to(bar, { opacity: 0.7, duration: 0.2 }, 1.2);
-      try {
-        tl.to(bar, { duration: 0.5, morphSVG: 'M82 152 L174 152', ease: 'power2.inOut' }, 1.3);
-      } catch (e) { /* morph unavailable -> harmless */ }
-    }
-
-    // 5) Resolve onto the static logo mark: fade the formed graph down to a
+    // 4) Resolve onto the static logo mark: fade the formed graph down to a
     //    faint echo and bring the real logo up.
     tl.to(stage, { opacity: 0.18, duration: 0.6, ease: 'power2.inOut' }, 1.55);
     if (logo) tl.to(logo, { opacity: 1, scale: 1, duration: 0.6, ease: 'power2.out' }, 1.6);

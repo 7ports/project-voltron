@@ -120,6 +120,11 @@ async function checkDockerAvailable() {
   return null;
 }
 
+// Docker image build timeout. Cold builds now include Chromium (heavy), which
+// can exceed two minutes. Configurable via VOLTRON_BUILD_TIMEOUT_MS; defaults
+// to 600000 (10 minutes).
+const BUILD_TIMEOUT_MS = Number(process.env.VOLTRON_BUILD_TIMEOUT_MS) || 600000;
+
 // Build voltron-agent image only when stale or missing.
 // Compares image LastTagTime against Dockerfile mtime — skips rebuild
 // when the image is already current. Eliminates the 30-120s rebuild
@@ -148,8 +153,8 @@ async function ensureVoltronImage(cwd, dockerfilePath) {
     buildProc.stderr?.on("data", (chunk) => { buildStderr += chunk.toString(); });
     const timer = setTimeout(() => {
       buildProc.kill();
-      resolve({ ok: false, error: `Error: Docker build timed out after 120s.\n\n${buildStderr.trim().slice(-2000)}` });
-    }, 120000);
+      resolve({ ok: false, error: `Error: Docker build timed out after ${Math.round(BUILD_TIMEOUT_MS / 1000)}s.\n\n${buildStderr.trim().slice(-2000)}` });
+    }, BUILD_TIMEOUT_MS);
     buildProc.on("close", (code) => {
       clearTimeout(timer);
       if (code !== 0) {

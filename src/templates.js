@@ -9992,6 +9992,24 @@ export const DOCKERFILE_CONTENT =
   "    mkdir -p /home/voltron/.claude && \\\n" +
   "    chown -R voltron:voltron /home/voltron/.claude\n" +
   "\n" +
+  "# v3.17.0: Headless browser toolchain (Playwright + Chromium) so web/front-end\n" +
+  "# agents can actually render and test pages. Previously the image had no browser,\n" +
+  "# so browser-based verification was impossible and web fixes were missed or\n" +
+  "# falsely believed fixed.\n" +
+  "#\n" +
+  "# PLAYWRIGHT_BROWSERS_PATH points at a shared location (NOT the per-user default\n" +
+  "# ~/.cache/ms-playwright) so the Chromium binary installed here as root is usable\n" +
+  "# by the non-root voltron user at runtime. We chown it to voltron afterwards so\n" +
+  "# the agent can also install additional/matching browser versions at runtime.\n" +
+  "# `--with-deps` pulls the OS shared libraries Chromium needs via apt (root-only,\n" +
+  "# hence done at build time). Playwright is pinned for reproducible builds.\n" +
+  "ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright\n" +
+  "RUN mkdir -p /ms-playwright && \\\n" +
+  "    npm install -g playwright@1.49.1 && \\\n" +
+  "    playwright install --with-deps chromium && \\\n" +
+  "    chown -R voltron:voltron /ms-playwright && \\\n" +
+  "    rm -rf /var/lib/apt/lists/*\n" +
+  "\n" +
   "# v3.6.5: Mark /workspace as a safe directory at the system level so git accepts\n" +
   "# the bind-mounted repo even though the host UID owning it differs from the\n" +
   "# voltron container UID. System config (/etc/gitconfig) is preferred over\n" +

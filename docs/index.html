@@ -86,7 +86,7 @@
             </svg>
             <h3>Real isolation, real parallelism</h3>
             <span class="pillar__claim">Every agent gets its own container running the real Claude CLI.</span>
-            <p>Throwaway Docker containers, the actual <code>claude</code> binary, the repo bind-mounted, OAuth credentials read-only. Not an in-process SDK call. Fan out eight agents in one batch call, with a head-start gate that shares one prompt-cache write across the fleet. Tuned to Anthropic prompt-cache economics at the dispatch layer.</p>
+            <p>Throwaway Docker containers, the actual <code>claude</code> binary, the repo bind-mounted, OAuth credentials read-only. Not an in-process SDK call. Each container ships a full toolchain — Node, Python, Ruby, the GitHub CLI, and a headless Chromium via Playwright so web agents can actually render and test pages. Fan out eight agents in one batch call, with a head-start gate that shares one prompt-cache write across the fleet. Tuned to Anthropic prompt-cache economics at the dispatch layer.</p>
           </article>
 
           <article class="pillar card card--accent">

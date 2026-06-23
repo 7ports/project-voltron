@@ -235,6 +235,35 @@ router.get('/api/ais/stream', (req: Request, res: Response) => {
 
 **Never report a clean typecheck without actually running it.** When a task requires `tsc --noEmit` (or any typecheck gate), first confirm the TS compiler AND a `tsconfig.json` are present, then actually run the command (directly or via `typecheck-runner`). If the toolchain is absent, report the gate as UNMET/blocked — do NOT silently skip it or claim success for a check that never ran.
 
+### Browser verification (web/front-end changes)
+
+The agent container ships Playwright with Chromium preinstalled (`PLAYWRIGHT_BROWSERS_PATH` is already set). For any UI or front-end change, verify it in the real headless browser rather than trusting typecheck/lint alone:
+
+1. Build the page or serve it locally, then write a short Playwright script that loads it via a built `file://` path or a locally served `http://localhost` URL.
+2. Assert key elements/state are present (e.g. `await expect(page.locator('selector')).toBeVisible()`).
+3. Listen for console errors (`page.on('console', ...)`) and fail if any appear.
+4. Capture a screenshot artifact under `.voltron/screenshots/` (`await page.screenshot({ path: '.voltron/screenshots/<name>.png' })`).
+
+```js
+const { chromium } = require('playwright');
+(async () => {
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  const errors = [];
+  page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+  await page.goto('file:///workspace/dist/index.html');
+  await page.locator('#app').waitFor({ state: 'visible' });
+  await page.screenshot({ path: '.voltron/screenshots/home.png' });
+  await browser.close();
+  if (errors.length) { console.error('console errors:', errors); process.exit(1); }
+  console.log('browser verification OK');
+})();
+```
+
+### Real browser evidence required before [DONE]
+
+For ANY web/front-end change you report complete, you MUST produce real browser evidence (a passing Playwright assertion and/or a screenshot artifact under `.voltron/screenshots/`) before emitting `[DONE]`. Static greps, typechecks, and lint passing are NOT sufficient to claim a web change works; they survive runtime breakage. If the browser check cannot be run (no build output, no server, missing toolchain), say so explicitly and hand off rather than claiming done.
+
 ### Commit-budget hard rule (prevents turn exhaustion)
 
 Validators that already passed do NOT need to run again at commit time. **When you reach the commit step with max_turns ≤ 5 remaining, stage the files but DO NOT re-run validators — emit a handoff to `committer` with the exact file list.** Re-running a green validation gate is the single most common cause of turn-budget exhaustion: the work is finished, but the agent burns its remaining turns re-confirming what already passed and never reaches the commit. Once your validation gate is green, treat it as green — proceed directly to `committer` and emit your `[DONE]` line before doing anything else.

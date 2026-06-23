@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Validate harness
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies (from lockfile)
+        run: npm ci
+
+      - name: Audit dependencies (report high/critical, non-blocking)
+        run: npm audit --audit-level=high || true
+
+      - name: Syntax gate (node --check)
+        run: node --check src/index.js && node --check src/templates.js
+
+      - name: ESM parse gate (templates)
+        run: node --input-type=module -e "import('./src/templates.js').then(()=>console.log('templates parse OK'))"
+
+      - name: Build APM manifest
+        run: npm run build:apm
+
+      - name: APM manifest drift gate
+        run: git diff --exit-code .apm apm.yml

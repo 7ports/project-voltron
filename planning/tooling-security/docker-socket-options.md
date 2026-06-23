@@ -295,6 +295,82 @@ and it is yours to make.
 
 ---
 
+## Layering Sysbox + socket-proxy
+
+**Short answer for Voltron: in the design Option 3 actually proposes (drop the host socket,
+DooD -> DinD), they are effectively one-or-the-other, not a useful stack. They live at
+different layers and *could* compose in the abstract, but in Voltron's topology a host-side
+proxy guards a door no agent walks through once Sysbox is in.**
+
+### 1. Same layer or different? Different.
+
+They protect different things and do not overlap:
+
+- **Socket-proxy = an API-surface filter.** It sits in front of *a* daemon and allowlists
+  which Docker API calls reach it (permit `containers/create`/`start`/`wait`/`DELETE`, deny
+  `--privileged`, `exec`, arbitrary host binds, build, swarm). It does not change what the
+  daemon *is* or what root means; it narrows the verbs.
+- **Sysbox = a runtime swap.** It changes how the agent container runs so the nested
+  container talks to its **own isolated `dockerd`** instead of the host daemon at all. It
+  does not filter API calls; it removes the host daemon from the path and makes a container
+  escape land in an unprivileged, host-isolated namespace rather than as host root.
+
+So one cuts *which calls* reach a daemon; the other changes *which daemon, at what
+privilege*. Orthogonal axes -- which is exactly why "can I layer them?" is a fair question.
+
+### 2. Is a host-proxy still in the path under Sysbox? No -- it goes moot.
+
+This is the decisive point for Voltron. Today the danger is the host socket bind at
+`src/index.js:1940-1941` plus its `--volumes-from` inheritance down the ~5 real nesters
+(`fullstack-dev`, `csharp-dev`, `qa-tester`, `harness-engineer`, `code-analyst`). Option 3
+Sysbox **removes that bind entirely** (`:1940-1965` drops the socket mount, adds
+`--runtime=sysbox-runc`) and nested `docker run` retargets the container's private daemon.
+Once that is true, the host daemon is no longer reachable from any agent, so a **host-side**
+socket-proxy is filtering traffic that no longer exists. It does not add a second wall; it
+guards an empty corridor. That is the "moot" case: belt-and-suspenders with no second belt.
+
+Conversely, what residual risk does each still cover if you pick only one?
+
+- **Proxy alone (host daemon still shared):** cuts the API surface so a compromised agent
+  cannot `--privileged`, `exec` into siblings, or bind arbitrary host paths. But per Option 2's
+  residual-risk note, `containers/create` + the `/workspace` bind it must still permit is
+  itself a real primitive, and an escape that the daemon honors is still *host* root. Proxy
+  does **not** contain a daemon-level escape.
+- **Sysbox alone:** an escape lands in the inner daemon / unprivileged user, never host root.
+  But within that private daemon the nested agent can still issue any Docker call it likes
+  (`--privileged`, mount its sandbox, spawn siblings) -- Sysbox does **not** filter API verbs,
+  it only bounds the blast radius to the sandbox.
+
+### 3. Recommendation: redundant for the host path, complementary only if relocated.
+
+They are **not** complementary as "host-proxy + Sysbox." They become complementary only if you
+**move the proxy in front of the inner daemon** -- i.e. run the socket-proxy *inside* the
+Sysbox sandbox so the nested agent's calls to its own private `dockerd` are also API-filtered.
+That stack buys exactly one extra thing: it caps what a nested child can do *within its
+already-host-isolated sandbox* (limiting sibling-to-sibling moves among one agent's own
+nested children). Given Sysbox has already cut the escape down from "host root" to
+"unprivileged, sandbox-local," that increment is low-value for Voltron's threat model.
+
+**Decision rule:**
+
+- **Pick one (they are alternatives), if** you are solving the S1 host-socket grant. Sysbox if
+  the goal is "an escape must not be host-root"; proxy if you must keep DooD against the shared
+  host daemon but want its verbs narrowed. Do not pay for both to protect the same host path.
+- **Layer them, only if** (a) you run a **hybrid** where some flows still reach the host daemon
+  (e.g. partial migration, or rootless rather than full Sysbox-DinD) -- then a host-proxy
+  still has live traffic to filter and Sysbox/rootless covers the escape it cannot; or (b) you
+  specifically want API limits on the **inner** daemon, in which case the proxy belongs inside
+  the sandbox, not on the host.
+- **Otherwise it is belt-and-suspenders with no benefit:** full Sysbox-DinD + host-proxy =
+  the proxy filters a path nothing uses.
+
+This refines the sequenced recommendation above: Option 2 then Option 3 is a sensible
+*migration order*, but the **end state is one mechanism**, not both running against the host
+daemon. Option 1 (default-deny) composes cleanly with either and should be kept regardless --
+it reduces *who* nests, which is orthogonal to both the proxy and Sysbox.
+
+---
+
 ## References
 
 - Voltron code: `src/index.js:1940-1965` (socket mount + nesting), `:2166-2172` (depth cap),

@@ -809,13 +809,12 @@ node scripts/setup.js</code></pre>
   </footer>
 
   <!-- ===== Phase-2 animated centerpiece ===== -->
-  <!-- GSAP core + free plugins (MotionPath, MorphSVG) via jsDelivr CDN. Plugins are
+  <!-- GSAP core + free MotionPath plugin via jsDelivr CDN. Plugins are
        best-effort: centerpiece.js guards on each global, and the force-graph in
        section 4 lazy-loads only when it approaches the viewport. If any CDN script
        fails, the static logo / tier SVG baselines remain visible. -->
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/MotionPathPlugin.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/MorphSVGPlugin.min.js"></script>
   <script src="scripts/centerpiece.js" defer></script>
   <script src="scripts/diagrams.js" defer></script>
 

@@ -259,6 +259,35 @@ git status
 ```
 List all modified/untracked files.
 
+### 10. Browser verification (web/front-end work)
+
+The agent container ships Playwright with Chromium preinstalled (`PLAYWRIGHT_BROWSERS_PATH` is already set). For any UI or front-end change under audit, exercise it in the real headless browser, because typecheck, lint, and unit tests survive runtime breakage:
+
+1. Build the page or serve it locally, then write a short Playwright script that loads it via a built `file://` path or a locally served `http://localhost` URL.
+2. Assert key elements/state are present (e.g. `await expect(page.locator('selector')).toBeVisible()`).
+3. Listen for console errors (`page.on('console', ...)`) and fail the check if any appear.
+4. Capture a screenshot artifact under `.voltron/screenshots/` (`await page.screenshot({ path: '.voltron/screenshots/<name>.png' })`) and reference it in your report.
+
+```js
+const { chromium } = require('playwright');
+(async () => {
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  const errors = [];
+  page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+  await page.goto('file:///workspace/dist/index.html');
+  await page.locator('#app').waitFor({ state: 'visible' });
+  await page.screenshot({ path: '.voltron/screenshots/home.png' });
+  await browser.close();
+  if (errors.length) { console.error('console errors:', errors); process.exit(1); }
+  console.log('browser verification OK');
+})();
+```
+
+### Real browser evidence required before [DONE]
+
+For ANY web/front-end change you sign off on, you MUST have real browser evidence (a passing Playwright assertion and/or a screenshot artifact under `.voltron/screenshots/`) before emitting `[DONE]` or a READY-TO-SHIP verdict. Static greps, typechecks, and lint passing are NOT sufficient to claim a web change works. If the browser check cannot be run (no build output, no server, missing toolchain), say so explicitly and hand off rather than claiming done.
+
 ## Reporting Format
 
 ```

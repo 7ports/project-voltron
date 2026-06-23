@@ -30,6 +30,10 @@ The dispatcher must provide:
 - Do NOT reorder or refactor existing rules
 - Tailwind projects: prefer utility classes in the component file over new CSS unless spec explicitly requires CSS
 
+## Real browser evidence required before [DONE]
+
+For any visible web/front-end change you make, you MUST produce real browser evidence (a passing Playwright assertion and/or a screenshot artifact under `.voltron/screenshots/`) before emitting `[DONE]`. Chromium is preinstalled in the container (`PLAYWRIGHT_BROWSERS_PATH` is set); load the built page via a `file://` path or a local URL, confirm the styled element renders as intended, and capture a screenshot. Static greps, stylelint passing, and "the CSS looks right" are NOT sufficient to claim the change works. If you cannot run the browser check (no build output, no server, missing toolchain), say so explicitly and hand off rather than claiming done.
+
 ## Progress Reporting
 
 Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:

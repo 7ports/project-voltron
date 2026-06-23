@@ -3554,6 +3554,35 @@ router.get('/api/ais/stream', (req: Request, res: Response) => {
 
 **Never report a clean typecheck without actually running it.** When a task requires \`tsc --noEmit\` (or any typecheck gate), first confirm the TS compiler AND a \`tsconfig.json\` are present, then actually run the command (directly or via \`typecheck-runner\`). If the toolchain is absent, report the gate as UNMET/blocked — do NOT silently skip it or claim success for a check that never ran.
 
+### Browser verification (web/front-end changes)
+
+The agent container ships Playwright with Chromium preinstalled (\`PLAYWRIGHT_BROWSERS_PATH\` is already set). For any UI or front-end change, verify it in the real headless browser rather than trusting typecheck/lint alone:
+
+1. Build the page or serve it locally, then write a short Playwright script that loads it via a built \`file://\` path or a locally served \`http://localhost\` URL.
+2. Assert key elements/state are present (e.g. \`await expect(page.locator('selector')).toBeVisible()\`).
+3. Listen for console errors (\`page.on('console', ...)\`) and fail if any appear.
+4. Capture a screenshot artifact under \`.voltron/screenshots/\` (\`await page.screenshot({ path: '.voltron/screenshots/<name>.png' })\`).
+
+\`\`\`js
+const { chromium } = require('playwright');
+(async () => {
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  const errors = [];
+  page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+  await page.goto('file:///workspace/dist/index.html');
+  await page.locator('#app').waitFor({ state: 'visible' });
+  await page.screenshot({ path: '.voltron/screenshots/home.png' });
+  await browser.close();
+  if (errors.length) { console.error('console errors:', errors); process.exit(1); }
+  console.log('browser verification OK');
+})();
+\`\`\`
+
+### Real browser evidence required before [DONE]
+
+For ANY web/front-end change you report complete, you MUST produce real browser evidence (a passing Playwright assertion and/or a screenshot artifact under \`.voltron/screenshots/\`) before emitting \`[DONE]\`. Static greps, typechecks, and lint passing are NOT sufficient to claim a web change works; they survive runtime breakage. If the browser check cannot be run (no build output, no server, missing toolchain), say so explicitly and hand off rather than claiming done.
+
 ### Commit-budget hard rule (prevents turn exhaustion)
 
 Validators that already passed do NOT need to run again at commit time. **When you reach the commit step with max_turns ≤ 5 remaining, stage the files but DO NOT re-run validators — emit a handoff to \`committer\` with the exact file list.** Re-running a green validation gate is the single most common cause of turn-budget exhaustion: the work is finished, but the agent burns its remaining turns re-confirming what already passed and never reaches the commit. Once your validation gate is green, treat it as green — proceed directly to \`committer\` and emit your \`[DONE]\` line before doing anything else.
@@ -4600,6 +4629,35 @@ Verify each client URL pattern appears as a mounted path in the server. Mismatch
 git status
 \`\`\`
 List all modified/untracked files.
+
+### 10. Browser verification (web/front-end work)
+
+The agent container ships Playwright with Chromium preinstalled (\`PLAYWRIGHT_BROWSERS_PATH\` is already set). For any UI or front-end change under audit, exercise it in the real headless browser, because typecheck, lint, and unit tests survive runtime breakage:
+
+1. Build the page or serve it locally, then write a short Playwright script that loads it via a built \`file://\` path or a locally served \`http://localhost\` URL.
+2. Assert key elements/state are present (e.g. \`await expect(page.locator('selector')).toBeVisible()\`).
+3. Listen for console errors (\`page.on('console', ...)\`) and fail the check if any appear.
+4. Capture a screenshot artifact under \`.voltron/screenshots/\` (\`await page.screenshot({ path: '.voltron/screenshots/<name>.png' })\`) and reference it in your report.
+
+\`\`\`js
+const { chromium } = require('playwright');
+(async () => {
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  const errors = [];
+  page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+  await page.goto('file:///workspace/dist/index.html');
+  await page.locator('#app').waitFor({ state: 'visible' });
+  await page.screenshot({ path: '.voltron/screenshots/home.png' });
+  await browser.close();
+  if (errors.length) { console.error('console errors:', errors); process.exit(1); }
+  console.log('browser verification OK');
+})();
+\`\`\`
+
+### Real browser evidence required before [DONE]
+
+For ANY web/front-end change you sign off on, you MUST have real browser evidence (a passing Playwright assertion and/or a screenshot artifact under \`.voltron/screenshots/\`) before emitting \`[DONE]\` or a READY-TO-SHIP verdict. Static greps, typechecks, and lint passing are NOT sufficient to claim a web change works. If the browser check cannot be run (no build output, no server, missing toolchain), say so explicitly and hand off rather than claiming done.
 
 ## Reporting Format
 
@@ -9040,6 +9098,10 @@ The dispatcher must provide:
 - Do NOT reorder or refactor existing rules
 - Tailwind projects: prefer utility classes in the component file over new CSS unless spec explicitly requires CSS
 
+## Real browser evidence required before [DONE]
+
+For any visible web/front-end change you make, you MUST produce real browser evidence (a passing Playwright assertion and/or a screenshot artifact under \`.voltron/screenshots/\`) before emitting \`[DONE]\`. Chromium is preinstalled in the container (\`PLAYWRIGHT_BROWSERS_PATH\` is set); load the built page via a \`file://\` path or a local URL, confirm the styled element renders as intended, and capture a screenshot. Static greps, stylelint passing, and "the CSS looks right" are NOT sufficient to claim the change works. If you cannot run the browser check (no build output, no server, missing toolchain), say so explicitly and hand off rather than claiming done.
+
 ## Progress Reporting
 
 Your work is invisible to the orchestrator unless you announce it. Before EVERY tool call you make, print exactly one line in this format on its own line:
@@ -9991,6 +10053,24 @@ export const DOCKERFILE_CONTENT =
   "RUN useradd -m -s /bin/bash voltron && \\\n" +
   "    mkdir -p /home/voltron/.claude && \\\n" +
   "    chown -R voltron:voltron /home/voltron/.claude\n" +
+  "\n" +
+  "# v3.17.0: Headless browser toolchain (Playwright + Chromium) so web/front-end\n" +
+  "# agents can actually render and test pages. Previously the image had no browser,\n" +
+  "# so browser-based verification was impossible and web fixes were missed or\n" +
+  "# falsely believed fixed.\n" +
+  "#\n" +
+  "# PLAYWRIGHT_BROWSERS_PATH points at a shared location (NOT the per-user default\n" +
+  "# ~/.cache/ms-playwright) so the Chromium binary installed here as root is usable\n" +
+  "# by the non-root voltron user at runtime. We chown it to voltron afterwards so\n" +
+  "# the agent can also install additional/matching browser versions at runtime.\n" +
+  "# `--with-deps` pulls the OS shared libraries Chromium needs via apt (root-only,\n" +
+  "# hence done at build time). Playwright is pinned for reproducible builds.\n" +
+  "ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright\n" +
+  "RUN mkdir -p /ms-playwright && \\\n" +
+  "    npm install -g playwright@1.49.1 && \\\n" +
+  "    playwright install --with-deps chromium && \\\n" +
+  "    chown -R voltron:voltron /ms-playwright && \\\n" +
+  "    rm -rf /var/lib/apt/lists/*\n" +
   "\n" +
   "# v3.6.5: Mark /workspace as a safe directory at the system level so git accepts\n" +
   "# the bind-mounted repo even though the host UID owning it differs from the\n" +

@@ -371,6 +371,77 @@ it reduces *who* nests, which is orthogonal to both the proxy and Sysbox.
 
 ---
 
+## Direct benefit of host-daemon access (and the proxy)
+
+> Answers the user's question directly: if Voltron keeps in-container access to the **host**
+> daemon (raw or proxied) instead of going to full Sysbox-DinD (each agent runs its own inner
+> daemon), what feature does it actually gain? Grounded in the real socket wiring
+> (`src/index.js:1945-1968`) and the Glimpse roadmap (`planning/glimpse-integration/upgrade-plan.md`).
+
+### 1. Existing features that depend on in-container host-daemon access
+
+| Capability today | Where in code | Needs the **host** daemon, or any daemon? | Survives Sysbox-DinD? |
+|---|---|---|---|
+| Nested DooD dispatch (sub-manager spawns micro-agents) | socket mount `:1946`; child inherits via `--volumes-from <ownId>` `:1959` | The *act* of nesting needs **a** daemon, not the host one | **Yes** as DinD: child lands in the sub-manager's own inner daemon instead of the host one |
+| `--volumes-from <ownId>` mount inheritance (child reuses `/workspace`, tmp, creds, socket of parent) `:1957-1960` | parent and child must be **on the same daemon** to reference a container by ID | **Host-coupled today** | **No, as written.** Inner daemon does not know the parent container; the `/workspace` bind must be re-expressed as an explicit bind from the agent's own filesystem (the rework Option 3 already flags at `:215-220`) |
+| One shared, pre-built `voltron` image + layer cache for the **whole fleet** | `ensureVoltronImage` builds once on the host; every top-level **and** nested container reuses the cached image with no re-pull | **Host daemon** (single shared image store) | **No.** Each agent's inner daemon starts with an empty store, so nested runs re-pull/rebuild (the per-dispatch "nested image pulls" cost called out at Option 3 residual-risk `:237`) |
+| Flat, host-visible container namespace: host `docker ps` sees every `voltron-*` container, nested ones included | all containers are created on the one shared host daemon | **Host daemon** | **No for nested.** Top-level agent containers stay host-visible (Sysbox is just their runtime), but **nested** children move into per-agent inner daemons and vanish from host `docker ps` |
+
+Net: the only thing that *strictly requires* the host daemon is the **shared image cache** and the
+**single flat container namespace**. Nesting itself (the headline DooD feature, and OD-2's subject)
+does **not** require the host daemon; Sysbox-DinD preserves it.
+
+### 2. Future features uniquely enabled by host-daemon access
+
+Evaluated concretely against Voltron's roadmap:
+
+| Candidate future feature | Needs host daemon specifically? | Notes for Voltron |
+|---|---|---|
+| **Shared image-layer cache across agents** (faster cold builds) | **Yes** | An inner daemon can only share if you bolt on a pull-through registry or a shared overlay. On the host it is free. Directly addresses the Chromium-build pain in the tooling roadmap: a heavy image built once is reused by all; under Sysbox every inner daemon rebuilds it |
+| **Glimpse node liveness for nested containers via host `docker ps`** | **Yes** for the *nested* tier | Glimpse polls the host daemon for `voltron-*` (`glimpse upgrade-plan.md:16,57,100`). The planned `dispatches.jsonl` makes *edges* authoritative under either runtime, but **node liveness still comes from `docker ps`** (`:57,100`). Under Sysbox-DinD nested nodes leave the host daemon, so Glimpse loses live presence for them (it would see edges with no live node) |
+| **Cross-agent visibility / attach / `exec` / `logs` into a sibling agent** | **Yes** | Sibling containers exist only on a shared daemon. Under Sysbox each agent sees only its own inner-daemon children, never another agent's |
+| **Host resource/quota visibility** (`docker stats`, `system df` over the fleet) | **Yes** | An inner daemon only reports its own slice |
+| **Reuse one warm base image / warm container** | **Yes** | Host keeps one warm image for all dispatches; inner daemons cold-start per agent |
+| Depth-bounded recursion, build-and-run an image, run micro-agents | **No** | An inner daemon does all of this; only the *sharing* across the fleet is host-specific |
+
+The pattern: host-daemon access uniquely buys **fleet-wide sharing and observability** (one image
+store, one `docker ps`, sibling reachability). It does **not** uniquely buy the ability to nest.
+
+### 3. The direct benefit of the proxy specifically
+
+**None that is a capability.** A socket-proxy is a pure *risk-reduction wrapper* around host-daemon
+access you would otherwise grant raw. It cannot enable anything that default-deny or Sysbox cannot;
+it only **narrows the verbs** reaching the host daemon. If anything it is in tension with section 2:
+a strict allowlist that blocks `exec`, `attach`, and `stats` (Option 2 denies exactly these, `:140`)
+removes the cross-agent-visibility and host-stat features that are the main reason to want host
+access at all. So the proxy is justified **only** if you have already decided to keep host-daemon
+access for the features in (1)/(2) and want its blast radius cut. It is a wrapper, not a feature.
+
+### 4. Bottom line (ties to OD-2)
+
+Is there a direct, feature-driven reason to keep host-daemon access (proxied) rather than isolate
+with Sysbox? **Yes, but a narrow and optimization-shaped one, not a correctness one.**
+
+- **Broad nested DooD is *not* a required capability in the sense OD-2 asks.** The orchestrator
+  fans out flat from the host (scrum-master runs on the host, not in a container), so the fleet is
+  mostly top-level and host-visible **regardless** of runtime. Genuine in-container recursion is
+  rare (~5 sub-manager roles) and Sysbox-DinD preserves it. Nesting alone does not justify host
+  coupling.
+- **What host-daemon access uniquely enables and Sysbox would not** is **fleet-wide sharing and
+  observability**: a single shared `voltron` image/layer cache and one flat host `docker ps` that
+  covers nested children too. The **single most important** is the **shared image-layer cache** -
+  it directly attacks the cold-build / Chromium-build cost and the per-dispatch inner-daemon pull
+  penalty that Sysbox would reintroduce. The runner-up is **host-visible nested-container liveness
+  for Glimpse**, which Sysbox-DinD breaks while the `dispatches.jsonl` edge log keeps working.
+- **The proxy adds zero features.** It is a safety wrapper around access kept for the above.
+
+Therefore: keep host-daemon access only if the shared-image-cache speedup and whole-fleet Glimpse
+visibility are judged worth the residual risk; if they are, a proxy is the right way to hold that
+access safely. If they are not, Sysbox loses nothing that OD-2 calls "required" - it costs you the
+cache and nested-container `docker ps` visibility, and nothing else.
+
+---
+
 ## References
 
 - Voltron code: `src/index.js:1940-1965` (socket mount + nesting), `:2166-2172` (depth cap),

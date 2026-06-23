@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Tier coordinator">
+  <title>Tier 1 — Coordinator</title>
+  <!-- Single top node directing three reports: the orchestrator crown -->
+  <circle cx="12" cy="4" r="2.5"/>
+  <circle cx="5" cy="20" r="2"/>
+  <circle cx="12" cy="20" r="2"/>
+  <circle cx="19" cy="20" r="2"/>
+  <path d="M12 6.5 L5 18"/>
+  <path d="M12 6.5 L12 18"/>
+  <path d="M12 6.5 L19 18"/>
+</svg>

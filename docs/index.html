@@ -3,940 +3,821 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Project Voltron — Agent Templates for Claude Code</title>
-  <style>
-    :root {
-      --bg: #0d1117;
-      --surface: #161b22;
-      --border: #30363d;
-      --text: #e6edf3;
-      --text-muted: #8b949e;
-      --accent: #58a6ff;
-      --accent-subtle: #1f6feb22;
-      --green: #3fb950;
-      --purple: #bc8cff;
-      --orange: #d29922;
-      --red: #f85149;
-    }
-
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.6;
-    }
-
-    .container { max-width: 960px; margin: 0 auto; padding: 0 24px; }
-
-    /* Hero */
-    .hero {
-      text-align: center;
-      padding: 80px 0 60px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .hero h1 {
-      font-size: 3rem;
-      font-weight: 800;
-      margin-bottom: 16px;
-      background: linear-gradient(135deg, var(--accent), var(--purple));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    .hero p {
-      font-size: 1.25rem;
-      color: var(--text-muted);
-      max-width: 600px;
-      margin: 0 auto 32px;
-    }
-
-    .badge-row {
-      display: flex;
-      gap: 8px;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-
-    .badge {
-      display: inline-block;
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-    }
-
-    /* Section shared */
-    section { padding: 60px 0; border-bottom: 1px solid var(--border); }
-    section h2 { font-size: 1.75rem; margin-bottom: 8px; text-align: center; }
-    .section-sub { text-align: center; color: var(--text-muted); font-size: 0.95rem; margin-bottom: 32px; }
-
-    /* Agent groups */
-    .agent-group { margin-bottom: 40px; }
-    .agent-group-label {
-      font-size: 0.75rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--text-muted);
-      margin-bottom: 12px;
-    }
-
-    .agent-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 12px;
-    }
-
-    .agent-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 20px;
-      transition: border-color 0.2s;
-    }
-
-    .agent-card:hover { border-color: var(--accent); }
-
-    .agent-card h3 {
-      font-size: 1rem;
-      margin-bottom: 4px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .agent-card .invoke {
-      font-size: 0.72rem;
-      color: var(--accent);
-      font-family: monospace;
-      background: var(--accent-subtle);
-      padding: 2px 8px;
-      border-radius: 4px;
-    }
-
-    .agent-card p {
-      color: var(--text-muted);
-      font-size: 0.875rem;
-      margin-top: 6px;
-    }
-
-    /* Install */
-    .steps {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 16px;
-    }
-
-    .step {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 24px;
-    }
-
-    .step-num {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      background: var(--accent);
-      color: var(--bg);
-      font-weight: 700;
-      font-size: 0.85rem;
-      margin-bottom: 12px;
-    }
-
-    .step h3 { font-size: 1rem; margin-bottom: 8px; }
-    .step p { color: var(--text-muted); font-size: 0.9rem; }
-
-    pre {
-      background: #0d1117;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 16px;
-      overflow-x: auto;
-      font-size: 0.82rem;
-      margin-top: 12px;
-    }
-
-    code { font-family: 'SF Mono', 'Fira Code', Consolas, monospace; }
-
-    /* Tools table */
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: var(--surface);
-      border-radius: 12px;
-      overflow: hidden;
-      border: 1px solid var(--border);
-    }
-
-    th, td {
-      text-align: left;
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    th {
-      background: #1c2128;
-      font-size: 0.85rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-muted);
-    }
-
-    td code {
-      color: var(--accent);
-      background: var(--accent-subtle);
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 0.82rem;
-    }
-
-    /* Workflow */
-    .flow {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      max-width: 640px;
-      margin: 0 auto;
-    }
-
-    .flow-step {
-      display: flex;
-      align-items: flex-start;
-      gap: 16px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 16px;
-    }
-
-    .flow-icon {
-      font-size: 1.4rem;
-      min-width: 36px;
-      text-align: center;
-      padding-top: 2px;
-    }
-
-    .flow-step strong { display: block; margin-bottom: 2px; }
-    .flow-step span { color: var(--text-muted); font-size: 0.875rem; }
-
-    .arrow { text-align: center; color: var(--text-muted); font-size: 1.2rem; }
-
-    /* Self-improvement */
-    .loop-diagram {
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-      max-width: 580px;
-      margin: 0 auto;
-    }
-
-    .loop-node {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 14px 20px;
-      text-align: center;
-    }
-
-    .loop-node strong { display: block; font-size: 0.95rem; }
-    .loop-node span { color: var(--text-muted); font-size: 0.825rem; }
-
-    .loop-arrow {
-      text-align: center;
-      color: var(--accent);
-      font-size: 1.1rem;
-      padding: 4px 0;
-    }
-
-    /* Footer */
-    footer {
-      padding: 40px 0;
-      text-align: center;
-      color: var(--text-muted);
-      font-size: 0.85rem;
-    }
-
-    footer a { color: var(--accent); text-decoration: none; }
-    footer a:hover { text-decoration: underline; }
-
-    @media (max-width: 600px) {
-      .hero h1 { font-size: 2rem; }
-      .hero p { font-size: 1rem; }
-    }
-
-
-    .tier-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-top: 1.5rem; }
-    .tier-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1.25rem; }
-    .tier-card h3 { color: #58a6ff; margin-bottom: 0.75rem; font-size: 1rem; }
-    .tier-badge { font-size: 0.7rem; background: #30363d; color: #8b949e; padding: 0.1rem 0.5rem; border-radius: 10px; font-weight: 400; margin-left: 0.4rem; }
-    .tier-card code { display: inline-block; background: #0d1117; border: 1px solid #30363d; border-radius: 4px; padding: 0.1rem 0.4rem; font-size: 0.75rem; margin: 0.15rem; color: #79c0ff; }
-    .tier-inspect { border-top: 3px solid #388bfd; }
-    .tier-write  { border-top: 3px solid #3fb950; }
-    .tier-validate { border-top: 3px solid #d29922; }
-    .tier-publish { border-top: 3px solid #a371f7; }
-  </style>
+  <title>The Voltron Engine: Self-improving agent orchestration for Claude Code</title>
+  <meta name="description" content="Project Voltron is an orchestration engine that drives Claude Code with a real three-tier agent team, with each specialist in its own Docker container, and rewrites its own agents from what it learns in the field.">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="stylesheet" href="styles/tokens.css">
+  <link rel="stylesheet" href="styles/main.css">
 </head>
-<body>
+<body id="top">
 
-  <!-- Hero -->
-  <section class="hero">
-    <div class="container">
-      <h1>Project Voltron</h1>
-      <p>Specialized agent teams for Claude Code, served via MCP. Scaffold Unity, web, or general projects with battle-tested subagent templates — 51 micro-agents, Alexandria-aware, self-improving, and auto-updating.</p>
-      <div class="badge-row">
-        <span class="badge">v3.15.1</span>
-        <span class="badge">MCP Server</span>
-        <span class="badge">Unity</span>
-        <span class="badge">Web / Fullstack</span>
-        <span class="badge">Mobile</span>
-        <span class="badge">64 Agents</span>
-        <span class="badge">Eval Harness</span>
-        <span class="badge">MIT License</span>
-      </div>
-    </div>
-  </section>
+  <!-- Skip link: first focusable element -->
+  <a class="skip-link" href="#main">Skip to main content</a>
 
-  <!-- Docker Execution -->
-  <section>
-    <div class="container">
-      <h2>Docker Execution</h2>
-      <p class="section-sub">The scrum-master launches each specialist agent inside a Docker container with <code>--dangerously-skip-permissions</code> via the <code>run_agent_in_docker</code> MCP tool. You run Claude Code normally on your desktop — Docker is handled behind the scenes. For parallel work, the scrum-master uses <code>run_agent_in_docker_batch</code> to dispatch multiple agents in a single MCP call.</p>
-
-      <div class="flow">
-        <div class="flow-step">
-          <div class="flow-icon">🎯</div>
-          <div>
-            <strong>Scrum-master creates a work plan</strong>
-            <span>Plans tasks, assigns agents, registers progress. Checks that Docker is available and <code>Dockerfile.voltron</code> exists.</span>
-          </div>
-        </div>
-        <div class="arrow">↓</div>
-        <div class="flow-step">
-          <div class="flow-icon">🐳</div>
-          <div>
-            <strong>Calls <code>run_agent_in_docker</code> for each task</strong>
-            <span>The tool builds the image (cached), mounts the project + OAuth credentials, composes the prompt from the agent template + CLAUDE.md + task description, and launches Claude Code inside the container.</span>
-          </div>
-        </div>
-        <div class="arrow">↓</div>
-        <div class="flow-step">
-          <div class="flow-icon">⚡</div>
-          <div>
-            <strong>Agent executes autonomously</strong>
-            <span>Inside Docker with <code>--dangerously-skip-permissions</code> — creates files, runs tests, fixes errors, iterates — with zero manual approval prompts. File changes are visible on the host via volume mount.</span>
-          </div>
-        </div>
-        <div class="arrow">↓</div>
-        <div class="flow-step">
-          <div class="flow-icon">✅</div>
-          <div>
-            <strong>Output returned to scrum-master</strong>
-            <span>Scrum-master reviews the result, updates progress, and proceeds to the next task.</span>
-          </div>
+  <!-- ============ Section 0: Sticky nav ============ -->
+  <header>
+    <nav class="site-nav" aria-label="Primary">
+      <div class="container site-nav__inner">
+        <a class="site-nav__brand" href="#top" aria-label="Project Voltron, home">
+          <img src="assets/logo.svg" alt="" width="28" height="28">
+          <span>Project&nbsp;Voltron</span>
+        </a>
+        <ul class="site-nav__links">
+          <li><a href="#pillars">Why</a></li>
+          <li><a href="#glimpse">Glimpse</a></li>
+          <li><a href="#install">Install</a></li>
+          <li><a href="#team">Team</a></li>
+          <li><a href="#engine">The Engine</a></li>
+          <li><a href="#tools">Reference</a></li>
+        </ul>
+        <div class="site-nav__cta">
+          <a class="btn" href="https://github.com/7ports/project-voltron">GitHub</a>
+          <a class="btn btn--primary" href="#install">Install</a>
         </div>
       </div>
+    </nav>
+  </header>
 
-      <div class="loop-diagram" style="margin-top: 32px;">
-        <div class="loop-node">
-          <strong>Why Docker?</strong>
-          <span>Docker provides OS-level isolation from your host system, making <code>--dangerously-skip-permissions</code> safe to use. Agents can create files, run tests, install packages, and iterate on errors without any human gating — while your host stays protected.</span>
+  <main id="main">
+
+    <!-- ============ Section 1: Hero ============ -->
+    <section id="hero" class="hero" aria-labelledby="hero-title">
+      <div class="container">
+        <!-- Phase-2 animated centerpiece attaches here. Static logo is the Phase-1 baseline. -->
+        <div id="hero-centerpiece" class="hero__centerpiece" data-centerpiece="logo">
+          <img src="assets/logo.svg" alt="The Voltron Engine logo: a V/A ambigram of units converging into one core" width="224" height="224">
         </div>
-        <div class="loop-node" style="margin-top: 12px;">
-          <strong>No workflow change needed</strong>
-          <span>Run Claude Code normally on your desktop. The scrum-master handles Docker automatically — just ensure Docker is installed and running, and <code>Dockerfile.voltron</code> exists (generated by <code>scaffold_project</code>).</span>
+        <h1 id="hero-title" class="hero__title text-gradient">V for all and All for one</h1>
+        <p class="hero__tagline">Many agents. One engine. An orchestration engine that drives Claude Code and rewrites its own playbook.</p>
+        <p class="hero__subline">One coordinator. Fifty-one specialists. Real containers.</p>
+        <div class="hero__actions">
+          <a class="btn btn--primary" href="#install">Get started</a>
+          <a class="btn" href="https://github.com/7ports/project-voltron">View on GitHub</a>
         </div>
       </div>
+    </section>
 
-      <h3 style="margin-top: 40px;">Unity Editor exception: auto-orchestration via Agent tool</h3>
-      <p class="section-sub" style="margin-top: 8px;"><strong><code>run_agent_in_docker</code> remains the primary dispatch path</strong> — Docker, isolated, parallel-safe — for >95% of work across all project types. Unity projects have one narrow exception: four Editor-bound managers need a live Unity Editor with Coplay MCP, which Docker cannot provide. The scrum-master dispatches those managers from the host via the built-in <code>Agent</code> tool instead.</p>
+    <!-- ============ Section 2: One-line "what is this" ============ -->
+    <section id="what" class="section whatis" aria-label="What is Project Voltron">
+      <div class="container">
+        <p>Project Voltron is an orchestration engine that drives Claude Code with a real three-tier agent team, with each specialist running in its own Docker container, and then grades and rewrites those agents from what it learns in the field.</p>
+      </div>
+    </section>
 
-      <div class="loop-diagram" style="margin-top: 16px;">
-        <div class="loop-node">
-          <strong>Editor-exception managers (4)</strong>
-          <span><code>scene-architect</code> (scene hierarchy, prefabs, components), <code>build-validator</code> (Play Mode, console, compile state), and the Editor-preview slices of <code>shader-artist</code> (visual material/shader preview) and <code>asset-manager</code> (texture/audio/mesh import settings). All four are dispatched via the <code>Agent</code> tool, run on the host, and use Coplay MCP to drive the live Editor.</span>
-        </div>
-        <div class="loop-node" style="margin-top: 12px;">
-          <strong>File-only Unity work still goes through Docker</strong>
-          <span>C# script writing/refactoring (<code>csharp-dev</code>), shader code edits (<code>.shader</code>/<code>.hlsl</code>/<code>.shadergraph</code>), <code>Packages/manifest.json</code> updates, <code>asmdef</code> edits, and folder/asset structure changes are all dispatched via <code>run_agent_in_docker</code>. If a task can be expressed as file edits without live Editor feedback, it is Docker work.</span>
-        </div>
-        <div class="loop-node" style="margin-top: 12px;">
-          <strong>Web/general projects: no exception</strong>
-          <span>Every agent in a web, fullstack, or general-purpose project goes through <code>run_agent_in_docker</code>. The Editor exception is Unity-only.</span>
+    <!-- ============ Section 3: Three Pillars ============ -->
+    <section id="pillars" class="section" aria-labelledby="pillars-title">
+      <div class="container">
+        <h2 id="pillars-title" class="section__title">Three Pillars</h2>
+
+        <div class="grid grid--3">
+          <article class="pillar card card--accent">
+            <svg class="pillar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Compose, don't prompt">
+              <path d="M4 5 L11 11"/><path d="M4 19 L11 13"/><path d="M13 12 L20 12"/>
+              <circle cx="12" cy="12" r="2.5"/><circle cx="4" cy="5" r="1.5"/><circle cx="4" cy="19" r="1.5"/><circle cx="20" cy="12" r="1.5"/>
+            </svg>
+            <h3>Compose, don't prompt</h3>
+            <span class="pillar__claim">A real org chart, enforced in code.</span>
+            <p>A depth-bounded three-tier hierarchy (coordinator → sub-manager → micro-agent) capped at depth 3 by the runtime, not by convention. Sub-managers compose single-verb micro-agents; the "never DIY" rule is baked into every template. 73 templates, 73 jobs, zero improvised monoliths.</p>
+          </article>
+
+          <article class="pillar card card--accent">
+            <svg class="pillar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Real isolation, real parallelism">
+              <rect x="3" y="3" width="18" height="18" rx="3"/><rect x="8" y="8" width="8" height="8" rx="1.5"/>
+            </svg>
+            <h3>Real isolation, real parallelism</h3>
+            <span class="pillar__claim">Every agent gets its own container running the real Claude CLI.</span>
+            <p>Throwaway Docker containers, the actual <code>claude</code> binary, the repo bind-mounted, OAuth credentials read-only. Not an in-process SDK call. Fan out eight agents in one batch call, with a head-start gate that shares one prompt-cache write across the fleet. Tuned to Anthropic prompt-cache economics at the dispatch layer.</p>
+          </article>
+
+          <article class="pillar card card--accent">
+            <svg class="pillar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="It improves itself">
+              <path d="M20 5 A8 8 0 1 0 21 12"/><path d="M20 5 L20 10 L15 10"/><path d="M8 14 L11 11 L13 13 L16 9"/>
+            </svg>
+            <h3>It improves itself</h3>
+            <span class="pillar__claim">Voltron rewrites its own agents and grades them before they ship.</span>
+            <p>After each production session, agents submit structured reflections. A CI job runs the harness-engineer agent, which edits <code>src/templates.js</code>, bumps the version, and opens a PR. Before any updated agent ships, the voltron-evals harness regrades it through the same live dispatch path it uses in production. No other orchestrator self-modifies through a reviewed, regression-graded pipeline.</p>
+          </article>
         </div>
       </div>
+    </section>
 
-      <div class="loop-diagram" style="margin-top: 16px;">
-        <div class="loop-node">
-          <strong>Managers compose micro-agents — they never write files directly</strong>
-          <span>Sub-managers like <code>csharp-dev</code>, <code>fullstack-dev</code>, <code>qa-tester</code>, <code>devops-engineer</code>, <code>scene-architect</code>, <code>shader-artist</code>, <code>build-validator</code>, and <code>asset-manager</code> are orchestrators. For every file change, they dispatch the matching Tier-3 micro-agent (e.g. <code>csharp-script-writer</code>, <code>route-adder</code>, <code>test-writer</code>, <code>config-editor</code>) via <code>run_agent_in_docker</code>. This is the STOP RULE in every sub-manager template — managers never DIY.</span>
+    <!-- ============ Section 4: "See it run" living dispatch graph ============ -->
+    <section id="dispatch" class="section" aria-labelledby="dispatch-title">
+      <div class="container">
+        <p class="section__eyebrow">See it run</p>
+        <h2 id="dispatch-title" class="section__title">The living dispatch graph</h2>
+        <p class="section__lead">This is literally how work flows through the engine: one coordinator fans out to domain sub-managers, which dispatch single-purpose micro-agents. In Phase&nbsp;2 this becomes an interactive force graph with live dispatch pulses; for now, the static topology.</p>
+
+        <figure id="dispatch-graph-canvas" class="dispatch-graph" data-graph="tier-topology" data-forcegraph-src="https://cdn.jsdelivr.net/npm/force-graph">
+          <!-- Phase-2 force-graph mounts here. Static tier SVG is the Phase-1 baseline. -->
+          <svg viewBox="0 0 720 300" role="img" aria-label="Tier topology: one coordinator dispatches to three sub-managers, which dispatch to many micro-agents">
+            <title>Voltron dispatch topology: coordinator to sub-managers to micro-agents</title>
+            <!-- edges -->
+            <g stroke="var(--border)" stroke-width="2" fill="none">
+              <path d="M360 50 L180 140"/><path d="M360 50 L360 140"/><path d="M360 50 L540 140"/>
+              <path d="M180 140 L120 240"/><path d="M180 140 L180 240"/><path d="M180 140 L240 240"/>
+              <path d="M360 140 L320 240"/><path d="M360 140 L400 240"/>
+              <path d="M540 140 L480 240"/><path d="M540 140 L540 240"/><path d="M540 140 L600 240"/>
+            </g>
+            <!-- tier 1 -->
+            <circle cx="360" cy="50" r="16" fill="var(--tier-1)"/>
+            <text x="360" y="26" fill="var(--text)" font-size="13" text-anchor="middle" font-family="var(--font-mono)">coordinator</text>
+            <!-- tier 2 -->
+            <g fill="var(--tier-2)">
+              <circle cx="180" cy="140" r="12"/><circle cx="360" cy="140" r="12"/><circle cx="540" cy="140" r="12"/>
+            </g>
+            <text x="360" y="118" fill="var(--text-muted)" font-size="12" text-anchor="middle" font-family="var(--font-mono)">sub-managers</text>
+            <!-- tier 3 -->
+            <g fill="var(--tier-3)">
+              <circle cx="120" cy="240" r="8"/><circle cx="180" cy="240" r="8"/><circle cx="240" cy="240" r="8"/>
+              <circle cx="320" cy="240" r="8"/><circle cx="400" cy="240" r="8"/>
+              <circle cx="480" cy="240" r="8"/><circle cx="540" cy="240" r="8"/><circle cx="600" cy="240" r="8"/>
+            </g>
+            <text x="360" y="272" fill="var(--text-muted)" font-size="12" text-anchor="middle" font-family="var(--font-mono)">micro-agents</text>
+          </svg>
+          <figcaption>1 → N → 51: the real tier graph. Tier colors mean tier-1 / tier-2 / tier-3 everywhere on this page.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ============ Section 4b: voltron-glimpse (the live, runnable graph) ============ -->
+    <section id="glimpse" class="section" aria-labelledby="glimpse-title">
+      <div class="container">
+        <p class="section__eyebrow">See it for real</p>
+        <h2 id="glimpse-title" class="section__title">voltron-glimpse: the dispatch graph, alive</h2>
+        <p class="section__lead">The topology above is the map. <strong>voltron-glimpse</strong> is the territory: a real-time, read-only visualizer you run at the root of any Voltron project. A browser opens to a live animated graph of the agents whose Docker containers are running right now, plus the dispatch connections inferred between them. No setup, no writes, no history. Just a window onto what the engine is doing this second.</p>
+
+        <div class="glimpse-gallery">
+          <figure class="glimpse-shot">
+            <img src="assets/glimpse/glimpse-1.png" loading="lazy" width="453" height="447" alt="voltron-glimpse close view: a green Docker-connected badge sits at the top while the PROJECT-ALEXANDRIA panel shows two green fullstack-dev micro-agents marked working, each linked by dashed green dispatch edges to a cyan scrum-master node. A separate PROJECT-VOLTRON panel holds a yellow scrum-master, and a VOLTRON-GLIMPSE panel holds a blue scrum-master. A legend keys live state, tier size, and inferred edges.">
+            <figcaption>A single dispatch wave up close: micro-agents pulse green while working, linked by dashed edges to their scrum-master hub.</figcaption>
+          </figure>
+          <figure class="glimpse-shot">
+            <img src="assets/glimpse/glimpse-2.png" loading="lazy" width="627" height="319" alt="voltron-glimpse zoomed out: three project graphs are visible at once, with a large active PROJECT-VOLTRON graph centered. A green Tier 1 orchestrator fans dashed dispatch edges down to a yellow scrum-master and other nodes, while smaller VOLTRON-GLIMPSE and PROJECT-ALEXANDRIA graphs sit above. The left legend lists live state, tier sizes, edges, and the active projects.">
+            <figcaption>Several projects at once: node size encodes tier, so the shape of each dispatch wave reads at a glance.</figcaption>
+          </figure>
+          <figure class="glimpse-shot">
+            <img src="assets/glimpse/glimpse-3.png" loading="lazy" width="627" height="319" alt="voltron-glimpse multi-project overview: a cyan PROJECT-ALEXANDRIA scrum-master with green micro-agents sits top right, a VOLTRON-GLIMPSE panel sits left, and below a large PROJECT-VOLTRON graph shows a yellow scrum-master hub fanning dashed edges out to several Tier 3 micro-agent nodes, both green squares and circles.">
+            <figcaption>A scrum-master hub fanning work out to a fleet of Tier 3 micro-agents across live containers.</figcaption>
+          </figure>
+        </div>
+
+        <div class="grid grid--3">
+          <article class="component card"><h3>One node per live container</h3><p>Every running <code>voltron-*</code> container becomes a node. Nodes pulse vivid green while working, then flash green for a clean exit or red for an error before fading out. The graph empties as the fleet finishes.</p></article>
+          <article class="component card"><h3>Size encodes tier</h3><p>Node size maps to the same tier model as the rest of this page: Tier 1 orchestrators are largest, Tier 3 micro-agents smallest. The shape of a dispatch wave is legible at a glance.</p></article>
+          <article class="component card"><h3>Inferred dispatch edges</h3><p>Dashed edges run from a synthetic scrum-master hub with a marching-ants animation, reconstructed from container timing. Hover or click any node for a detail card: agent name, container, dispatch time, the current <code>[STEP N]</code> or <code>[DONE]</code> from the log tail, and exit code.</p></article>
+        </div>
+
+        <p class="section__lead">Run it with no install at the root of a project that is dispatching agents:</p>
+        <pre class="code-block"><code>npx github:7ports/voltron-glimpse  <span class="code-comment"># opens http://127.0.0.1:7424</span></code></pre>
+        <p>Prefer it on your PATH? <code>npm install -g github:7ports/voltron-glimpse</code>, then run <code>voltron-glimpse</code> at any project root. Node&nbsp;20+ and Docker are required for the primary live mode.</p>
+
+        <div class="hero__actions">
+          <a class="btn btn--primary" href="https://github.com/7ports/voltron-glimpse">voltron-glimpse on GitHub</a>
+          <a class="btn" href="#install">Install Voltron first</a>
+        </div>
+
+        <div class="callout" role="note">
+          <strong>Honest about what it is.</strong>
+          <p>voltron-glimpse is strictly read-only: it never touches <code>.voltron/</code> or <code>.beads/</code>. It is present-tense only, showing what is live now rather than replaying history. Dispatch edges are inferred from container timing, not declared by the agents. And it binds to localhost with no auth and no remote exposure, so it stays a tool for the trusted machine where your agents already run.</p>
         </div>
       </div>
+    </section>
 
-      <h3 style="margin-top: 40px;">Nested 3-tier dispatch (v3.8.0)</h3>
-      <p class="section-sub" style="margin-top: 8px;">A containerized sub-manager or <code>harness-engineer</code> can now dispatch its own Tier-3 micro-agents via <code>run_agent_in_docker</code> — end to end, from inside a container. The scrum-master no longer has to flatten work plans to a single tier; sub-managers running in Docker drive the micro-agents that do the file edits, and the chain bottoms out cleanly because Tier-3 agents are marked <code>nestable: false</code>.</p>
+    <!-- ============ Section 5: Quickstart / Install ============ -->
+    <section id="install" class="section" aria-labelledby="install-title">
+      <div class="container">
+        <p class="section__eyebrow">Quickstart</p>
+        <h2 id="install-title" class="section__title">Three commands from zero to a full agent team</h2>
+        <p class="section__lead">Prerequisites: <strong>Docker</strong> installed and running (specialists execute in containers), and <a href="https://github.com/gastownhall/beads">beads</a> for dependency-aware task tracking. You run Claude Code normally on your desktop, and Docker is handled behind the scenes.</p>
 
-      <div class="loop-diagram" style="margin-top: 16px;">
-        <div class="loop-node">
-          <strong>How it works</strong>
-          <span>The MCP server resolves host paths via <code>VOLTRON_HOST_ROOT</code> / <code>VOLTRON_HOST_HOME</code> / <code>VOLTRON_HOST_TMPDIR</code> so the inner <code>docker run</code> sees the real host filesystem, mounts the Docker socket into the container, generates a <code>container-mcp.json</code> at launch so the nested Claude Code has its own project-voltron MCP, and enforces a depth cap that refuses a 4th tier.</span>
-        </div>
-        <div class="loop-node" style="margin-top: 12px;">
-          <strong>Security disclosure — trusted machines only</strong>
-          <span>To make nested dispatch work, <code>/var/run/docker.sock</code> is mounted into every agent container. Inside a container, having that socket is equivalent to root on the host: an agent can launch privileged containers, mount any host path, and read/write anything the Docker daemon can. <strong>Only run Voltron on a trusted developer machine, and only with prompts you trust.</strong> Do not point this at untrusted user input, public webhooks, or shared CI without a hardened sandbox in front.</span>
-        </div>
-        <div class="loop-node" style="margin-top: 12px;">
-          <strong>Depth cap</strong>
-          <span>Sub-managers may dispatch micro-agents (Tier-2 → Tier-3) but micro-agents cannot dispatch further. The depth-cap guard in <code>run_agent_in_docker</code> refuses any 4th-tier launch, and every Tier-3 template is tagged <code>nestable: false</code> so the orchestrator surfaces the misuse instead of silently failing inside the container.</span>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Progress Tracking -->
-  <section>
-    <div class="container">
-      <h2>Progress Tracking</h2>
-      <p class="section-sub">Monitor agent work in real time. The scrum-master tracks every task and surfaces status updates in the chat window.</p>
-
-      <div class="flow">
-        <div class="flow-step">
-          <div class="flow-icon">📊</div>
-          <div>
-            <strong>Automatic tracking</strong>
-            <span>Scrum-master calls <code>update_progress</code> before and after each agent invocation — status, phase, and notes are recorded to <code>.voltron/progress.json</code></span>
-          </div>
-        </div>
-        <div class="arrow">↓</div>
-        <div class="flow-step">
-          <div class="flow-icon">💬</div>
-          <div>
-            <strong>In-chat view</strong>
-            <span>Call <code>get_progress</code> at any time to see a formatted summary or detailed task table directly in the Claude Code chat window.</span>
-          </div>
-        </div>
-      </div>
-
-      <div style="margin-top: 32px;">
-        <table>
-          <thead>
-            <tr>
-              <th>MCP Tool</th>
-              <th>Purpose</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><code>update_progress</code></td>
-              <td>Log a task status change (queued, in_progress, completed, failed, blocked).</td>
-            </tr>
-            <tr>
-              <td><code>get_progress</code></td>
-              <td>View a formatted progress summary or detailed task table in the chat window.</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </section>
-
-  <!-- Agents -->
-  <section class="agents">
-    <div class="container">
-      <h2>The Agent Teams</h2>
-      <p class="section-sub">Scaffold the right team for your project type. Every project gets a scrum-master coordinator.</p>
-
-      <div class="agent-group">
-        <div class="agent-group-label">Core — all projects</div>
-        <div class="agent-grid">
-          <div class="agent-card">
-            <h3>Scrum Master <span class="invoke">/scrum-master</span> <span style="font-size: 0.7em; opacity: 0.7;">(slash command)</span></h3>
-            <p>Reads backlogs and project plans, breaks work into agent-sized tasks with dependencies and acceptance criteria. Never implements — only plans and delegates. Runs in the <strong>main Claude Code session</strong> (not as a subagent) so it can stream agent output and channel communication directly in your chat. Uses <a href="https://github.com/gastownhall/beads">beads</a> (<code>bd ready --json</code>) for dependency-aware task orchestration when available.</p>
-          </div>
-          <div class="agent-card">
-            <h3>Project Planner <span class="invoke">@agent-project-planner</span></h3>
-            <p>Researches tech stacks, designs architecture, defines data models and API contracts. Produces comprehensive project plans for scrum-master to decompose.</p>
-          </div>
-          <div class="agent-card">
-            <h3>Researcher <span class="invoke">@agent-researcher</span></h3>
-            <p>Deep research specialist. Finds any information — technical docs, APIs, pricing, competitors, legal text, community consensus — using web search, live page navigation, and structured extraction.</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="agent-group">
-        <div class="agent-group-label">Unity</div>
-        <div class="agent-grid">
-          <div class="agent-card">
-            <h3>Scene Architect <span class="invoke">@agent-scene-architect</span></h3>
-            <p>GameObject hierarchy, prefabs, scene composition, transforms, and components. Requires live Unity Editor — invoke directly from the chat window, not via Docker.</p>
-          </div>
-          <div class="agent-card">
-            <h3>C# Dev <span class="invoke">@agent-csharp-dev</span></h3>
-            <p>MonoBehaviours, ScriptableObjects, gameplay systems, and editor tools. Writes clean, performant Unity C#. Docker-compatible for file editing; defers compilation verification to build-validator.</p>
-          </div>
-          <div class="agent-card">
-            <h3>Shader Artist <span class="invoke">@agent-shader-artist</span></h3>
-            <p>Shaders, materials, VFX Graph, post-processing, and render features. Knows URP, HDRP, and Built-in. File editing in Docker; visual preview requires direct invocation.</p>
-          </div>
-          <div class="agent-card">
-            <h3>Build Validator <span class="invoke">@agent-build-validator</span></h3>
-            <p>Console monitoring, compile checks, Play Mode smoke tests, pre-commit validation. Requires live Unity Editor — invoke directly from the chat window, not via Docker.</p>
-          </div>
-          <div class="agent-card">
-            <h3>Asset Manager <span class="invoke">@agent-asset-manager</span></h3>
-            <p>Folder structure, import settings, naming conventions, and project audits. Folder/manifest work in Docker; import settings require direct invocation.</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="agent-group">
-        <div class="agent-group-label">Web / Fullstack</div>
-        <div class="agent-grid">
-          <div class="agent-card">
-            <h3>Fullstack Dev <span class="invoke">@agent-fullstack-dev</span></h3>
-            <p>React/TypeScript frontend and Node.js/Express backend. Handles components, APIs, hooks, and data flow.</p>
-          </div>
-          <div class="agent-card">
-            <h3>DevOps Engineer <span class="invoke">@agent-devops-engineer</span></h3>
-            <p>Terraform, CI/CD pipelines, Docker, Fly.io, and AWS. Infrastructure as code and deployment automation.</p>
-          </div>
-          <div class="agent-card">
-            <h3>UI Designer <span class="invoke">@agent-ui-designer</span></h3>
-            <p>CSS architecture, responsive and mobile-first layouts, theming, PWA manifests, and accessibility.</p>
-          </div>
-          <div class="agent-card">
-            <h3>QA Tester <span class="invoke">@agent-qa-tester</span></h3>
-            <p>Vitest/Playwright tests, Lighthouse audits, bundle size analysis, and quality gates before merging.</p>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </section>
-
-  <!-- Micro-agent Catalog -->
-  <section class="micro-catalog">
-    <div class="container">
-      <h2>Micro-Agent Catalog <span class="badge" style="font-size:0.7rem;vertical-align:middle">v3.0 new</span></h2>
-      <p class="section-sub">51 focused workers across four layers — each does one verb on one noun. Composed by sub-managers or dispatched directly by scrum-master for trivial tasks.</p>
-      <div class="tier-grid">
-        <div class="tier-card tier-inspect">
-          <h3>Inspect <span class="tier-badge">Read-only · 11 agents</span></h3>
-          <code>dep-reader</code> <code>route-lister</code> <code>schema-inspector</code> <code>log-tailer</code> <code>test-lister</code> <code>lint-reader</code> <code>type-error-reader</code> <code>git-state-reader</code> <code>api-shape-probe</code> <code>bundle-sizer</code> <code>dead-code-finder</code>
-        </div>
-        <div class="tier-card tier-write">
-          <h3>Write <span class="tier-badge">Code-producing · 24 agents</span></h3>
-          <code>route-adder</code> <code>component-scaffolder</code> <code>test-writer</code> <code>migration-writer</code> <code>config-editor</code> <code>fixture-writer</code> <code>type-definer</code> <code>env-var-setter</code> <code>dockerfile-editor</code> <code>yaml-patcher</code> <code>readme-section-writer</code>
-          <code>function-writer</code> <code>middleware-writer</code> <code>store-slice-writer</code> <code>css-writer</code> <code>design-token-writer</code>
-          <code>csharp-script-writer</code> <code>csharp-member-adder</code> <code>unity-manifest-editor</code>
-          <code>ci-workflow-writer</code> <code>docker-compose-editor</code>
-          <code>test-config-writer</code> <code>mock-writer</code> <code>file-patch-runner</code>
-        </div>
-        <div class="tier-card tier-validate">
-          <h3>Validate <span class="tier-badge">Check-only · 10 agents</span></h3>
-          <code>typecheck-runner</code> <code>test-runner</code> <code>lint-runner</code> <code>build-runner</code> <code>schema-validator</code> <code>url-route-matcher</code> <code>accessibility-auditor</code> <code>lighthouse-runner</code> <code>security-scanner</code> <code>coverage-runner</code>
-        </div>
-        <div class="tier-card tier-publish">
-          <h3>Publish <span class="tier-badge">Side-effects · 6 agents</span></h3>
-          <code>committer</code> <code>pr-opener</code> <code>branch-manager</code> <code>deploy-trigger</code> <code>app-store-uploader</code> <code>changelog-updater</code>
-        </div>
-      </div>
-      <h3 style="color:#58a6ff;margin-top:2rem;font-size:1rem">Tier-1 Coordinators <span class="tier-badge" style="background:#1f2937;color:#8b949e;padding:0.15rem 0.5rem;border-radius:10px;font-size:0.7rem">v3.1 new</span></h3>
-      <p style="color:#8b949e;font-size:0.875rem;margin:0.5rem 0 1rem">Two specialist coordinators join scrum-master at Tier 1.</p>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem">
-        <div class="tier-card" style="border-top:3px solid #58a6ff">
-          <h3 style="color:#58a6ff">code-analyst</h3>
-          <p style="color:#8b949e;font-size:0.85rem">Directs all 11 Inspect-layer micro-agents to audit a codebase — coverage gaps, dead code, API shapes, dependency health. Produces persisted reports in <code>.voltron/analyses/</code>. Invoke before non-trivial implementation work.</p>
-        </div>
-        <div class="tier-card" style="border-top:3px solid #3fb950">
-          <h3 style="color:#3fb950">doc-writer</h3>
-          <p style="color:#8b949e;font-size:0.85rem">Owns all prose documentation — README, CHANGELOG, ADRs, API reference, Mermaid diagrams. Dispatches <code>adr-writer</code>, <code>api-doc-generator</code>, and <code>diagram-maker</code>. Writes end-of-session recaps.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Dynamic Model Selection -->
-  <section style="background:#161b22;padding:3rem 0;border-top:1px solid #21262d">
-    <div class="container">
-      <h2>Dynamic Model Selection <span class="badge" style="font-size:0.7rem;vertical-align:middle">v3.5 new</span></h2>
-      <p class="section-sub">Voltron assigns each agent a default model tier. Override per-invocation when higher quality or speed is needed.</p>
-      <div class="tier-grid">
-        <div class="tier-card" style="border-top:3px solid #a371f7">
-          <h3 style="color:#a371f7">Opus <span class="tier-badge">Coordinators &amp; Planners · 5 agents</span></h3>
-          <p style="color:#8b949e;font-size:0.85rem">Highest capability. Used by <code>scrum-master</code>, <code>project-planner</code>, <code>code-analyst</code>, <code>doc-writer</code>, and <code>harness-engineer</code>. Reserved for orchestration and complex reasoning.</p>
-        </div>
-        <div class="tier-card" style="border-top:3px solid #58a6ff">
-          <h3 style="color:#58a6ff">Sonnet <span class="tier-badge">Sub-managers &amp; Specialists · 16 agents</span></h3>
-          <p style="color:#8b949e;font-size:0.85rem">High capability at moderate cost. Used by domain sub-managers (<code>fullstack-dev</code>, <code>devops-engineer</code>, <code>csharp-dev</code>, etc.) and specialist coordinators.</p>
-        </div>
-        <div class="tier-card" style="border-top:3px solid #3fb950">
-          <h3 style="color:#3fb950">Haiku <span class="tier-badge">Micro-agents · 53 agents</span></h3>
-          <p style="color:#8b949e;font-size:0.85rem">Fast and cost-efficient. Used for focused single-verb tasks: Inspect, Write, Validate, and Publish layer micro-agents that each do one thing on one file or API.</p>
-        </div>
-      </div>
-      <p style="color:#8b949e;font-size:0.85rem;margin-top:1.5rem"><strong style="color:#58a6ff">Override per-invocation:</strong> Pass <code>model: "sonnet"</code> or <code>model: "opus"</code> to <code>run_agent_in_docker</code> / <code>start_agent_in_docker</code> to retry a failed or low-quality micro-agent at a higher tier. Sub-managers are instructed to do this automatically when a micro-agent output is unsatisfactory. The <code>list_templates</code> tool shows each agent's default model tier.</p>
-    </div>
-  </section>
-
-  <!-- Stringer Integration -->
-  <section style="background:#0d1117;padding:3rem 0;border-top:1px solid #21262d">
-    <div class="container">
-      <h2>Stringer Integration <span class="badge" style="font-size:0.7rem;vertical-align:middle">v3.2 new</span></h2>
-      <p class="section-sub">Persistent codebase baseline for smarter analysis. Build once, read cheap every session.</p>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;margin-top:1.5rem">
-        <div class="tier-card" style="border-top:3px solid #388bfd">
-          <h3 style="color:#58a6ff">stringer-baseline-builder</h3>
-          <p style="color:#8b949e;font-size:0.85rem">Runs <code>stringer scan</code> and saves a structured baseline to <code>.voltron/stringer/baseline.json</code>. Skips gracefully if stringer is not installed. Run once on project setup; refresh when prompted (every 14 days or 50 commits).</p>
-        </div>
-        <div class="tier-card" style="border-top:3px solid #3fb950">
-          <h3 style="color:#3fb950">stringer-delta-reader</h3>
-          <p style="color:#8b949e;font-size:0.85rem">Reads the baseline and runs a cheap <code>stringer --delta</code> check each session. Reports what changed since the baseline, whether a refresh is needed, and surfaces new signals as structured findings.</p>
-        </div>
-      </div>
-      <p style="color:#8b949e;font-size:0.85rem;margin-top:1.25rem"><strong style="color:#58a6ff">How it works:</strong> <code>setup_voltron</code> auto-detects stringer and registers its MCP server (<code>stringer mcp serve</code>) in <code>~/.claude.json</code>. The <code>code-analyst</code> coordinator reads the baseline before dispatching Inspect-layer agents, giving every analysis a free head start on what changed.</p>
-    </div>
-  </section>
-
-  <!-- APM -->
-  <section style="background:#161b22;padding:3rem 0;border-top:1px solid #21262d">
-    <div class="container">
-      <h2>Install via APM <span class="badge" style="font-size:0.7rem;vertical-align:middle">v3.3 new</span></h2>
-      <p class="section-sub">One command deploys all 63 agents + MCP server registration using the <a href="https://github.com/microsoft/apm" style="color:#58a6ff">Agent Package Manager</a>.</p>
-      <div style="background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:1.25rem 1.5rem;margin:1.5rem 0;font-family:monospace;font-size:0.9rem">
-        <div style="color:#8b949e;margin-bottom:0.5rem"># Install APM (once)</div>
-        <div style="color:#e6edf3">pip install apm-cli</div>
-        <br/>
-        <div style="color:#8b949e;margin-bottom:0.5rem"># Deploy Voltron to Claude Code (any project)</div>
-        <div style="color:#e6edf3">apm install 7ports/project-voltron</div>
-      </div>
-      <p style="color:#8b949e;font-size:0.85rem">APM automatically deploys all agent <code>.md</code> files to <code>.claude/agents/</code> and registers the Voltron MCP server in <code>~/.claude.json</code>. Claude can run this command on itself. The <code>apm.yml</code> manifest is always kept in sync with the latest agent set — when new agents are added to Voltron, run <code>apm update 7ports/project-voltron</code> to get them.</p>
-      <p style="color:#8b949e;font-size:0.85rem;margin-top:0.75rem">The classic <code>setup_voltron</code> MCP tool remains the primary setup path and works without APM. APM is an additional convenience for users who prefer a CLI-first workflow.</p>
-    </div>
-  </section>
-
-  <!-- Install -->
-  <section class="install">
-    <div class="container">
-      <h2>Quick Start</h2>
-      <p class="section-sub">Three steps from zero to a full agent team in your project.</p>
-      <div class="steps">
-        <div class="step">
-          <div class="step-num">1</div>
-          <h3>Setup</h3>
-          <p>Clone and run the one-command setup:</p>
-          <pre><code>git clone https://github.com/7ports/project-voltron.git
+        <div class="grid grid--3">
+          <article class="card">
+            <span class="step__num">1</span>
+            <h3>Setup</h3>
+            <p>Clone and run the one-command setup:</p>
+            <pre class="code-block"><code>git clone https://github.com/7ports/project-voltron.git
 cd project-voltron
 node scripts/setup.js</code></pre>
-          <p style="margin-top:10px; font-size:0.85rem; color:var(--text-muted)">Installs dependencies, registers the MCP server, and configures the global allowlist automatically. Restart Claude Code when prompted.</p>
-        </div>
-        <div class="step">
-          <div class="step-num">2</div>
-          <h3>Scaffold</h3>
-          <p>In any project, ask Claude Code:</p>
-          <pre><code>"Scaffold this Unity project with Voltron agents"
-"Scaffold this web project with Voltron agents"
-"Scaffold this project with Voltron agents"</code></pre>
-          <p style="margin-top:10px; font-size:0.85rem; color:var(--text-muted)">Agent files are written directly to disk — no manual copy-paste required.</p>
-        </div>
-        <div class="step">
-          <div class="step-num">3</div>
-          <h3>Develop</h3>
-          <p>Fill in CLAUDE.md, then invoke agents:</p>
-          <pre><code>/scrum-master            ← plan your sprint (slash command, main session)
-@agent-fullstack-dev     ← React/TypeScript + Node.js
-@agent-csharp-dev        ← Unity C# scripts
-@agent-devops-engineer   ← CI/CD, Docker, infrastructure</code></pre>
+            <p>Installs dependencies, registers the MCP server, and configures the global allowlist. Restart Claude Code when prompted.</p>
+          </article>
+
+          <article class="card">
+            <span class="step__num">2</span>
+            <h3>Scaffold</h3>
+            <p>In any project, ask Claude Code:</p>
+            <pre class="code-block"><code>"Scaffold this web project
+ with Voltron agents"
+
+"Scaffold this Unity project
+ with Voltron agents"</code></pre>
+            <p>Agent files are written straight to <code>.claude/agents/</code>, with no manual copy-paste. Smart merge preserves your existing files.</p>
+          </article>
+
+          <article class="card">
+            <span class="step__num">3</span>
+            <h3>Develop</h3>
+            <p>Fill in CLAUDE.md, then invoke agents:</p>
+            <pre class="code-block"><code>/scrum-master         <span class="code-comment"># plan</span>
+@agent-fullstack-dev  <span class="code-comment"># React + Node</span>
+@agent-csharp-dev     <span class="code-comment"># Unity C#</span>
+@agent-devops-engineer</code></pre>
+            <p><code>/scrum-master</code> is a slash command that runs in your main session so it can stream agent output live.</p>
+          </article>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Tools -->
-  <section class="tools">
-    <div class="container">
-      <h2>MCP Tools</h2>
-      <p class="section-sub">9 tools for scaffolding, updating, and improving your agent team.</p>
-      <table>
-        <thead>
-          <tr><th>Tool</th><th>Description</th></tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><code>list_templates</code></td>
-            <td>List all templates, optionally filtered by project type</td>
-          </tr>
-          <tr>
-            <td><code>get_template</code></td>
-            <td>Retrieve the full content of a specific template</td>
-          </tr>
-          <tr>
-            <td><code>scaffold_project</code></td>
-            <td>Writes agent templates and Dockerfile directly to disk for unity, web, fullstack, or general projects. Uses smart merge: skips existing agent files (auto-update maintains them), appends Voltron sections to existing CLAUDE.md, preserves custom Dockerfiles. Auto-detects project root via filesystem walk when project_root not specified (looks for .git, CLAUDE.md, .mcp.json, etc.); restart Claude Code required after scaffolding.</td>
-          </tr>
-          <tr>
-            <td><code>setup_voltron</code></td>
-            <td>Verify and repair Voltron installation from within Claude Code — updates the global allowlist and reports MCP/Docker status</td>
-          </tr>
-          <tr>
-            <td><code>get_auto_update_hook</code></td>
-            <td>Get the <code>.claude/settings.json</code> hook that keeps agents current automatically — for projects scaffolded before v2.4.0</td>
-          </tr>
-          <tr>
-            <td><code>get_agent_usage_guide</code></td>
-            <td>Usage guide for invoking and coordinating agents</td>
-          </tr>
-          <tr>
-            <td><code>check_for_updates</code></td>
-            <td>Manually check if installed agent files are outdated vs. current templates</td>
-          </tr>
-          <tr>
-            <td><code>update_agent</code></td>
-            <td>Get the latest content for a specific agent to replace an outdated file</td>
-          </tr>
-          <tr>
-            <td><code>submit_reflection</code></td>
-            <td>Submit a post-session reflection on agent performance to drive improvements</td>
-          </tr>
-          <tr>
-            <td><code>list_reflections</code></td>
-            <td>List stored reflections with pending improvement suggestions</td>
-          </tr>
-          <tr>
-            <td><code>run_agent_in_docker</code></td>
-            <td>Launch a specialist agent inside a Docker container with full permissions — called by scrum-master</td>
-          </tr>
-          <tr>
-            <td><code>run_agent_in_docker_batch</code></td>
-            <td>Launch 2–8 specialist agents in parallel containers — one MCP call, N parallel executions. Use this for any dispatch wave of dependency-free agents; bypasses main-session tool-call serialization.</td>
-          </tr>
-          <tr>
-            <td><code>start_agent_in_docker</code></td>
-            <td>Non-blocking agent launch; returns container_name and log_path immediately for polling</td>
-          </tr>
-          <tr>
-            <td><code>get_agent_output</code></td>
-            <td>Poll a running agent container for live log output; shows last N lines in chat</td>
-          </tr>
-          <tr>
-            <td><code>update_progress</code></td>
-            <td>Update agent task progress — called by scrum-master before/after each agent invocation</td>
-          </tr>
-          <tr>
-            <td><code>get_progress</code></td>
-            <td>View current agent task progress in the chat window</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
+    <!-- ============ Section 6: How you actually use it ============ -->
+    <section id="workflow" class="section" aria-labelledby="workflow-title">
+      <div class="container">
+        <p class="section__eyebrow">How you use it</p>
+        <h2 id="workflow-title" class="section__title">Scaffold → plan → dispatch → reflect</h2>
+        <p class="section__lead">From backlog to shipped code, with agents coordinated at every step.</p>
 
-  <!-- Workflow -->
-  <section class="workflow">
-    <div class="container">
-      <h2>Recommended Workflow</h2>
-      <p class="section-sub">From backlog to shipped code, with agents coordinated at every step.</p>
-      <div class="flow">
-        <div class="flow-step">
-          <div class="flow-icon">⚡</div>
-          <div>
-            <strong>Scaffold</strong>
-            <span>Run <code>scaffold_project</code> to write CLAUDE.md, agent files, Dockerfile, launch script, and auto-update hook for your project type — smart merge skips existing files and appends to existing CLAUDE.md. <strong>Recent updates:</strong> Docker agent containers now inherit GitHub push credentials from the host via <code>GH_TOKEN</code>/<code>GITHUB_TOKEN</code> passthrough and <code>gh auth setup-git</code>, so <code>committer</code> and <code>pr-opener</code> can push from inside the container. Claude auth has also moved fully to a mounted <code>~/.claude/.credentials.json</code> (Windows: update manually; Unix: <code>claude setup-token</code>); pre-flight no longer probes the <code>CLAUDE_CODE_OAUTH_TOKEN</code> env var. The <code>/scrum-master</code> slash command is written to <code>.claude/commands/scrum-master.md</code> for every project type, and the auto-update hook self-heals a missing command file on already-scaffolded projects. <strong>Reflections &amp; bounded results:</strong> <code>submit_reflection</code> is now write-only — it saves <code>reflections/&lt;file&gt;.json</code> locally and reports a saved-but-not-committed status instead of auto git add/commit/pushing, so reflections no longer strand commits on protected <code>main</code> or pollute feature PRs (they're gathered later via a reflections sweep / PR). And <code>run_agent_in_docker</code>/<code>_batch</code> now return a size-bounded result — the output tail is capped at ~4000 chars so results no longer overflow the tool-result limit, while the full transcript is still written to <code>.voltron/logs/</code>. <strong>v3.14.0:</strong> in-container <code>git push</code> and <code>gh</code> now authenticate <em>automatically</em> from the host's <code>gh</code> login — the MCP derives a token from <code>gh auth token</code> at dispatch and injects it, so after a one-time <code>gh auth login</code> no manual <code>GH_TOKEN</code> export is needed. An explicit <code>GH_TOKEN</code>/<code>GITHUB_TOKEN</code> env override still wins; opt out by setting <code>VOLTRON_DISABLE_GH_AUTOTOKEN</code>. <strong>v3.14.1:</strong> reflection-driven agent-template improvements to fullstack-dev (commit-budget rule), committer (over-validation cap), and pr-opener (GH_TOKEN pre-flight). <strong>v3.15.0:</strong> behavior-preserving cost optimizations — the static role-template prefix is now a prompt-cache system-prompt for Haiku/Sonnet agents, CLAUDE.md and bd-prime output are de-duplicated across the context, batch fan-out is staggered to reduce cold-start spikes, and per-agent <code>max_turns</code> is raised. No change to agent behavior or outputs; take effect after an MCP-server restart. <strong>v3.15.1:</strong> reflection-driven agent-template improvements — the Docker host-credential boundary (commit-only in-container; host handles push/publish/bd writes) is now spelled out in <code>committer</code>, <code>pr-opener</code>, and <code>deploy-trigger</code>; budget-aware <code>[DONE]</code> exit added to <code>committer</code>/<code>test-writer</code>/<code>fullstack-dev</code>/<code>qa-tester</code>; plus targeted fixes to <code>fullstack-dev</code> (run tsc before claiming a clean typecheck, thread generics through return types, populate the beads graph on decomposition), <code>qa-tester</code> (~10-min wall-clock sizing), <code>css-writer</code> (JS style objects), <code>config-editor</code> (vitest <code>--config</code> for excluded suites), and <code>test-writer</code> (hermetic IO).</span>
+        <ol class="flow" style="list-style:none;">
+          <li class="flow__step">
+            <div>
+              <strong>Scaffold</strong>
+              <span>Run <code>scaffold_project</code> to write CLAUDE.md, agent files, <code>Dockerfile.voltron</code>, the launch script, and the auto-update hook for your project type. Smart merge skips existing files and appends to existing CLAUDE.md.</span>
+            </div>
+          </li>
+          <li class="flow__step">
+            <div>
+              <strong>Plan</strong>
+              <span>Invoke <code>/scrum-master</code> in your main session with a project plan. It decomposes the work into agent-sized tasks with dependencies and acceptance criteria, tracked as a real DAG in beads, and never implements anything itself.</span>
+            </div>
+          </li>
+          <li class="flow__step">
+            <div>
+              <strong>Dispatch</strong>
+              <span>The scrum-master calls <code>run_agent_in_docker</code> (or <code>run_agent_in_docker_batch</code> for parallel waves). Each agent runs autonomously inside Docker with <code>--dangerously-skip-permissions</code>; file changes are visible on the host via the volume mount.</span>
+            </div>
+          </li>
+          <li class="flow__step">
+            <div>
+              <strong>Reflect</strong>
+              <span>At phase completion, blockers, and session end, the scrum-master submits structured reflections. Tool-specific discoveries sync to Alexandria so the next project starts ahead.</span>
+            </div>
+          </li>
+        </ol>
+
+        <figure class="diagram diagram--workflow" role="img" aria-labelledby="dgm-flow-t dgm-flow-d">
+          <svg viewBox="0 0 880 400" xmlns="http://www.w3.org/2000/svg">
+            <title id="dgm-flow-t">Scaffold, plan, dispatch, reflect</title>
+            <desc id="dgm-flow-d">Scaffold then plan then dispatch then reflect. The dispatch step fans out a parallel batch of isolated Docker containers, each running the real claude CLI, whose results converge into a single reflection.</desc>
+            <defs>
+              <marker id="arwFlow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 z" class="dgm-arrowhead"/>
+              </marker>
+            </defs>
+            <g class="dgm-edge">
+              <path d="M240 63 L334 63" marker-end="url(#arwFlow)"/>
+              <path d="M540 63 L634 63" marker-end="url(#arwFlow)"/>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--core" x="40" y="36" width="200" height="54" rx="9"/>
+              <text class="dgm-label" x="140" y="56" text-anchor="middle">1 : Scaffold</text>
+              <text class="dgm-sub" x="140" y="74" text-anchor="middle">scaffold_project</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--core" x="340" y="36" width="200" height="54" rx="9"/>
+              <text class="dgm-label" x="440" y="56" text-anchor="middle">2 : Plan</text>
+              <text class="dgm-sub" x="440" y="74" text-anchor="middle">scrum-master, beads DAG</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t2" x="640" y="36" width="200" height="54" rx="9"/>
+              <text class="dgm-label" x="740" y="56" text-anchor="middle">3 : Dispatch</text>
+              <text class="dgm-sub" x="740" y="74" text-anchor="middle">run_agent_in_docker_batch</text>
+            </g>
+            <path class="dgm-edge" d="M740 90 L740 140"/>
+            <line class="dgm-bus" x1="175" y1="140" x2="745" y2="140"/>
+            <text class="dgm-anno" x="175" y="130">parallel batch fan-out</text>
+            <g class="dgm-edge">
+              <path d="M175 140 L175 168" marker-end="url(#arwFlow)"/>
+              <path d="M365 140 L365 168" marker-end="url(#arwFlow)"/>
+              <path d="M555 140 L555 168" marker-end="url(#arwFlow)"/>
+              <path d="M745 140 L745 168" marker-end="url(#arwFlow)"/>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t3" x="110" y="170" width="130" height="86" rx="8"/>
+              <rect class="dgm-iso" x="120" y="178" width="110" height="70" rx="5"/>
+              <text class="dgm-sub" x="175" y="192" text-anchor="middle" style="fill:var(--engine-core)">Docker</text>
+              <text class="dgm-label" x="175" y="214" text-anchor="middle">fullstack</text>
+              <text class="dgm-sub" x="175" y="234" text-anchor="middle">claude CLI</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t3" x="300" y="170" width="130" height="86" rx="8"/>
+              <rect class="dgm-iso" x="310" y="178" width="110" height="70" rx="5"/>
+              <text class="dgm-sub" x="365" y="192" text-anchor="middle" style="fill:var(--engine-core)">Docker</text>
+              <text class="dgm-label" x="365" y="214" text-anchor="middle">ui-design</text>
+              <text class="dgm-sub" x="365" y="234" text-anchor="middle">claude CLI</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t3" x="490" y="170" width="130" height="86" rx="8"/>
+              <rect class="dgm-iso" x="500" y="178" width="110" height="70" rx="5"/>
+              <text class="dgm-sub" x="555" y="192" text-anchor="middle" style="fill:var(--engine-core)">Docker</text>
+              <text class="dgm-label" x="555" y="214" text-anchor="middle">devops</text>
+              <text class="dgm-sub" x="555" y="234" text-anchor="middle">claude CLI</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t3" x="680" y="170" width="130" height="86" rx="8"/>
+              <rect class="dgm-iso" x="690" y="178" width="110" height="70" rx="5"/>
+              <text class="dgm-sub" x="745" y="192" text-anchor="middle" style="fill:var(--engine-core)">Docker</text>
+              <text class="dgm-label" x="745" y="214" text-anchor="middle">qa-test</text>
+              <text class="dgm-sub" x="745" y="234" text-anchor="middle">claude CLI</text>
+            </g>
+            <text class="dgm-anno" x="460" y="276" text-anchor="middle">each container is isolated and runs the real claude CLI; file changes surface through the host volume mount</text>
+            <g class="dgm-edge--dim">
+              <path d="M175 256 L175 290"/>
+              <path d="M365 256 L365 290"/>
+              <path d="M555 256 L555 290"/>
+              <path d="M745 256 L745 290"/>
+            </g>
+            <line class="dgm-rule" x1="175" y1="290" x2="745" y2="290"/>
+            <path class="dgm-edge" d="M460 290 L460 318" marker-end="url(#arwFlow)"/>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--forge" x="330" y="320" width="260" height="54" rx="9"/>
+              <text class="dgm-label" x="460" y="340" text-anchor="middle">4 : Reflect</text>
+              <text class="dgm-sub" x="460" y="358" text-anchor="middle">submit_reflection -&gt; reflections/</text>
+            </g>
+          </svg>
+          <figcaption>Dispatch is the fan-out: one batch call launches a fleet of isolated containers in parallel, sharing a single prompt-cache write, then their results converge into one structured reflection.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ============ Section 7: Meet the team ============ -->
+    <section id="team" class="section" aria-labelledby="team-title">
+      <div class="container">
+        <p class="section__eyebrow">Meet the team</p>
+        <h2 id="team-title" class="section__title">A real org chart of specialists</h2>
+        <p class="section__lead">Three tiers, each with a distinct role: coordinators decompose, sub-managers own a domain, micro-agents each do one focused job.</p>
+
+
+        <figure class="diagram diagram--tier" role="img" aria-labelledby="dgm-tier-t dgm-tier-d">
+          <svg viewBox="0 0 880 392" xmlns="http://www.w3.org/2000/svg">
+            <title id="dgm-tier-t">The Voltron tier model</title>
+            <desc id="dgm-tier-d">A single Tier 1 coordinator delegates to Tier 2 sub-managers, which each compose Tier 3 micro-agents. Sub-managers compose, they never do the work themselves. Depth is capped at three tiers: a fourth-tier dispatch is refused, and every micro-agent is tagged nestable false.</desc>
+            <defs>
+              <marker id="arwTier" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 z" class="dgm-arrowhead"/>
+              </marker>
+            </defs>
+            <g class="dgm-band">
+              <text class="dgm-band--t1" x="16" y="50">TIER 1</text>
+              <text class="dgm-band--t2" x="16" y="158">TIER 2</text>
+              <text class="dgm-band--t3" x="16" y="294">TIER 3</text>
+            </g>
+            <g>
+              <text class="dgm-sub" x="16" y="68">coordinator</text>
+              <text class="dgm-sub" x="16" y="176">sub-manager</text>
+              <text class="dgm-sub" x="16" y="312">micro-agent</text>
+            </g>
+            <g class="dgm-edge--dim">
+              <path d="M515 84 L290 137" marker-end="url(#arwTier)"/>
+              <path d="M515 84 L515 137" marker-end="url(#arwTier)"/>
+              <path d="M515 84 L740 137" marker-end="url(#arwTier)"/>
+              <path d="M290 189 L230 281" marker-end="url(#arwTier)"/>
+              <path d="M290 189 L350 281" marker-end="url(#arwTier)"/>
+              <path d="M515 189 L455 281" marker-end="url(#arwTier)"/>
+              <path d="M515 189 L575 281" marker-end="url(#arwTier)"/>
+              <path d="M740 189 L680 281" marker-end="url(#arwTier)"/>
+              <path d="M740 189 L800 281" marker-end="url(#arwTier)"/>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t1" x="405" y="30" width="220" height="54" rx="9"/>
+              <text class="dgm-label" x="515" y="51" text-anchor="middle">scrum-master</text>
+              <text class="dgm-sub" x="515" y="69" text-anchor="middle">decompose, delegate</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t2" x="215" y="139" width="150" height="50" rx="9"/>
+              <text class="dgm-label" x="290" y="164" text-anchor="middle">fullstack-dev</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t2" x="440" y="139" width="150" height="50" rx="9"/>
+              <text class="dgm-label" x="515" y="164" text-anchor="middle">ui-designer</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t2" x="665" y="139" width="150" height="50" rx="9"/>
+              <text class="dgm-label" x="740" y="164" text-anchor="middle">qa-tester</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t3" x="180" y="283" width="100" height="34" rx="7"/>
+              <text class="dgm-mono" x="230" y="300" text-anchor="middle">route-adder</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t3" x="300" y="283" width="100" height="34" rx="7"/>
+              <text class="dgm-mono" x="350" y="300" text-anchor="middle">type-definer</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t3" x="405" y="283" width="100" height="34" rx="7"/>
+              <text class="dgm-mono" x="455" y="300" text-anchor="middle">css-writer</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t3" x="525" y="283" width="100" height="34" rx="7"/>
+              <text class="dgm-mono" x="575" y="300" text-anchor="middle">token-writer</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t3" x="630" y="283" width="100" height="34" rx="7"/>
+              <text class="dgm-mono" x="680" y="300" text-anchor="middle">test-runner</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t3" x="750" y="283" width="100" height="34" rx="7"/>
+              <text class="dgm-mono" x="800" y="300" text-anchor="middle">lint-runner</text>
+            </g>
+            <g data-reveal>
+              <text class="dgm-anno" x="16" y="232">compose,</text>
+              <text class="dgm-anno" x="16" y="250">never DIY</text>
+            </g>
+            <line class="dgm-rule" x1="170" y1="346" x2="844" y2="346"/>
+            <text class="dgm-cap" x="170" y="370">max depth: 3 tiers</text>
+            <text class="dgm-capsub" x="320" y="370">a 4th-tier dispatch is refused by the runtime; every Tier 3 agent is nestable:false</text>
+          </svg>
+          <figcaption>One coordinator, a handful of domain sub-managers, many single-purpose micro-agents: an org chart enforced by the runtime, not by convention.</figcaption>
+        </figure>
+        <!-- Tier 1 -->
+        <div class="tier tier--1">
+          <div class="tier__head">
+            <svg class="tier__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Tier 1 coordinator glyph">
+              <circle cx="12" cy="4" r="2.5"/><circle cx="5" cy="20" r="2"/><circle cx="12" cy="20" r="2"/><circle cx="19" cy="20" r="2"/>
+              <path d="M12 6.5 L5 18"/><path d="M12 6.5 L12 18"/><path d="M12 6.5 L19 18"/>
+            </svg>
+            <h3>Tier 1: Coordinators</h3>
+            <span>Decompose &amp; delegate · never implement</span>
+          </div>
+          <div class="grid grid--3">
+            <div class="card"><h3>scrum-master</h3><p>Slash command in your main session. Breaks work into agent-sized tasks with dependencies and acceptance criteria; dispatches specialists; tracks progress in beads.</p></div>
+            <div class="card"><h3>project-planner</h3><p>Researches tech stacks, designs architecture, defines data models and API contracts. Produces the plan the scrum-master decomposes.</p></div>
+            <div class="card"><h3>code-analyst</h3><p>Directs all 11 Inspect-layer micro-agents to audit a codebase (coverage gaps, dead code, API shapes, dependency health) into persisted reports.</p></div>
           </div>
         </div>
-        <div class="arrow">↓</div>
-        <div class="flow-step">
-          <div class="flow-icon">📋</div>
-          <div>
-            <strong>Configure</strong>
-            <span>Fill in CLAUDE.md with your project name, stack, conventions, and current work. Set up Docker execution.</span>
+
+        <!-- Tier 2 -->
+        <div class="tier tier--2">
+          <div class="tier__head">
+            <svg class="tier__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Tier 2 sub-manager glyph">
+              <path d="M12 2 L12 6"/><circle cx="12" cy="9" r="2.5"/><circle cx="7" cy="20" r="2"/><circle cx="17" cy="20" r="2"/>
+              <path d="M12 11.5 L7 18"/><path d="M12 11.5 L17 18"/>
+            </svg>
+            <h3>Tier 2: Sub-managers</h3>
+            <span>Own a domain · compose micro-agents · never DIY</span>
+          </div>
+          <div class="grid grid--4">
+            <div class="card"><h3>fullstack-dev</h3><p>React/TypeScript front end and Node/Express back end: components, APIs, hooks, data flow.</p></div>
+            <div class="card"><h3>devops-engineer</h3><p>Terraform, CI/CD pipelines, Docker, and cloud deploys. Infrastructure as code.</p></div>
+            <div class="card"><h3>ui-designer</h3><p>CSS architecture, responsive mobile-first layouts, theming, and accessibility.</p></div>
+            <div class="card"><h3>qa-tester</h3><p>Vitest/Playwright tests, Lighthouse audits, bundle analysis, and quality gates.</p></div>
+            <div class="card"><h3>csharp-dev</h3><p>Unity MonoBehaviours, ScriptableObjects, and gameplay systems in clean, performant C#.</p></div>
+            <div class="card"><h3>doc-writer</h3><p>Owns prose: README, CHANGELOG, ADRs, API reference, and diagrams.</p></div>
+            <div class="card"><h3>harness-engineer</h3><p>Owns all Voltron repo edits (agent templates, Dockerfile, MCP server) and processes reflections into template improvements.</p></div>
+            <div class="card"><h3>scene-architect · shader-artist</h3><p>Unity Editor-bound managers dispatched via the host <code>Agent</code> tool when a live Editor is required.</p></div>
           </div>
         </div>
-        <div class="arrow">↓</div>
-        <div class="flow-step">
-          <div class="flow-icon">🔬</div>
-          <div>
-            <strong>Research &amp; Design</strong>
-            <span>For new projects, invoke <code>@agent-project-planner</code> to research tech stacks, design architecture, and produce a comprehensive project plan</span>
+
+        <!-- Tier 3 -->
+        <div class="tier tier--3">
+          <div class="tier__head">
+            <svg class="tier__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Tier 3 micro-agent glyph">
+              <circle cx="12" cy="12" r="3"/><path d="M12 2 L12 5"/><path d="M12 19 L12 22"/><path d="M2 12 L5 12"/><path d="M19 12 L22 12"/>
+              <path d="M5.6 5.6 L7.7 7.7"/><path d="M16.3 16.3 L18.4 18.4"/>
+            </svg>
+            <h3>Tier 3: Micro-agents</h3>
+            <span>51 focused workers · one verb on one noun · tagged <code>nestable: false</code></span>
           </div>
-        </div>
-        <div class="arrow">↓</div>
-        <div class="flow-step">
-          <div class="flow-icon">🎯</div>
-          <div>
-            <strong>Plan</strong>
-            <span>Invoke <code>/scrum-master</code> (slash command, runs in your main session) with the project plan — it decomposes it into agent-sized tasks with dependencies and acceptance criteria</span>
-          </div>
-        </div>
-        <div class="arrow">↓</div>
-        <div class="flow-step">
-          <div class="flow-icon">🔨</div>
-          <div>
-            <strong>Build</strong>
-            <span>Execute the plan — specialist agents look up setup guides in Alexandria before installing tools, and write findings back after</span>
-          </div>
-        </div>
-        <div class="arrow">↓</div>
-        <div class="flow-step">
-          <div class="flow-icon">💡</div>
-          <div>
-            <strong>Reflect</strong>
-            <span>Scrum-master automatically submits reflections at phase completion, blockers, and session end. Tool-specific discoveries are synced to Alexandria.</span>
+          <div class="grid grid--4">
+            <div class="card"><h3>Inspect <small>· read-only · 11</small></h3>
+              <div class="chip-row"><span class="chip">dep-reader</span><span class="chip">route-lister</span><span class="chip">schema-inspector</span><span class="chip">type-error-reader</span><span class="chip">git-state-reader</span><span class="chip">dead-code-finder</span></div>
+            </div>
+            <div class="card"><h3>Write <small>· code-producing · 24</small></h3>
+              <div class="chip-row"><span class="chip">route-adder</span><span class="chip">component-scaffolder</span><span class="chip">function-writer</span><span class="chip">css-writer</span><span class="chip">test-writer</span><span class="chip">migration-writer</span></div>
+            </div>
+            <div class="card"><h3>Validate <small>· check-only · 10</small></h3>
+              <div class="chip-row"><span class="chip">typecheck-runner</span><span class="chip">test-runner</span><span class="chip">lint-runner</span><span class="chip">build-runner</span><span class="chip">security-scanner</span><span class="chip">coverage-runner</span></div>
+            </div>
+            <div class="card"><h3>Publish <small>· side-effects · 6</small></h3>
+              <div class="chip-row"><span class="chip">committer</span><span class="chip">pr-opener</span><span class="chip">branch-manager</span><span class="chip">deploy-trigger</span><span class="chip">changelog-updater</span></div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Self-improvement -->
-  <section class="self-improve">
-    <div class="container">
-      <h2>Self-Improving Agent Templates</h2>
-      <p class="section-sub">Voltron gets better with every session through a built-in feedback loop.</p>
-      <div class="loop-diagram">
-        <div class="loop-node">
-          <strong>Session runs with voltron agents</strong>
-          <span>scrum-master coordinates; specialists execute</span>
-        </div>
-        <div class="loop-arrow">↓</div>
-        <div class="loop-node">
-          <strong>Reflections submitted automatically</strong>
-          <span>scrum-master submits at phase completion, blockers, and session end — per-agent feedback with suggested changes</span>
-        </div>
-        <div class="loop-arrow">↓</div>
-        <div class="loop-node">
-          <strong>Reflections accumulate in reflections/</strong>
-          <span>structured JSON, tied to project type and agents used</span>
-        </div>
-        <div class="loop-arrow">↓</div>
-        <div class="loop-node">
-          <strong>GitHub Actions runs every Monday</strong>
-          <span>The <code>harness-engineer</code> agent groups feedback by agent, prioritizes by frequency, applies targeted template edits, and opens a PR. A separate monthly workflow (<code>voltron-evals.yml</code>) runs the full eval sweep with content-hash caching.</span>
-        </div>
-        <div class="loop-arrow">↓</div>
-        <div class="loop-node">
-          <strong>PR reviewed and merged</strong>
-          <span>human reviews the diff before it reaches main — version bumped in package.json</span>
-        </div>
-        <div class="loop-arrow">↓</div>
-        <div class="loop-node">
-          <strong>Projects auto-update at next session start</strong>
-          <span>the <code>UserPromptSubmit</code> hook detects the version mismatch and silently rewrites all installed agent files in place — no manual steps needed</span>
+    <!-- ============ Section 8: The Voltron Engine ============ -->
+    <section id="engine" class="section" aria-labelledby="engine-title">
+      <div class="container">
+        <p class="section__eyebrow">The differentiator</p>
+        <h2 id="engine-title" class="section__title">The Voltron Engine</h2>
+        <p class="section__lead">The machinery beneath the templates, and the reason Project Voltron is more than a bundle of markdown files. A self-modifying, self-evaluating orchestration engine: agents are versioned markdown, execution is real Docker containers running the real <code>claude</code> CLI, and the system rewrites and regrades its own agent definitions from production feedback. The templates are what the engine produces; the engine is what you adopt.</p>
+
+        <div class="grid grid--3">
+          <article class="component card"><h3>Three-tier hierarchy</h3><p>A real org chart in code: coordinator decomposes, sub-managers own domains, micro-agents do one focused edit each. Depth-capped at 3 by the runtime; 73 templates.</p></article>
+          <article class="component card"><h3>Docker-isolated execution</h3><p>Each agent runs in a throwaway container with the actual <code>claude</code> CLI, not an in-process SDK call. Full transcript captured; auth minimal by design.</p></article>
+          <article class="component card"><h3>Parallel batch dispatch</h3><p>Fan out 2 to 8 agents in one MCP call, with a head-start gate that shares one prompt-cache write across the whole fleet.</p></article>
+          <article class="component card"><h3>Nested Docker-out-of-Docker</h3><p>Tier-2 agents inside containers can spawn Tier-3 siblings via the mounted host socket. Real containers all the way down.</p></article>
+          <article class="component card"><h3>Dependency-graph tracking</h3><p>Work is a real DAG on a versioned Dolt database (beads), not a TODO list. Dependency-aware planning is a first-class substrate.</p></article>
+          <article class="component card"><h3>Post-session reflection loop</h3><p>Agents submit structured feedback; CI runs the harness-engineer to edit templates, bump the version, and open a PR. The product rewrites itself from field data.</p></article>
+          <article class="component card"><h3>MCP-as-delivery channel</h3><p>The engine ships as an MCP server that augments Claude Code directly. Install means scaffolding versioned templates into your repo with an auto-update channel.</p></article>
+          <article class="component card"><h3>voltron-evals regression harness</h3><p>Agents are graded through the live MCP dispatch path they run in production, scored by deterministic signals plus a Sonnet judge. Voltron ships a graded regression suite for its own prompts.</p></article>
+          <article class="component card"><h3>Alexandria cross-project memory</h3><p>Tool and setup knowledge flows out of every session into a shared, searchable guide store: a second self-improving substrate alongside the reflection loop.</p></article>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Eval Harness -->
-  <section>
-    <div class="container">
-      <h2>Eval Harness (v3.10.0)</h2>
-      <p class="section-sub">Voltron grades itself. The <code>voltron-evals/</code> directory is a small Node harness that runs benchmark tasks against any dispatchable agent, captures the run artifacts (log, git diff, beads snapshot, journal, reflection), and dispatches a new internal agent — <code>voltron-judge</code> — to score the run against a pinned, versioned rubric. Scorecards are mirrored into <code>reflections/</code>, so the existing <code>harness-engineer</code> self-improvement loop picks up failing criteria as actionable, evidence-cited suggestions for template edits.</p>
+    <!-- ============ Section 9: How it improves itself ============ -->
+    <section id="improve" class="section" aria-labelledby="improve-title">
+      <div class="container">
+        <p class="section__eyebrow">Self-improvement</p>
+        <h2 id="improve-title" class="section__title">It rewrites its own agents and grades them first</h2>
+        <p class="section__lead">The novel triad: a reflection loop feeds an automated PR pipeline, an in-repo judge regression-grades every change before it ships, and a cross-project memory accrues operational knowledge. No other orchestrator self-modifies through a reviewed pipeline.</p>
 
-      <p class="section-sub" style="margin-top:16px;"><strong>Two-layer design:</strong> <em>Deep</em> tasks are hand-authored T1/T2/T3 fixtures that exercise one agent end-to-end with a paired Opus-graded rubric. <em>Broad</em> coverage is template-driven: each agent declares a "shape" (input contract + dispatch expectation + acceptance signal); the runner enumerates one instance per shape × agent and judges with programmatic signals plus a Haiku judge. Ships with 70 generated Broad instances. Full design spec: <a href="https://github.com/7ports/project-voltron/blob/main/voltron-evals/DESIGN.md"><code>voltron-evals/DESIGN.md</code></a>.</p>
+        <ol class="flow" style="list-style:none;">
+          <li class="flow__step"><div><strong>Sessions submit reflections</strong><span>Production agents drop structured JSON feedback into <code>reflections/</code>, tied to project type and the agents used.</span></div></li>
+          <li class="flow__step"><div><strong>CI runs the harness-engineer</strong><span>A scheduled GitHub Actions job groups feedback by agent, prioritizes by frequency, edits <code>src/templates.js</code>, bumps the version, and opens a PR.</span></div></li>
+          <li class="flow__step"><div><strong>voltron-evals regrades before merge</strong><span>The harness dispatches the updated agent through the same live MCP path it uses in production, scored by deterministic signals plus a self-preference-controlled Sonnet judge.</span></div></li>
+          <li class="flow__step"><div><strong>Human reviews, merges, ships</strong><span>A reviewer approves the diff. On merge, the <code>UserPromptSubmit</code> auto-update hook silently refreshes installed agent files at the next session start.</span></div></li>
+        </ol>
 
-      <p class="section-sub" style="margin-top:16px;"><strong>Run locally:</strong> <code>node voltron-evals/runner.js --tier=pr</code> (fast PR-tier: all Tier-1 Deep + a 10-instance Broad sample), <code>--tier=all</code> (full sweep), <code>--tier=deep</code> / <code>--tier=broad</code>, or <code>--doctor</code> to validate schemas / rubrics / shape resolution without dispatching agents.</p>
+        <figure class="diagram diagram--loop" role="img" aria-labelledby="dgm-loop-t dgm-loop-d">
+          <svg viewBox="0 0 760 510" xmlns="http://www.w3.org/2000/svg">
+            <title id="dgm-loop-t">The reflection self-improvement loop</title>
+            <desc id="dgm-loop-d">A clockwise cycle: live sessions submit reflections, which land in the reflections directory, where the CI harness-engineer groups them, edits templates.js, bumps the version, and the auto-update hook refreshes installed agents, feeding the next round of sessions.</desc>
+            <defs>
+              <marker id="arwLoop" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 z" class="dgm-arrowhead"/>
+              </marker>
+            </defs>
+            <circle class="dgm-ring" cx="380" cy="250" r="170"/>
+            <g class="dgm-arrow">
+              <path d="M-7 -6 L8 0 L-7 6 z" transform="translate(465,103) rotate(30)"/>
+              <path d="M-7 -6 L8 0 L-7 6 z" transform="translate(550,250) rotate(90)"/>
+              <path d="M-7 -6 L8 0 L-7 6 z" transform="translate(465,397) rotate(150)"/>
+              <path d="M-7 -6 L8 0 L-7 6 z" transform="translate(295,397) rotate(210)"/>
+              <path d="M-7 -6 L8 0 L-7 6 z" transform="translate(210,250) rotate(270)"/>
+              <path d="M-7 -6 L8 0 L-7 6 z" transform="translate(295,103) rotate(330)"/>
+            </g>
+            <text class="dgm-center" x="380" y="241" text-anchor="middle">Voltron rewrites</text>
+            <text class="dgm-center" x="380" y="263" text-anchor="middle">its own agents</text>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t2" x="305" y="53" width="150" height="54" rx="9"/>
+              <text class="dgm-num" x="314" y="66">1</text>
+              <text class="dgm-label" x="380" y="74" text-anchor="middle">submit_reflection</text>
+              <text class="dgm-sub" x="380" y="93" text-anchor="middle">from live sessions</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t2" x="452" y="138" width="150" height="54" rx="9"/>
+              <text class="dgm-num" x="461" y="151">2</text>
+              <text class="dgm-label" x="527" y="159" text-anchor="middle">reflections/</text>
+              <text class="dgm-sub" x="527" y="178" text-anchor="middle">JSON on disk</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t2" x="452" y="308" width="150" height="54" rx="9"/>
+              <text class="dgm-num" x="461" y="321">3</text>
+              <text class="dgm-label" x="527" y="329" text-anchor="middle">harness-engineer</text>
+              <text class="dgm-sub" x="527" y="348" text-anchor="middle">CI groups feedback</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t2" x="305" y="393" width="150" height="54" rx="9"/>
+              <text class="dgm-num" x="314" y="406">4</text>
+              <text class="dgm-label" x="380" y="414" text-anchor="middle">templates.js</text>
+              <text class="dgm-sub" x="380" y="433" text-anchor="middle">edit agent prose</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t2" x="158" y="308" width="150" height="54" rx="9"/>
+              <text class="dgm-num" x="167" y="321">5</text>
+              <text class="dgm-label" x="233" y="329" text-anchor="middle">version bump</text>
+              <text class="dgm-sub" x="233" y="348" text-anchor="middle">package.json</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t2" x="158" y="138" width="150" height="54" rx="9"/>
+              <text class="dgm-num" x="167" y="151">6</text>
+              <text class="dgm-label" x="233" y="159" text-anchor="middle">auto-update hook</text>
+              <text class="dgm-sub" x="233" y="178" text-anchor="middle">repo refreshed</text>
+            </g>
+          </svg>
+          <figcaption>Production feedback becomes a reviewed pull request that edits the agents themselves: the credibility centerpiece, a loop no other orchestrator closes automatically.</figcaption>
+        </figure>
 
-      <p class="section-sub" style="margin-top:16px;"><strong>CI cadence:</strong> <code>.github/workflows/voltron-evals.yml</code> runs the full Deep + Broad sweep on the <strong>1st of each month at 12:00 UTC</strong> plus on manual <code>workflow_dispatch</code>. A content-hash cache keyed on <code>src/templates.js</code> + <code>voltron-evals/lib/template-hash.js</code> reuses prior scorecards so only agents whose templates changed pay the LLM cost; scorecards are uploaded as a CI artifact.</p>
+        <figure class="diagram diagram--eval" role="img" aria-labelledby="dgm-eval-t dgm-eval-d">
+          <svg viewBox="0 0 920 300" xmlns="http://www.w3.org/2000/svg">
+            <title id="dgm-eval-t">The eval harness flow</title>
+            <desc id="dgm-eval-d">An agent under test is dispatched through the live MCP path, producing artifacts that are scored by deterministic programmatic scorers and a voltron-judge in parallel, merged into a scorecard, then turned into a reflection that feeds back into the harness.</desc>
+            <defs>
+              <marker id="arwEval" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 z" class="dgm-arrowhead"/>
+              </marker>
+            </defs>
+            <text class="dgm-anno" x="460" y="26" text-anchor="middle">graded through the same live MCP dispatch path the agent runs in production</text>
+            <g class="dgm-edge">
+              <path d="M170 157 L191 157" marker-end="url(#arwEval)"/>
+              <path d="M345 157 L391 92" marker-end="url(#arwEval)"/>
+              <path d="M345 157 L391 208" marker-end="url(#arwEval)"/>
+              <path d="M585 92 L621 152" marker-end="url(#arwEval)"/>
+              <path d="M585 208 L621 162" marker-end="url(#arwEval)"/>
+              <path d="M775 157 L786 157" marker-end="url(#arwEval)"/>
+            </g>
+            <path class="dgm-ring" d="M850 184 C 850 262 95 262 95 184" marker-end="url(#arwEval)"/>
+            <text class="dgm-anno" x="472" y="258" text-anchor="middle">the scorecard becomes a reflection that feeds the loop</text>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t3" x="20" y="130" width="150" height="54" rx="9"/>
+              <text class="dgm-label" x="95" y="150" text-anchor="middle">agent under test</text>
+              <text class="dgm-sub" x="95" y="168" text-anchor="middle">live MCP dispatch</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node" x="195" y="130" width="150" height="54" rx="9"/>
+              <text class="dgm-label" x="270" y="150" text-anchor="middle">artifacts</text>
+              <text class="dgm-sub" x="270" y="168" text-anchor="middle">diffs, files, logs</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--core" x="395" y="66" width="190" height="52" rx="9"/>
+              <text class="dgm-label" x="490" y="85" text-anchor="middle">programmatic scorers</text>
+              <text class="dgm-sub" x="490" y="103" text-anchor="middle">deterministic signals</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t2" x="395" y="182" width="190" height="52" rx="9"/>
+              <text class="dgm-label" x="490" y="201" text-anchor="middle">voltron-judge</text>
+              <text class="dgm-sub" x="490" y="219" text-anchor="middle">Sonnet, self-pref aware</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--forge" x="625" y="130" width="150" height="54" rx="9"/>
+              <text class="dgm-label" x="700" y="150" text-anchor="middle">scorecard</text>
+              <text class="dgm-sub" x="700" y="168" text-anchor="middle">pass/fail + score</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t1" x="790" y="130" width="120" height="54" rx="9"/>
+              <text class="dgm-label" x="850" y="150" text-anchor="middle">reflection</text>
+              <text class="dgm-sub" x="850" y="168" text-anchor="middle">feeds the loop</text>
+            </g>
+          </svg>
+          <figcaption>Every agent is regression-graded the way it actually runs: dispatched through live MCP, scored by deterministic signals plus a self-preference-controlled judge.</figcaption>
+        </figure>
+      </div>
+    </section>
 
-      <div class="flow">
-        <div class="flow-step">
-          <div class="flow-icon">📋</div>
-          <div>
-            <strong>Task catalog</strong>
-            <span>Deep tasks live as one YAML per benchmark in <code>voltron-evals/tasks/</code>; Broad shapes live in <code>voltron-evals/shapes/</code> with generated instances under <code>voltron-evals/instances/</code>. Each pins the agent under test, max-turns budget, prompt, acceptance criteria, and a path to a versioned rubric.</span>
-          </div>
+    <!-- ============ Section 10: Architecture & internals ============ -->
+    <section id="architecture" class="section" aria-labelledby="arch-title">
+      <div class="container">
+        <p class="section__eyebrow">Architecture &amp; internals</p>
+        <h2 id="arch-title" class="section__title">Depth, with honesty</h2>
+        <p class="section__lead">The tier model, Docker isolation, nested dispatch, the beads DAG, and the cost/cache optimizations, plus the trust boundary they depend on.</p>
+
+        <ul class="internals-list">
+          <li><strong>Tier model &amp; depth cap</strong><span>Sub-managers (Tier 2) may dispatch micro-agents (Tier 3) but micro-agents cannot dispatch further. The depth-cap guard in <code>run_agent_in_docker</code> refuses any 4th-tier launch, and every Tier-3 template is tagged <code>nestable: false</code>.</span></li>
+          <li><strong>Nested Docker-out-of-Docker</strong><span>The MCP server resolves host paths via <code>VOLTRON_HOST_ROOT</code> / <code>VOLTRON_HOST_HOME</code> / <code>VOLTRON_HOST_TMPDIR</code> so the inner <code>docker run</code> sees the real host filesystem, mounts the Docker socket, and generates a <code>container-mcp.json</code> so the nested Claude Code has its own project-voltron MCP.</span></li>
+          <li><strong>Cost &amp; cache-aware dispatch</strong><span>A cacheable system-prompt prefix, de-duplicated CLAUDE.md / bd-prime context, staggered batch fan-out, and a bounded ~4&nbsp;KB result tail. Tuned to Anthropic prompt-cache economics at the harness layer.</span></li>
+          <li><strong>Dependency-aware planning</strong><span>Tasks are a real DAG on a versioned Dolt database via beads, so what blocks what is first-class, not a flat TODO list.</span></li>
+        </ul>
+
+        <div class="callout" role="note">
+          <strong>Security disclosure: trusted machines only.</strong>
+          <p>To make nested dispatch work, <code>/var/run/docker.sock</code> is mounted into every agent container. Inside a container, having that socket is equivalent to root on the host: an agent can launch privileged containers, mount any host path, and read or write anything the Docker daemon can. Only run Voltron on a trusted developer machine, and only with prompts you trust. Do not point it at untrusted user input, public webhooks, or shared CI without a hardened sandbox in front.</p>
         </div>
-        <div class="arrow">↓</div>
-        <div class="flow-step">
-          <div class="flow-icon">🐳</div>
-          <div>
-            <strong>Runner dispatches the AUT</strong>
-            <span><code>node voltron-evals/runner.js --tier=pr</code> or <code>--task=&lt;id&gt;</code> calls <code>run_agent_in_docker</code> on the agent under test, then captures the run's log file, <code>git diff</code>, <code>bd list --json</code> snapshot, journal entries, and any reflection it produced.</span>
-          </div>
-        </div>
-        <div class="arrow">↓</div>
-        <div class="flow-step">
-          <div class="flow-icon">📏</div>
-          <div>
-            <strong>Programmatic scorers run first</strong>
-            <span>Deterministic signals — turn count, <code>[DONE]</code> presence, budget utilization, files changed, sub-agent dispatch grep, beads diff — are computed by Node and injected into the judge prompt so the LLM cannot disagree with raw measurements.</span>
-          </div>
-        </div>
-        <div class="arrow">↓</div>
-        <div class="flow-step">
-          <div class="flow-icon">⚖️</div>
-          <div>
-            <strong><code>voltron-judge</code> emits a scorecard</strong>
-            <span>The judge runs on Sonnet (cheaper than Opus and farther from the agents-under-test on the model-family axis, mitigating self-preference). Inspect-only: it has Read/Bash/Glob/Grep but no Write, Edit, or <code>run_agent_in_docker</code>. Output is a single fenced JSON block with per-criterion verdicts (MET / UNMET / PARTIAL / CANNOT_ASSESS) and quoted file:line evidence.</span>
-          </div>
-        </div>
-        <div class="arrow">↓</div>
-        <div class="flow-step">
-          <div class="flow-icon">🔁</div>
-          <div>
-            <strong>Mirrored into <code>reflections/</code></strong>
-            <span>Every scorecard is wrapped in the standard reflection envelope and dropped in <code>reflections/&lt;ts&gt;-eval-&lt;task-id&gt;.json</code> with <code>processed: false</code>. The existing <code>harness-engineer</code> pipeline groups by agent, prioritizes by frequency, and opens template-improvement PRs — no pipeline changes needed.</span>
-          </div>
+
+        <figure class="diagram diagram--beads" role="img" aria-labelledby="dgm-beads-t dgm-beads-d">
+          <svg viewBox="0 0 960 380" xmlns="http://www.w3.org/2000/svg">
+            <title id="dgm-beads-t">A beads dependency graph</title>
+            <desc id="dgm-beads-d">A task DAG where an arrow from one task to another means the first blocks the second. Planning the API unblocks writing types and the migration, which unblock adding the route, which unblocks tests and docs, which unblock opening the pull request. Tasks are marked done, ready, or blocked.</desc>
+            <defs>
+              <marker id="arwBeads" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 z" class="dgm-arrowhead"/>
+              </marker>
+            </defs>
+            <g class="dgm-edge">
+              <path d="M160 190 L228 99" marker-end="url(#arwBeads)"/>
+              <path d="M160 190 L228 281" marker-end="url(#arwBeads)"/>
+              <path d="M370 95 L438 184" marker-end="url(#arwBeads)"/>
+              <path d="M370 285 L438 196" marker-end="url(#arwBeads)"/>
+              <path d="M580 190 L648 99" marker-end="url(#arwBeads)"/>
+              <path d="M580 190 L648 281" marker-end="url(#arwBeads)"/>
+              <path d="M790 95 L808 184" marker-end="url(#arwBeads)"/>
+              <path d="M790 285 L808 196" marker-end="url(#arwBeads)"/>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t1" x="20" y="162" width="140" height="56" rx="8"/>
+              <circle class="dgm-dot--done" cx="38" cy="178" r="5"/>
+              <text class="dgm-num" x="52" y="180">vol-1</text>
+              <text class="dgm-label" x="90" y="201" text-anchor="middle">plan API</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t1" x="230" y="67" width="140" height="56" rx="8"/>
+              <circle class="dgm-dot--done" cx="248" cy="83" r="5"/>
+              <text class="dgm-num" x="262" y="85">vol-2</text>
+              <text class="dgm-label" x="300" y="106" text-anchor="middle">write types</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--t3" x="230" y="257" width="140" height="56" rx="8"/>
+              <circle class="dgm-dot--ready" cx="248" cy="273" r="5"/>
+              <text class="dgm-num" x="262" y="275">vol-3</text>
+              <text class="dgm-label" x="300" y="296" text-anchor="middle">migration</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--blocked" x="440" y="162" width="140" height="56" rx="8"/>
+              <circle class="dgm-dot--blocked" cx="458" cy="178" r="5"/>
+              <text class="dgm-num" x="472" y="180">vol-4</text>
+              <text class="dgm-label" x="510" y="201" text-anchor="middle">add route</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--blocked" x="650" y="67" width="140" height="56" rx="8"/>
+              <circle class="dgm-dot--blocked" cx="668" cy="83" r="5"/>
+              <text class="dgm-num" x="682" y="85">vol-5</text>
+              <text class="dgm-label" x="720" y="106" text-anchor="middle">write tests</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--blocked" x="650" y="257" width="140" height="56" rx="8"/>
+              <circle class="dgm-dot--blocked" cx="668" cy="273" r="5"/>
+              <text class="dgm-num" x="682" y="275">vol-6</text>
+              <text class="dgm-label" x="720" y="296" text-anchor="middle">update docs</text>
+            </g>
+            <g data-reveal>
+              <rect class="dgm-node dgm-node--blocked" x="810" y="162" width="140" height="56" rx="8"/>
+              <circle class="dgm-dot--blocked" cx="828" cy="178" r="5"/>
+              <text class="dgm-num" x="842" y="180">vol-7</text>
+              <text class="dgm-label" x="880" y="201" text-anchor="middle">open PR</text>
+            </g>
+            <g>
+              <circle class="dgm-dot--done" cx="210" cy="352" r="5"/>
+              <text class="dgm-capsub" x="222" y="353">done</text>
+              <circle class="dgm-dot--ready" cx="300" cy="352" r="5"/>
+              <text class="dgm-capsub" x="312" y="353">ready</text>
+              <circle class="dgm-dot--blocked" cx="400" cy="352" r="5"/>
+              <text class="dgm-capsub" x="412" y="353">blocked</text>
+              <text class="dgm-capsub" x="520" y="353">arrow: A -&gt; B means A blocks B</text>
+            </g>
+          </svg>
+          <figcaption>Work is a real dependency DAG on a versioned database, not a flat TODO list: what blocks what is first-class, so the planner only ever dispatches ready tasks.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ============ Section 11: MCP tools / reference ============ -->
+    <section id="tools" class="section" aria-labelledby="tools-title">
+      <div class="container">
+        <p class="section__eyebrow">Reference</p>
+        <h2 id="tools-title" class="section__title">MCP tool surface</h2>
+        <p class="section__lead">The tools the engine registers for scaffolding, dispatch, progress, and self-improvement. This table lists only tools that are actually registered in <code>src/index.js</code>.</p>
+
+        <div class="compare">
+          <table>
+            <thead><tr><th scope="col">Tool</th><th scope="col">Purpose</th></tr></thead>
+            <tbody>
+              <tr><td><code>scaffold_project</code></td><td>Write agent templates, Dockerfile, and CLAUDE.md sections to disk (unity, web, fullstack, or general) with smart merge.</td></tr>
+              <tr><td><code>scaffold_unity_project</code></td><td>Scaffold the Unity-specific agent team and Editor-exception configuration.</td></tr>
+              <tr><td><code>setup_voltron</code></td><td>Verify and repair the installation from within Claude Code; updates the allowlist and reports MCP/Docker status.</td></tr>
+              <tr><td><code>list_templates</code></td><td>List all templates, optionally filtered by project type; shows each agent's default model tier.</td></tr>
+              <tr><td><code>get_template</code></td><td>Retrieve the full content of a specific template.</td></tr>
+              <tr><td><code>run_agent_in_docker</code></td><td>Launch a specialist agent inside a Docker container with full permissions; called by the scrum-master.</td></tr>
+              <tr><td><code>run_agent_in_docker_batch</code></td><td>Launch 2 to 8 specialist agents in parallel containers in one MCP call; bypasses main-session serialization.</td></tr>
+              <tr><td><code>update_progress</code></td><td>Log a task status change (queued, in_progress, completed, failed, blocked).</td></tr>
+              <tr><td><code>get_progress</code></td><td>View a formatted progress summary or detailed task table in the chat window.</td></tr>
+              <tr><td><code>append_journal</code> · <code>get_journal</code></td><td>Append to and read the per-session work journal.</td></tr>
+              <tr><td><code>submit_reflection</code> · <code>list_reflections</code></td><td>Submit a post-session reflection (write-only) and list stored reflections with pending suggestions.</td></tr>
+              <tr><td><code>submit_analysis</code></td><td>Persist a code-analyst report to <code>.voltron/analyses/</code>.</td></tr>
+              <tr><td><code>check_for_updates</code> · <code>update_agent</code></td><td>Detect outdated installed agent files and fetch the latest content to replace them.</td></tr>
+              <tr><td><code>get_auto_update_hook</code></td><td>Get the <code>.claude/settings.json</code> hook that keeps agents current automatically.</td></tr>
+              <tr><td><code>get_agent_usage_guide</code></td><td>Usage guide for invoking and coordinating agents.</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
+    </section>
 
-      <p class="section-sub" style="margin-top:24px;">Anti-loop safety: reflections produced by the harness (those tagged <code>project_name: voltron-eval-harness</code>) must <strong>not</strong> be used by <code>harness-engineer</code> to modify the <code>voltron-judge</code> template — that would let the judge tune itself out of detecting failures. Human change-control only on <code>voltron-judge</code>.</p>
-    </div>
-  </section>
+  </main>
 
-  <!-- Alexandria -->
-  <section class="self-improve">
+  <!-- ============ Section 12: Footer ============ -->
+  <footer id="footer" class="site-footer">
     <div class="container">
-      <h2>Alexandria Integration</h2>
-      <p class="section-sub">Voltron agents are paired with <strong>Project Alexandria</strong> — a shared tooling knowledge base — so setup knowledge accumulates across every session.</p>
-      <div class="loop-diagram">
-        <div class="loop-node">
-          <strong>scrum-master plans a new project</strong>
-          <span>calls <code>get_project_setup_recommendations</code> from Alexandria to surface required tools before work begins</span>
-        </div>
-        <div class="loop-arrow">↓</div>
-        <div class="loop-node">
-          <strong>specialist agents set up tools</strong>
-          <span>call <code>quick_setup</code> before installing anything — mandatory, not optional. Agents follow battle-tested guides rather than improvising from training data</span>
-        </div>
-        <div class="loop-arrow">↓</div>
-        <div class="loop-node">
-          <strong>agents discover platform-specific fixes</strong>
-          <span>call <code>update_guide</code> after completing integrations — workarounds, version notes, and gotchas flow into Alexandria</span>
-        </div>
-        <div class="loop-arrow">↓</div>
-        <div class="loop-node">
-          <strong>knowledge is available to every future agent</strong>
-          <span>the next project that touches the same tool gets accurate, up-to-date guidance automatically</span>
-        </div>
+      <div class="site-footer__brand">
+        <img src="assets/logo.svg" alt="" width="24" height="24">
+        <span>The Voltron Engine</span>
       </div>
-    </div>
-  </section>
-
-  <!-- Footer -->
-  <footer>
-    <div class="container">
-      <p>
-        <a href="https://github.com/7ports/project-voltron">GitHub</a> &middot;
-        v3.15.1 &middot;
-        MIT License &middot;
-        Built by <a href="https://github.com/7ports">7ports</a>
-      </p>
+      <ul class="site-footer__links">
+        <li><a href="https://github.com/7ports/project-voltron">GitHub</a></li>
+        <li><a href="https://github.com/7ports/project-voltron/blob/main/voltron-evals/DESIGN.md">Eval harness</a></li>
+        <li><a href="#install">Install</a></li>
+        <li><a href="#engine">The Engine</a></li>
+        <li><a href="#tools">Reference</a></li>
+      </ul>
+      <p>MIT License · Built by <a href="https://github.com/7ports">7ports</a> · Many agents. One engine.</p>
+      <div class="badge-row">
+        <span class="badge">MCP Server</span>
+        <span class="badge">Docker-isolated</span>
+        <span class="badge">Self-improving</span>
+        <span class="badge">Regression-graded</span>
+        <span class="badge">MIT</span>
+      </div>
     </div>
   </footer>
+
+  <!-- ===== Phase-2 animated centerpiece ===== -->
+  <!-- GSAP core + free plugins (MotionPath, MorphSVG) via jsDelivr CDN. Plugins are
+       best-effort: centerpiece.js guards on each global, and the force-graph in
+       section 4 lazy-loads only when it approaches the viewport. If any CDN script
+       fails, the static logo / tier SVG baselines remain visible. -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/MotionPathPlugin.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/MorphSVGPlugin.min.js"></script>
+  <script src="scripts/centerpiece.js" defer></script>
+  <script src="scripts/diagrams.js" defer></script>
 
 </body>
 </html>

@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Voltron Engine logo">
+  <title>Voltron Engine</title>
+  <desc>V/A ambigram mark, an upright chevron (front, V) overlaid on a vertically-inverted copy of the same chevron (behind, A). Segmented units converging into one core. Duotone cyan to amber.</desc>
+  <defs>
+    <!-- Brand duotone: cyan -> amber, across the full glyph in user space -->
+    <linearGradient id="voltronDuotone" gradientUnits="userSpaceOnUse" x1="40" y1="32" x2="216" y2="224">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="1" stop-color="#f59e0b"/>
+    </linearGradient>
+    <linearGradient id="voltronDuotoneSoft" gradientUnits="userSpaceOnUse" x1="40" y1="32" x2="216" y2="224">
+      <stop offset="0" stop-color="#22d3ee" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#f59e0b" stop-opacity="0.85"/>
+    </linearGradient>
+    <!-- Back-layer tone: amber-led duotone so the inverted A recedes behind the V -->
+    <linearGradient id="voltronDuotoneBack" gradientUnits="userSpaceOnUse" x1="40" y1="32" x2="216" y2="224">
+      <stop offset="0" stop-color="#f59e0b"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+  </defs>
+
+  <!--
+    BACK LAYER: an INVERTED (vertically-flipped) copy of the SAME chevron graphic.
+    Flipped about the vertical centre (y=128) via translate(0,256) scale(1,-1):
+    its apex points DOWN, so it reads as an A sitting behind the upright V.
+    Drawn first (lowest in the SVG) and dimmed (opacity + amber tone) so it recedes.
+  -->
+  <g id="voltronGlyphBack" transform="translate(0,256) scale(1,-1)" opacity="0.4"
+     fill="none" stroke="url(#voltronDuotoneBack)"
+     stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
+    <!-- LEFT ARM -->
+    <path d="M48 208 L88 128"/>
+    <path d="M96 112 L128 48"/>
+    <!-- RIGHT ARM -->
+    <path d="M208 208 L168 128"/>
+    <path d="M160 112 L128 48"/>
+    <!-- Crossbar -->
+    <path d="M82 152 L174 152" stroke-width="22"/>
+    <!-- Core node -->
+    <circle cx="128" cy="48" r="18" fill="url(#voltronDuotoneBack)" stroke="none"/>
+  </g>
+
+  <!--
+    FRONT LAYER: the upright chevron (the V in front).
+    Built from distinct segments so an assembly animation can converge them into the glyph.
+    Each arm = two segments (outer + inner) meeting at the apex core.
+    The crossbar makes the apex-up chevron read as A; flipped, the same form reads as V.
+  -->
+  <g fill="none" stroke="url(#voltronDuotone)" stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
+    <!-- LEFT ARM -->
+    <path id="segLeftOuter" d="M48 208 L88 128"/>
+    <path id="segLeftInner" d="M96 112 L128 48"/>
+    <!-- RIGHT ARM -->
+    <path id="segRightOuter" d="M208 208 L168 128"/>
+    <path id="segRightInner" d="M160 112 L128 48"/>
+  </g>
+
+  <!-- Crossbar (the A bar / the unifying core line), its own segment for animation -->
+  <path id="segCrossbar" d="M82 152 L174 152" fill="none"
+        stroke="url(#voltronDuotoneSoft)" stroke-width="22" stroke-linecap="round"/>
+
+  <!-- Core node: where the many converge into one -->
+  <circle id="coreNode" cx="128" cy="48" r="18" fill="url(#voltronDuotone)"/>
+  <circle cx="128" cy="48" r="7" fill="#0b1220"/>
+</svg>

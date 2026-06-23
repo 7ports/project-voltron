@@ -1,0 +1,68 @@
+/* Voltron Engine Rebrand - Design Tokens */
+/* Single source of truth for the brand system */
+
+/* Font imports from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  /* Font Families */
+  --font-display: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Monaco', 'Courier New', monospace;
+
+  /* Color Base */
+  --bg: #080b14;
+  --surface: #11161f;
+  --surface-2: #1a2230;
+
+  /* Engine Core Colors */
+  --engine-core: #22d3ee;
+  --engine-forge: #f59e0b;
+
+  /* Tier System (Amber → Magenta → Cyan) */
+  --tier-1: #f59e0b;
+  --tier-2: #d946ef;
+  --tier-3: #22d3ee;
+
+  /* Text Colors */
+  --text: #e8edf4;
+  --text-muted: #8b97a8;
+
+  /* Structural */
+  --border: rgba(255, 255, 255, 0.08);
+
+  /* Brand Gradient */
+  --brand-gradient: linear-gradient(90deg, #22d3ee 0%, #f59e0b 100%);
+
+  /* Glow Effects */
+  --glow-core: 0 0 40px rgba(34, 211, 238, 0.35);
+
+  /* Type Scale - Responsive with clamp() */
+  --step--1: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
+  --step-0: clamp(1rem, 1rem + 0.5vw, 1.125rem);
+  --step-1: clamp(1.125rem, 1rem + 0.75vw, 1.375rem);
+  --step-2: clamp(1.375rem, 1.125rem + 1vw, 1.75rem);
+  --step-3: clamp(1.75rem, 1.375rem + 1.5vw, 2.375rem);
+  --step-4: clamp(2.375rem, 1.75rem + 2vw, 3.25rem);
+  --step-5: clamp(3.25rem, 2.375rem + 2.5vw, 4.5rem);
+  --step-6: clamp(4.5rem, 3.25rem + 3.5vw, 6.25rem);
+
+  /* Line Heights */
+  --leading-tight: 1.2;
+  --leading-normal: 1.6;
+
+  /* Spacing - Rem ramp */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+
+  /* Border Radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+}

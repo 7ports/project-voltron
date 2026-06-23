@@ -11,3 +11,8 @@ Decisions made by the user after reviewing the plan. The build sprint is PAUSED 
 - `upgrade-plan.md` — the comprehensive 8-section branding + documentation upgrade plan (the master plan).
 - `viz-research.md` — researcher brief: client-side agent-visualization libraries, competitor approaches, centerpiece options A/B/C.
 - `engine-inventory.md` — code-analyst: the 12-component "Voltron Engine" inventory + code-coupling baseline behind the reorg recommendation.
+
+## Revisions (2026-06-19)
+
+- Copy style: NO em-dashes anywhere in rebrand copy (site or README). Rewrite to avoid them.
+- Scope: the competitive-comparison section is REMOVED from the site IA and all copy (no LangGraph/CrewAI/AutoGen comparison).

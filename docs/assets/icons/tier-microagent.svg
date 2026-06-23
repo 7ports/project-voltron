@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Tier micro-agent">
+  <title>Tier 3 — Micro-agent</title>
+  <!-- A single focused worker: one node, one task, executing -->
+  <circle cx="12" cy="12" r="3"/>
+  <path d="M12 2 L12 5"/>
+  <path d="M12 19 L12 22"/>
+  <path d="M2 12 L5 12"/>
+  <path d="M19 12 L22 12"/>
+  <path d="M5.6 5.6 L7.7 7.7"/>
+  <path d="M16.3 16.3 L18.4 18.4"/>
+</svg>

@@ -29,7 +29,7 @@ Voltron's three-tier agent model relies on three external tools. Setup/scaffold 
 
 | Tool | Purpose | Install (cross-platform) | Alternative |
 |---|---|---|---|
-| **beads** ([gastownhall/beads](https://github.com/gastownhall/beads)) | Dependency-aware task tracking — drives the bead graph that scrum-master uses to enforce task ordering. | \`npm install -g @beads/bd\` | \`brew install beads\` (macOS / Linux) |
+| **beads** ([gastownhall/beads](https://github.com/gastownhall/beads)) | Dependency-aware task tracking — drives the bead graph that scrum-master uses to enforce task ordering. | \`curl -fsSL https://raw.githubusercontent.com/gastownhall/beads/main/scripts/install.sh | bash\` | \`brew install beads\` (macOS / Linux) |
 | **stringer** ([davetashner/stringer](https://github.com/davetashner/stringer)) | Codebase baseline analysis — read by code-analyst before every audit. | \`go install github.com/davetashner/stringer/cmd/stringer@latest\` (needs Go) | Pre-built binary from [releases](https://github.com/davetashner/stringer/releases/latest), or \`brew install davetashner/tap/stringer\` (macOS) |
 | **alexandria** ([7ports/project-alexandria](https://github.com/7ports/project-alexandria)) | Tooling/setup guides — every agent calls \`mcp__alexandria__quick_setup\` before installing any tool, and \`update_guide\` after. | \`git clone\` + \`npm install\` in \`mcp-server/\` + register MCP server in \`~/.claude.json\` | (none — required setup) |
 
@@ -304,7 +304,7 @@ Voltron's three-tier agent model relies on three external tools. Setup/scaffold 
 
 | Tool | Purpose | Install (cross-platform) | Alternative |
 |---|---|---|---|
-| **beads** ([gastownhall/beads](https://github.com/gastownhall/beads)) | Dependency-aware task tracking — drives the bead graph that scrum-master uses to enforce task ordering. | \`npm install -g @beads/bd\` | \`brew install beads\` (macOS / Linux) |
+| **beads** ([gastownhall/beads](https://github.com/gastownhall/beads)) | Dependency-aware task tracking — drives the bead graph that scrum-master uses to enforce task ordering. | \`curl -fsSL https://raw.githubusercontent.com/gastownhall/beads/main/scripts/install.sh | bash\` | \`brew install beads\` (macOS / Linux) |
 | **stringer** ([davetashner/stringer](https://github.com/davetashner/stringer)) | Codebase baseline analysis — read by code-analyst before every audit. | \`go install github.com/davetashner/stringer/cmd/stringer@latest\` (needs Go) | Pre-built binary from [releases](https://github.com/davetashner/stringer/releases/latest), or \`brew install davetashner/tap/stringer\` (macOS) |
 | **alexandria** ([7ports/project-alexandria](https://github.com/7ports/project-alexandria)) | Tooling/setup guides — every agent calls \`mcp__alexandria__quick_setup\` before installing any tool, and \`update_guide\` after. | \`git clone\` + \`npm install\` in \`mcp-server/\` + register MCP server in \`~/.claude.json\` | (none — required setup) |
 
@@ -573,7 +573,7 @@ Voltron's three-tier agent model relies on three external tools. Setup/scaffold 
 
 | Tool | Purpose | Install (cross-platform) | Alternative |
 |---|---|---|---|
-| **beads** ([gastownhall/beads](https://github.com/gastownhall/beads)) | Dependency-aware task tracking — drives the bead graph that scrum-master uses to enforce task ordering. | \`npm install -g @beads/bd\` | \`brew install beads\` (macOS / Linux) |
+| **beads** ([gastownhall/beads](https://github.com/gastownhall/beads)) | Dependency-aware task tracking — drives the bead graph that scrum-master uses to enforce task ordering. | \`curl -fsSL https://raw.githubusercontent.com/gastownhall/beads/main/scripts/install.sh | bash\` | \`brew install beads\` (macOS / Linux) |
 | **stringer** ([davetashner/stringer](https://github.com/davetashner/stringer)) | Codebase baseline analysis — read by code-analyst before every audit. | \`go install github.com/davetashner/stringer/cmd/stringer@latest\` (needs Go) | Pre-built binary from [releases](https://github.com/davetashner/stringer/releases/latest), or \`brew install davetashner/tap/stringer\` (macOS) |
 | **alexandria** ([7ports/project-alexandria](https://github.com/7ports/project-alexandria)) | Tooling/setup guides — every agent calls \`mcp__alexandria__quick_setup\` before installing any tool, and \`update_guide\` after. | \`git clone\` + \`npm install\` in \`mcp-server/\` + register MCP server in \`~/.claude.json\` | (none — required setup) |
 
@@ -1302,7 +1302,7 @@ if (Get-Command stringer -ErrorAction SilentlyContinue) { "stringer OK" } else {
 - **Docker missing** → "Docker is not installed or not running. Install Docker Desktop, then retry."
 - **Dockerfile missing** → "Run \`mcp__project-voltron__scaffold_project\` first."
 - **CREDENTIALS MISSING** → Docker agents will fail with "No auth available". Auth is mounted into the container from \`~/.claude/.credentials.json\` (read-only) — this file is the *only* supported auth path for Voltron agents; the \`CLAUDE_CODE_OAUTH_TOKEN\` env var on the host is NOT used. On **Unix / macOS**: run \`claude setup-token\` once to materialize the file. On **Windows**: \`claude setup-token\` does NOT write this file, so you must create/refresh \`~/.claude/.credentials.json\` manually — paste your current OAuth token into it (matching the JSON shape Claude Code uses on macOS) and update it whenever the token rotates. STOP and resolve before launching any agent.
-- **beads MISSING (mandatory)** → bd binary not on PATH. STOP. Tell the user: "beads is mandatory and not installed. Run \`npm install -g @beads/bd\` (or \`brew install beads\`) and retry. Do not proceed without it."
+- **beads MISSING (mandatory)** → bd binary not on PATH. STOP. Tell the user: "beads is mandatory and not installed. Run \`curl -fsSL https://raw.githubusercontent.com/gastownhall/beads/main/scripts/install.sh | bash\` (or \`brew install beads\`) and retry. Do not proceed without it."
 - **bd dolt down — auto-recovering...** → expected output when the shared-server (\`dolt.shared-server: true\` in \`.beads/config.yaml\`) was orphaned by a reboot. Auto-recovery via \`bd dolt start\` runs inline; no action needed if followed by **bd dolt RECOVERED**.
 - **BEADS SERVER DOWN (auto-recovery failed)** → bd is installed but \`bd dolt start\` did not bring the server up. STOP. See the **Beads Recovery** section below; run \`bd dolt status\` manually for the actual error, then check for stale \`.beads/dolt-server.pid\`/\`.lock\` files. Do not proceed until \`bd ready --json\` returns cleanly.
 - **BEADS READY FAILED** → server is up but \`bd ready --json\` errored — usually a database schema mismatch or stale lock. Run \`bd doctor\` and surface the output to the user.
@@ -10028,7 +10028,13 @@ export const DOCKERFILE_CONTENT =
   "\n" +
   "# v3.4.0: mandatory voltron dependencies\n" +
   "# beads (gastownhall/beads) — dependency-aware task tracking; required by scrum-master\n" +
-  "RUN npm install -g @beads/bd\n" +
+  "RUN BEADS_VERSION=1.0.4 && \\\n" +
+  "    curl -fsSL https://github.com/gastownhall/beads/releases/download/v${BEADS_VERSION}/beads_${BEADS_VERSION}_linux_amd64.tar.gz -o /tmp/beads.tgz && \\\n" +
+  "    mkdir -p /tmp/beads-extract && \\\n" +
+  "    tar -xzf /tmp/beads.tgz -C /tmp/beads-extract && \\\n" +
+  "    find /tmp/beads-extract -name bd -type f -exec mv {} /usr/local/bin/ \\; && \\\n" +
+  "    chmod +x /usr/local/bin/bd && \\\n" +
+  "    rm -rf /tmp/beads.tgz /tmp/beads-extract\n" +
   "\n" +
   "# stringer (davetashner/stringer v1.7.0) — codebase baseline analysis; required by code-analyst\n" +
   "RUN STRINGER_VERSION=1.7.0 && \\\n" +

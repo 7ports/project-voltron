@@ -121,7 +121,7 @@ The setup script:
 The scrum-master uses [beads](https://github.com/gastownhall/beads) for dependency-aware task orchestration. **This is mandatory** as of v3.4.0, agents will refuse to dispatch work plans without a working `bd` CLI:
 
 ```bash
-npm install -g @beads/bd
+curl -fsSL https://raw.githubusercontent.com/gastownhall/beads/main/scripts/install.sh | bash
 ```
 
 Without beads, the scrum-master falls back to manual dependency reasoning.

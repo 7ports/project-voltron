@@ -280,11 +280,21 @@ A containerized sub-manager or `harness-engineer` can now dispatch its own Tier-
 
 **How it works:**
 - `run_agent_in_docker` resolves host paths via `VOLTRON_HOST_ROOT` / `VOLTRON_HOST_HOME` / `VOLTRON_HOST_TMPDIR` so the inner `docker run` sees the real host filesystem (not the container's view of it).
-- `/var/run/docker.sock` is mounted into the agent container so the nested Claude Code can talk to the host Docker daemon.
+- Nesting agents reach the host Docker daemon through a filtering socket-proxy sidecar (`voltron-socket-proxy`) instead of a raw socket bind. The sidecar holds the real `/var/run/docker.sock`; dispatch-capable agents receive `DOCKER_HOST=tcp://voltron-socket-proxy:2375` on a dedicated private network (`voltron-proxy-net`) and never see a socket of their own. (The network is a private bridge rather than `internal: true`, because Voltron agents require outbound internet for the Anthropic API, `git push`, and package managers; the daemon-API security boundary is enforced by the proxy allowlist independently of egress.)
 - A `container-mcp.json` is generated at launch and mounted into the inner container so the nested Claude Code has its own `project-voltron` MCP available.
 - A depth-cap guard refuses any 4th-tier launch, micro-agents cannot dispatch further.
 
-> **⚠️ Security disclosure, trusted dev machines only.** To make nested dispatch work, the Docker socket is mounted into every agent container. Inside a container, having `/var/run/docker.sock` is **equivalent to root on the host**: an agent can launch privileged containers, mount any host path, and read/write anything the Docker daemon can. **Only run Voltron on a trusted developer machine, and only with prompts you trust.** Do not point this at untrusted user input, public webhooks, or shared CI without a hardened sandbox in front.
+> **Socket-proxy isolation (S1 Phase B, v3.18.0).** Two layered controls narrow the Docker API surface available to nesting agents.
+>
+> **Phase A (v3.17.2):** The host socket is default-deny. It is bind-mounted only into agents whose `tools:` grant `run_agent_in_docker`, so research, design, and validation roles never get a socket at all.
+>
+> **Phase B (v3.18.0):** Agents that do have dispatch rights no longer receive a raw socket. Instead, a long-lived filtering socket-proxy sidecar (`wollomatic/socket-proxy`, pinned by digest) holds the real `/var/run/docker.sock` and exposes a narrowed API at `tcp://voltron-socket-proxy:2375` on a dedicated private network. No host configuration is required: Voltron stands up the proxy and the private network at runtime via the Docker API it already uses. This works on Docker Desktop (Windows/macOS) and Linux with no `/etc/docker/daemon.json` edits and no dockerd restart.
+>
+> **What the proxy allows:** container create/start/attach/wait/delete, image inspect, container list and inspect (for `--volumes-from` resolution), plus ping and version.
+>
+> **What the proxy blocks:** `POST /build` (image builds), `/containers/<id>/exec` (exec into sibling containers), `POST /commit` (snapshot to image), `/networks/create`, `/volumes/create`, all swarm/services/secrets/configs/plugins endpoints, and bind-mount sources outside the workspace prefix (so `-v /:/host` and arbitrary host-root mounts are rejected at create time).
+>
+> **Residual risk:** the proxy does not inspect the `Privileged` or `PidMode` fields in the create body. An agent can still request a privileged container unless the optional OPA AuthZ plugin (`voltron/socket-proxy/opa-authz/voltron-authz.rego`) is deployed on the host daemon. The proxy adds meaningful defense-in-depth; it does not eliminate the core risk of giving any agent container-create rights on a shared daemon. **Only run Voltron on a trusted developer machine and with prompts you trust.**
 
 ### Unity Editor exception: auto-orchestration via Agent tool
 

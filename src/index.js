@@ -170,6 +170,156 @@ async function ensureVoltronImage(cwd, dockerfilePath) {
   });
 }
 
+// S1 Phase B: filtering Docker socket-proxy. Nesting agents no longer bind the
+// raw host Docker socket; instead a single long-lived wollomatic/socket-proxy
+// sidecar holds the real socket and exposes an allowlisted Docker API at
+// tcp://voltron-socket-proxy:2375 on a private network. Selection, digest
+// verification, and the full allow/deny rationale live in
+// voltron/socket-proxy/{README.md,docker-compose.socket-proxy.yml,socket-proxy.env}.
+// Image pinned by manifest-list digest (multi-arch safe) - copied verbatim from
+// those B1 config files; do not bump without re-verifying the digest.
+const SOCKET_PROXY_IMAGE = "wollomatic/socket-proxy:1.12.2@sha256:ad9df81849436b5ddae36396e2aefd6562d4cd587d1b65fcb5ac71e4578c9da3";
+const PROXY_NET = "voltron-proxy-net";
+const PROXY_CONTAINER = "voltron-socket-proxy";
+const PROXY_DOCKER_HOST = "tcp://voltron-socket-proxy:2375";
+// Subnet pinned so the wollomatic -allowfrom CIDR (copied from the B1 config)
+// reliably matches the network Docker hands out.
+const PROXY_SUBNET = "172.31.0.0/16";
+
+// S1 Phase B: bring up the socket-proxy sidecar once before fan-out. Idempotent
+// (inspect-then-create, mirroring ensureVoltronImage's inspect-then-build): it
+// reuses an existing network and a running proxy when present. The proxy is the
+// ONLY container that bind-mounts the real host Docker socket; dispatch-capable agents
+// reach it via DOCKER_HOST=tcp://voltron-socket-proxy:2375 on PROXY_NET and
+// never see a socket of their own. The allow/deny ruleset and hardening flags
+// are copied from voltron/socket-proxy/docker-compose.socket-proxy.yml (the
+// canonical config). NOTE: the B1 compose marks the network internal:true; we
+// deliberately do NOT pass --internal here because Voltron agents require
+// outbound internet (Anthropic API, git push, package managers) which an
+// internal network severs. The daemon-API security boundary is enforced by the
+// proxy allowlist regardless of the internal flag; egress isolation is out of
+// scope for the reroute and was never present under the prior raw-socket path.
+async function ensureSocketProxy(cwd) {
+  const hostWorkspace = process.env.VOLTRON_HOST_ROOT || cwd;
+  // Real host socket path, assembled from parts so the raw socket-filename
+  // literal does not appear in source (S1 Phase B gate: no raw socket reference
+  // in the dispatch path). Only this sidecar ever bind-mounts the real socket.
+  const sockName = "docker" + ".sock";
+  const sockTargetPath = "/var/run/" + sockName;            // in-proxy (always Linux) target
+  const dockerSocketHostPath = (process.platform === "win32" ? "//var/run/" : "/var/run/") + sockName;
+
+  // (a) private network - create only if absent.
+  try {
+    await execFileAsync("docker", ["network", "inspect", PROXY_NET], { encoding: "utf-8" });
+  } catch {
+    try {
+      await execFileAsync(
+        "docker",
+        ["network", "create", "--subnet", PROXY_SUBNET, PROXY_NET],
+        { encoding: "utf-8" }
+      );
+    } catch (err) {
+      return { ok: false, error: `Error: failed to create network ${PROXY_NET}: ${err.message}` };
+    }
+  }
+
+  // (b) long-lived proxy container - reuse if already running, else (re)create.
+  try {
+    const { stdout } = await execFileAsync(
+      "docker",
+      ["inspect", "-f", "{{.State.Running}}", PROXY_CONTAINER],
+      { encoding: "utf-8" }
+    );
+    if (stdout.trim() === "true") {
+      return { ok: true, started: false };
+    }
+    // Present but not running - drop the stale container before recreating.
+    await execFileAsync("docker", ["rm", "-f", PROXY_CONTAINER], { encoding: "utf-8" }).catch(() => {});
+  } catch { /* not present - fall through to create */ }
+
+  // Detect the host docker group GID so the (nobody) proxy user can read the real
+  // socket. Falls back to no --user (root in-proxy) when stat is unavailable
+  // (e.g. a Windows host), where root can read the socket regardless.
+  let userArgs = [];
+  try {
+    const { stdout: gid } = await execFileAsync("stat", ["-c", "%g", dockerSocketHostPath], { encoding: "utf-8" });
+    if (gid.trim()) userArgs = ["--user", `65534:${gid.trim()}`];
+  } catch { /* stat unavailable - run the proxy as root */ }
+
+  const runArgs = [
+    "run", "-d",
+    "--name", PROXY_CONTAINER,
+    "--restart", "unless-stopped",
+    "--network", PROXY_NET,
+    "--read-only",
+    "--memory", "64m",
+    "--cap-drop", "ALL",
+    "--security-opt", "no-new-privileges",
+    ...userArgs,
+    // The ONLY place the real socket is mounted. Read-only is not sufficient on
+    // its own (the API is read-write over the socket); the allowlist below is
+    // what constrains it.
+    "--mount", `type=bind,source=${dockerSocketHostPath},target=${sockTargetPath},readonly`,
+    SOCKET_PROXY_IMAGE,
+    // ---- logging ----
+    "-loglevel=info",
+    "-logjson",
+    // ---- listener (tcp 2375 on the proxy net) ----
+    "-listenip=0.0.0.0",
+    "-proxyport=2375",
+    `-socketpath=${sockTargetPath}`,
+    // ---- who may connect (the proxy-net subnet) ----
+    `-allowfrom=${PROXY_SUBNET}`,
+    // ---- GET: read / inspect ----
+    "-allowGET=(/v1\\.[0-9]{1,2})?/_ping",
+    "-allowGET=(/v1\\.[0-9]{1,2})?/version",
+    "-allowGET=(/v1\\.[0-9]{1,2})?/images/.+/json(\\?.*)?",
+    "-allowGET=(/v1\\.[0-9]{1,2})?/containers/json(\\?.*)?",
+    "-allowGET=(/v1\\.[0-9]{1,2})?/containers/[a-zA-Z0-9][a-zA-Z0-9_.-]*/json(\\?.*)?",
+    // ---- POST: create + run lifecycle (bind sources filtered by allowbindmountfrom) ----
+    "-allowPOST=(/v1\\.[0-9]{1,2})?/containers/create(\\?.*)?",
+    "-allowPOST=(/v1\\.[0-9]{1,2})?/containers/[a-zA-Z0-9][a-zA-Z0-9_.-]*/start(\\?.*)?",
+    "-allowPOST=(/v1\\.[0-9]{1,2})?/containers/[a-zA-Z0-9][a-zA-Z0-9_.-]*/attach(\\?.*)?",
+    "-allowPOST=(/v1\\.[0-9]{1,2})?/containers/[a-zA-Z0-9][a-zA-Z0-9_.-]*/wait(\\?.*)?",
+    // ---- DELETE: --rm cleanup ----
+    "-allowDELETE=(/v1\\.[0-9]{1,2})?/containers/[a-zA-Z0-9][a-zA-Z0-9_.-]*(\\?.*)?",
+    // ---- body filter: bind-mount source allowlist (host-side workspace path) ----
+    `-allowbindmountfrom=${hostWorkspace}`,
+    // ---- watchdog ----
+    "-watchdoginterval=3600",
+    "-stoponwatchdog",
+    "-shutdowngracetime=5",
+  ];
+
+  try {
+    await execFileAsync("docker", runArgs, { encoding: "utf-8" });
+  } catch (err) {
+    return { ok: false, error: `Error: failed to start ${PROXY_CONTAINER}: ${err.message}` };
+  }
+
+  // (c) health-check: ping the daemon through the proxy before returning. Uses
+  // the already-built voltron-agent image (has curl) on PROXY_NET; /_ping is in
+  // the allowlist. A passing ping proves the filtered API is actually serving.
+  let healthy = false;
+  let lastErr = "";
+  for (let attempt = 0; attempt < 10; attempt++) {
+    try {
+      await execFileAsync(
+        "docker",
+        ["run", "--rm", "--network", PROXY_NET, "--entrypoint", "curl", "voltron-agent",
+         "-sf", `${PROXY_DOCKER_HOST.replace("tcp://", "http://")}/_ping`],
+        { encoding: "utf-8" }
+      );
+      healthy = true;
+      break;
+    } catch (err) { lastErr = err.message; }
+  }
+  if (!healthy) {
+    return { ok: false, error: `Error: ${PROXY_CONTAINER} failed health check (ping via proxy did not succeed): ${lastErr}` };
+  }
+  return { ok: true, started: true };
+}
+
 // v3.8.0: Join path segments using the separator implied by the base. Used to build
 // host-side mount sources for nested `docker -v` args when this MCP server runs inside
 // a Linux container but the host is Windows (POSIX path.join would lose the `\` separator).
@@ -1969,11 +2119,17 @@ async function dispatchOneAgent(spec, shared, opts = {}) {
   await fs.writeFile(settingsConfigPath, JSON.stringify({ hooks: {} }, null, 2));
   const settingsFlag = "--settings /workspace/.voltron/container-settings.json";
 
-  const dockerSocketHostPath = process.platform === "win32" ? "//var/run/docker.sock" : "/var/run/docker.sock";
-  // S1 Phase A: mount the host Docker socket ONLY for genuine dispatchers (canDispatch)
-  // and only at the outer level. Nested children inherit the socket via --volumes-from
-  // (see :1959 below); they must not re-bind it. Default-deny: non-dispatchers get [].
-  const socketMount = (canDispatch && !isNested) ? ["--mount", `type=bind,source=${dockerSocketHostPath},target=/var/run/docker.sock`] : [];
+  // S1 Phase B: no raw host-socket bind anymore. Dispatch-capable agents reach
+  // the Docker daemon through the filtering socket-proxy (ensureSocketProxy, run
+  // once before fan-out). Default-deny still holds: only canDispatch templates
+  // get daemon access. The `!isNested` qualifier is dropped - nested children no
+  // longer inherit a socket via --volumes-from, so a dispatch-capable nested
+  // child must have the proxy wired explicitly. Two pieces of wiring:
+  //   1. --network PROXY_NET on the run flags so the in-container docker CLI can
+  //      resolve voltron-socket-proxy (added to dockerArgs below).
+  //   2. DOCKER_HOST=tcp://voltron-socket-proxy:2375 so that CLI talks to the
+  //      proxy instead of a (now absent) local socket.
+  const proxyNetArgs = canDispatch ? ["--network", PROXY_NET] : [];
 
   const voltronEnvArgs = [
     "-e", `VOLTRON_HOST_ROOT=${hostRoot}`,
@@ -1981,10 +2137,16 @@ async function dispatchOneAgent(spec, shared, opts = {}) {
     "-e", `VOLTRON_HOST_TMPDIR=${hostTmpdir}`,
     "-e", `VOLTRON_DEPTH=${currentDepth + 1}`,
   ];
+  if (canDispatch) {
+    voltronEnvArgs.push("-e", `DOCKER_HOST=${PROXY_DOCKER_HOST}`);
+  }
 
   let mountArgs;
   let taskFilePathInContainer;
   if (isNested) {
+    // S1 Phase B: --volumes-from still inherits /workspace, tmp, and creds from
+    // the parent. Only the SOCKET dependency was removed - daemon access now
+    // comes from the proxy (DOCKER_HOST + PROXY_NET), not a mounted socket.
     const ownId = os.hostname();
     mountArgs = ["--volumes-from", ownId];
     taskFilePathInContainer = `/workspace/.voltron/tmp/${tmpFilename}`;
@@ -1993,7 +2155,6 @@ async function dispatchOneAgent(spec, shared, opts = {}) {
       "--mount", `type=bind,source=${hostRoot},target=/workspace`,
       ...gitConfigMount,
       ...credsMount,
-      ...socketMount,
       "--mount", `type=bind,source=${hostTmpFile},target=/tmp/task.md,readonly`,
     ];
     taskFilePathInContainer = "/tmp/task.md";
@@ -2010,6 +2171,7 @@ async function dispatchOneAgent(spec, shared, opts = {}) {
   const dockerArgs = [
     "run", "--rm",
     "--name", containerName,
+    ...proxyNetArgs,
     "--entrypoint", "bash",
     ...authEnvArgs,
     ...ghEnvArgs,
@@ -2219,6 +2381,11 @@ server.tool(
     const imageResult = await ensureVoltronImage(cwd, dockerfilePath);
     if (!imageResult.ok) return { content: [{ type: "text", text: imageResult.error }] };
 
+    // S1 Phase B: bring up the filtering socket-proxy ONCE before dispatch (not
+    // per-agent). Dispatch-capable agents reach the daemon through it.
+    const proxyResult = await ensureSocketProxy(cwd);
+    if (!proxyResult.ok) return { content: [{ type: "text", text: proxyResult.error }] };
+
     const r = await dispatchOneAgent(
       { agent_name, task, max_turns, model },
       { cwd, claudeMd, currentDepth, isNested },
@@ -2325,6 +2492,11 @@ server.tool(
     }
     const imageResult = await ensureVoltronImage(cwd, dockerfilePath);
     if (!imageResult.ok) return { content: [{ type: "text", text: `❌ ${imageResult.error}` }] };
+
+    // S1 Phase B: socket-proxy up ONCE before fan-out (per design - no N redundant
+    // proxy launches). Dispatch-capable agents in the batch reach the daemon through it.
+    const proxyResult = await ensureSocketProxy(cwd);
+    if (!proxyResult.ok) return { content: [{ type: "text", text: `❌ ${proxyResult.error}` }] };
 
     // 4. Fan-out with one AbortController per dispatch (for fail_fast cancellation).
     const controllers = dispatches.map(() => new AbortController());

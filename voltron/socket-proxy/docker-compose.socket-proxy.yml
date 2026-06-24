@@ -1,0 +1,132 @@
+# Voltron Docker socket-proxy sidecar
+#
+# Image: wollomatic/socket-proxy, pinned BY DIGEST below.
+# wollomatic/socket-proxy has NO standalone JSON/YAML config file. Its real
+# config format is command-line flags (or SP_* environment variables). This
+# compose service IS the canonical config artifact. The env-var equivalent is
+# in socket-proxy.env in this directory.
+#
+# Role: long-lived sidecar. It is the ONLY container that bind-mounts the real
+# /var/run/docker.sock. It exposes a filtered Docker API at
+# tcp://voltron-socket-proxy:2375 on the private, internal network
+# voltron-proxy-net. Nesting Voltron agents receive
+#   DOCKER_HOST=tcp://voltron-socket-proxy:2375
+# and DO NOT get a docker.sock bind of their own.
+#
+# Pin verification (resolved 2026-06-24 via Docker Hub registry):
+#   tag           : 1.12.2  (released 2026-06-09)
+#   manifest list : sha256:ad9df81849436b5ddae36396e2aefd6562d4cd587d1b65fcb5ac71e4578c9da3
+#   amd64         : sha256:97056713dfb49f32e140fa23a7ad412552c8d4b600a3284438dfad4ae45c35a0
+#   arm64         : sha256:271737ed139cf3a8bf6fbeb4a761f2712007018cf1357d1238008ff775cff2ff
+# Re-verify with:  docker buildx imagetools inspect wollomatic/socket-proxy:1.12.2
+
+services:
+  voltron-socket-proxy:
+    container_name: voltron-socket-proxy
+    # Pin by digest. Tag is kept in the comment only for human readability.
+    image: wollomatic/socket-proxy:1.12.2@sha256:ad9df81849436b5ddae36396e2aefd6562d4cd587d1b65fcb5ac71e4578c9da3
+    restart: unless-stopped
+
+    # Hardening of the proxy container itself.
+    # Run as nobody. The GID MUST be the host's docker group id so the proxy
+    # can read /var/run/docker.sock. Replace 999 with your host docker GID.
+    user: "65534:999"
+    read_only: true
+    mem_limit: 64M
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges
+
+    command:
+      # ---- logging ----
+      - '-loglevel=info'
+      - '-logjson'
+
+      # ---- listener ----
+      # Listen on TCP 2375, bound to the proxy net interface only.
+      - '-listenip=0.0.0.0'
+      - '-proxyport=2375'
+      - '-socketpath=/var/run/docker.sock'
+
+      # ---- who may connect ----
+      # Default is 127.0.0.1/32. Restrict to the proxy subnet CIDR.
+      # Replace with the actual voltron-proxy-net subnet (see networks below).
+      - '-allowfrom=172.31.0.0/16'
+
+      # ============================================================
+      # ALLOWLIST (secure-by-default: anything NOT listed is DENIED)
+      # Paths are auto-anchored with ^ and $ by socket-proxy.
+      # The optional (/v1\.[0-9]{1,2}) prefix covers versioned API
+      # calls (e.g. /v1.47/containers/json) and unversioned calls.
+      # The trailing (\?.*)? allows the query string (attach/wait/
+      # create/delete all use query params; matching includes it).
+      # ============================================================
+
+      # ---- GET: read / inspect ----
+      - '-allowGET=(/v1\.[0-9]{1,2})?/_ping'
+      - '-allowGET=(/v1\.[0-9]{1,2})?/version'
+      # image inspect (read): /images/<name-or-id>/json
+      - '-allowGET=(/v1\.[0-9]{1,2})?/images/.+/json(\?.*)?'
+      # list containers (host glimpse + --volumes-from resolution)
+      - '-allowGET=(/v1\.[0-9]{1,2})?/containers/json(\?.*)?'
+      # inspect one container (--volumes-from resolution)
+      - '-allowGET=(/v1\.[0-9]{1,2})?/containers/[a-zA-Z0-9][a-zA-Z0-9_.-]*/json(\?.*)?'
+
+      # ---- POST: create + run lifecycle ----
+      # NOTE: socket-proxy enforces bind-mount SOURCES on this body via
+      # -allowbindmountfrom below. It does NOT inspect Privileged or
+      # PidMode (see THREAT MODEL in README.md). VolumesFrom is not a
+      # bind and is therefore allowed through unfiltered, which is the
+      # intended behaviour for --volumes-from.
+      - '-allowPOST=(/v1\.[0-9]{1,2})?/containers/create(\?.*)?'
+      - '-allowPOST=(/v1\.[0-9]{1,2})?/containers/[a-zA-Z0-9][a-zA-Z0-9_.-]*/start(\?.*)?'
+      - '-allowPOST=(/v1\.[0-9]{1,2})?/containers/[a-zA-Z0-9][a-zA-Z0-9_.-]*/attach(\?.*)?'
+      - '-allowPOST=(/v1\.[0-9]{1,2})?/containers/[a-zA-Z0-9][a-zA-Z0-9_.-]*/wait(\?.*)?'
+
+      # ---- DELETE: --rm cleanup ----
+      - '-allowDELETE=(/v1\.[0-9]{1,2})?/containers/[a-zA-Z0-9][a-zA-Z0-9_.-]*(\?.*)?'
+
+      # ============================================================
+      # BODY FILTER (the part of POST /containers/create that
+      # socket-proxy CAN enforce): bind-mount source allowlist.
+      # Only binds whose host source is the project workspace path
+      # (or a subdirectory) are permitted. A bind with source '/'
+      # or any ':/host' style mount outside this dir is rejected,
+      # because '/' is not in the allowlist.
+      # Replace /srv/voltron/workspace with the HOST-SIDE path of
+      # the project workspace that agents are allowed to mount.
+      # ============================================================
+      - '-allowbindmountfrom=/srv/voltron/workspace'
+
+      # ---- watchdog ----
+      - '-watchdoginterval=3600'
+      - '-stoponwatchdog'
+      - '-shutdowngracetime=5'
+
+      # ============================================================
+      # IMPLICIT DENY (NOT listed above, therefore blocked):
+      #   POST /build, POST /containers/<id>/exec, POST /exec/<id>/start,
+      #   POST /commit, POST /networks/create, POST /volumes/create,
+      #   anything under /swarm, /services, /secrets, /configs, /plugins,
+      #   /containers/<id>/exec, image push/pull/load, etc.
+      # No allow rule == denied. Do not add rules for these.
+      # ============================================================
+
+    volumes:
+      # The ONLY place the real socket is mounted. Read-only is not enough on
+      # its own (the API is read-write over the socket); the allowlist above is
+      # what constrains it.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+    networks:
+      - voltron-proxy-net
+
+networks:
+  # Private, internal bridge. internal:true means no outbound route to the
+  # host or internet; only co-attached containers (the proxy and nesting
+  # agents) can reach each other.
+  voltron-proxy-net:
+    name: voltron-proxy-net
+    driver: bridge
+    internal: true

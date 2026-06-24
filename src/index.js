@@ -1760,6 +1760,26 @@ function boundTailChars(text, logFilename, maxChars = MAX_TAIL_CHARS) {
   return marker + text.slice(-maxChars);
 }
 
+// S1 Phase A (default-deny host Docker socket): a template earns the host socket
+// only if it can actually dispatch further agents, i.e. its frontmatter `tools:`
+// line grants a dispatch tool (`run_agent_in_docker` or `run_agent_in_docker_batch`).
+// Default-deny posture: if there is no parseable `tools:` line, return false so the
+// template gets NO socket. This replaces the old broad `nestable` gate, under which
+// ~every agent received host-root-equivalent access it never used.
+function templateCanDispatch(template) {
+  if (!template || typeof template.content !== "string") return false;
+  // Inspect only the YAML frontmatter block (between the first two `---` fences).
+  const fm = template.content.match(/^---\n([\s\S]*?)\n---/);
+  if (!fm) return false;
+  const toolsLine = fm[1].match(/^[ \t]*tools:[ \t]*(.+)$/m);
+  if (!toolsLine) return false;
+  // Plain substring test (NOT \b-anchored): real tool names carry the MCP prefix
+  // `mcp__project-voltron__run_agent_in_docker`, and the `_` before `run` is itself
+  // a word char so a \b would never fire there. The substring also covers
+  // `run_agent_in_docker_batch`, which contains `run_agent_in_docker`.
+  return /run_agent_in_docker/.test(toolsLine[1]);
+}
+
 async function dispatchOneAgent(spec, shared, opts = {}) {
   const { agent_name, task, max_turns: max_turns_in, model } = spec;
   // B1/B2: explicit caller value wins; otherwise consult the per-agent default
@@ -1779,6 +1799,10 @@ async function dispatchOneAgent(spec, shared, opts = {}) {
   }
 
   const nestable = template.nestable !== false;
+  // S1 Phase A: the security-critical capability boundary. Only templates whose
+  // `tools:` frontmatter grants a dispatch tool get the host Docker socket and the
+  // nested-dispatch MCP wiring. Default-deny: unknown/unparseable tools => no socket.
+  const canDispatch = templateCanDispatch(template);
 
   // Resolve model tier: explicit parameter > template default > omit (session default)
   const resolvedModel = model || template.model;
@@ -1909,9 +1933,12 @@ async function dispatchOneAgent(spec, shared, opts = {}) {
     return { agent_name, validationError: "Error: No auth available for Docker agent. Either run `claude setup-token` (creates ~/.claude/.credentials.json which will be mounted), or set CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY in your environment. (Optional: a one-time host `gh auth login` now suffices to enable publish agents like pr-opener/committer/branch-manager to push and open PRs from inside the container — the token is derived automatically at dispatch. Set GH_TOKEN — or GITHUB_TOKEN — manually only to override it with a specific PAT.)" };
   }
 
-  // 6. Container-local MCP config (so nested dispatch works for nestable templates)
+  // 6. Container-local MCP config (so nested dispatch works for dispatcher templates).
+  //    S1 Phase A: gated on canDispatch, not nestable, so non-dispatching agents are
+  //    not handed nested-dispatch wiring (the in-container run_agent_in_docker tool)
+  //    they cannot use without a socket anyway.
   let mcpConfigFlag = "";
-  if (nestable) {
+  if (canDispatch) {
     const mcpConfigDir = path.join(cwd, ".voltron");
     await fs.mkdir(mcpConfigDir, { recursive: true });
     const mcpConfigPath = path.join(mcpConfigDir, "container-mcp.json");
@@ -1943,7 +1970,10 @@ async function dispatchOneAgent(spec, shared, opts = {}) {
   const settingsFlag = "--settings /workspace/.voltron/container-settings.json";
 
   const dockerSocketHostPath = process.platform === "win32" ? "//var/run/docker.sock" : "/var/run/docker.sock";
-  const socketMount = (nestable && !isNested) ? ["--mount", `type=bind,source=${dockerSocketHostPath},target=/var/run/docker.sock`] : [];
+  // S1 Phase A: mount the host Docker socket ONLY for genuine dispatchers (canDispatch)
+  // and only at the outer level. Nested children inherit the socket via --volumes-from
+  // (see :1959 below); they must not re-bind it. Default-deny: non-dispatchers get [].
+  const socketMount = (canDispatch && !isNested) ? ["--mount", `type=bind,source=${dockerSocketHostPath},target=/var/run/docker.sock`] : [];
 
   const voltronEnvArgs = [
     "-e", `VOLTRON_HOST_ROOT=${hostRoot}`,

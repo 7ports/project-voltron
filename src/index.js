@@ -238,18 +238,38 @@ async function ensureSocketProxy(cwd) {
   } catch { /* not present - fall through to create */ }
 
   // Detect the host docker group GID so the (nobody) proxy user can read the real
-  // socket. Falls back to no --user (root in-proxy) when stat is unavailable
-  // (e.g. a Windows host), where root can read the socket regardless.
-  let userArgs = [];
+  // socket. On Docker Desktop/Windows the host docker GID is undeterminable (stat
+  // is unavailable or returns nothing), so the proxy runs as explicit root (0:0)
+  // inside its already-hardened (cap-drop ALL, read-only, no-new-privileges)
+  // container - the wollomatic image's default user is non-root and cannot read
+  // the Docker Desktop socket, so omitting --user is not enough.
+  let userArgs = ["--user", "0:0"];
   try {
     const { stdout: gid } = await execFileAsync("stat", ["-c", "%g", dockerSocketHostPath], { encoding: "utf-8" });
     if (gid.trim()) userArgs = ["--user", `65534:${gid.trim()}`];
-  } catch { /* stat unavailable - run the proxy as root */ }
+  } catch { /* stat unavailable (Windows/Docker Desktop) - keep the root fallback */ }
+
+  // Body filter: bind-mount source allowlist. wollomatic requires a Linux path
+  // (the value must start with "/"). On Docker Desktop/Windows the host workspace
+  // is a Windows path (e.g. C:\Users\...), which makes the proxy refuse to start
+  // ("bind mount directory must start with /") and crash-loop, bricking dispatch.
+  // Mirror the win32-conditional socket path above: if the host path is NOT a
+  // Linux path, OMIT -allowbindmountfrom so the proxy boots. Bind-source
+  // filtering is off on that platform, but every other allow/deny rule
+  // (build/exec/network-create/etc. denied) still applies.
+  let bindMountFromArgs = [];
+  if (hostWorkspace.startsWith("/")) {
+    bindMountFromArgs = [`-allowbindmountfrom=${hostWorkspace}`];
+  } else {
+    console.warn(`[voltron] socket-proxy: bind-source filtering DISABLED - wollomatic requires a Linux path for -allowbindmountfrom but the host workspace is "${hostWorkspace}" (Docker Desktop/Windows). All other proxy allow/deny rules remain enforced.`);
+  }
 
   const runArgs = [
     "run", "-d",
     "--name", PROXY_CONTAINER,
-    "--restart", "unless-stopped",
+    // Bounded restart (was unless-stopped) so a misconfig cannot crash-loop
+    // forever and silently block all dispatch (S1 Phase B live-test fix).
+    "--restart", "on-failure:2",
     "--network", PROXY_NET,
     "--read-only",
     "--memory", "64m",
@@ -284,7 +304,8 @@ async function ensureSocketProxy(cwd) {
     // ---- DELETE: --rm cleanup ----
     "-allowDELETE=(/v1\\.[0-9]{1,2})?/containers/[a-zA-Z0-9][a-zA-Z0-9_.-]*(\\?.*)?",
     // ---- body filter: bind-mount source allowlist (host-side workspace path) ----
-    `-allowbindmountfrom=${hostWorkspace}`,
+    // Platform-guarded above: present on Linux/macOS, omitted on Docker Desktop/Windows.
+    ...bindMountFromArgs,
     // ---- watchdog ----
     "-watchdoginterval=3600",
     "-stoponwatchdog",
@@ -315,7 +336,19 @@ async function ensureSocketProxy(cwd) {
     } catch (err) { lastErr = err.message; }
   }
   if (!healthy) {
-    return { ok: false, error: `Error: ${PROXY_CONTAINER} failed health check (ping via proxy did not succeed): ${lastErr}` };
+    // Surface the proxy's OWN logs so the real cause (e.g. a bind-mount path
+    // error) is visible immediately instead of just "ping did not succeed".
+    let proxyLogs = "";
+    try {
+      const { stdout, stderr } = await execFileAsync(
+        "docker", ["logs", "--tail", "20", PROXY_CONTAINER], { encoding: "utf-8" }
+      );
+      proxyLogs = `${stdout || ""}${stderr || ""}`.trim();
+    } catch { /* logs unavailable - fall through with ping error only */ }
+    // Remove the failed container so it does not linger crash-looping.
+    await execFileAsync("docker", ["rm", "-f", PROXY_CONTAINER], { encoding: "utf-8" }).catch(() => {});
+    const logsSection = proxyLogs ? `\nProxy logs (last 20 lines):\n${proxyLogs}` : "";
+    return { ok: false, error: `Error: ${PROXY_CONTAINER} failed health check (ping via proxy did not succeed): ${lastErr}${logsSection}` };
   }
   return { ok: true, started: true };
 }

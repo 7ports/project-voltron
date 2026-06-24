@@ -294,6 +294,8 @@ A containerized sub-manager or `harness-engineer` can now dispatch its own Tier-
 >
 > **What the proxy blocks:** `POST /build` (image builds), `/containers/<id>/exec` (exec into sibling containers), `POST /commit` (snapshot to image), `/networks/create`, `/volumes/create`, all swarm/services/secrets/configs/plugins endpoints, and bind-mount sources outside the workspace prefix (so `-v /:/host` and arbitrary host-root mounts are rejected at create time).
 >
+> **Bind-source filtering is Linux/macOS-host only (v3.18.1):** the underlying proxy requires a Linux host path for its bind-source allowlist. On Docker Desktop/Windows the workspace is a Windows path (e.g. `C:\Users\...`), so Voltron omits that one rule rather than letting the proxy fail to start and block all dispatch. Every other allow/deny rule above still applies on all platforms.
+>
 > **Residual risk:** the proxy does not inspect the `Privileged` or `PidMode` fields in the create body. An agent can still request a privileged container unless the optional OPA AuthZ plugin (`voltron/socket-proxy/opa-authz/voltron-authz.rego`) is deployed on the host daemon. The proxy adds meaningful defense-in-depth; it does not eliminate the core risk of giving any agent container-create rights on a shared daemon. **Only run Voltron on a trusted developer machine and with prompts you trust.**
 
 ### Unity Editor exception: auto-orchestration via Agent tool

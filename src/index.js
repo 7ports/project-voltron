@@ -1989,7 +1989,7 @@ async function dispatchOneAgent(spec, shared, opts = {}) {
 
   // Resolve model tier: explicit parameter > template default > omit (session default)
   const resolvedModel = model || template.model;
-  const MODEL_IDS = { opus: "claude-opus-4-8", sonnet: "claude-sonnet-4-6", haiku: "claude-haiku-4-5-20251001" };
+  const MODEL_IDS = { opus: "claude-opus-4-8", sonnet: "claude-sonnet-4-6", haiku: "claude-haiku-4-5-20251001", fable: "claude-fable-5" };
   const modelFlag = resolvedModel && MODEL_IDS[resolvedModel] ? `--model ${MODEL_IDS[resolvedModel]}` : "";
 
   // 2. Compose the full prompt (strip YAML frontmatter — see v3.x notes in singleton history)
@@ -2380,7 +2380,7 @@ server.tool(
       .optional()
       .describe("Maximum agent turns (default: 30)"),
     model: z
-      .enum(["opus", "sonnet", "haiku"])
+      .enum(["opus", "sonnet", "haiku", "fable"])
       .optional()
       .describe("Model tier override. If omitted, uses the template's default model. Priority: explicit parameter > template.model > session default."),
   },
@@ -2474,7 +2474,7 @@ server.tool(
         agent_name: z.string().describe("The agent template name (e.g., 'fullstack-dev', 'csharp-dev'). Must exist in TEMPLATES with category=='agent'."),
         task: z.string().describe("Complete task description for this dispatch, including context, file paths, acceptance criteria, and any outputs from prior tasks."),
         max_turns: z.number().min(1).optional().describe("Maximum agent turns for this dispatch. Default: 30."),
-        model: z.enum(["opus", "sonnet", "haiku"]).optional().describe("Model tier override for this dispatch. Priority: explicit > template.model > session default."),
+        model: z.enum(["opus", "sonnet", "haiku", "fable"]).optional().describe("Model tier override for this dispatch. Priority: explicit > template.model > session default."),
       }),
     ).min(2).max(8).describe("Two to eight independent agent dispatches. Each runs in its own parallel Docker container under the same MCP call."),
     fail_fast: z.boolean().optional().describe("When true, on the first failed dispatch terminate pending containers and short-circuit the batch. When false (default), all dispatches run to completion and each result is reported independently."),

@@ -31,6 +31,27 @@ import * as artifacts from "./lib/artifacts.js";
 import { runScorers, bandsFromSignals } from "./lib/programmatic-scorers.js";
 import { templateHashFor, listAgentNames } from "./lib/template-hash.js";
 import { resolveBroadInstance } from "./lib/shape-loader.js";
+import { TEMPLATES } from "../src/templates.js";
+
+// Minimal tier→concrete-id map, mirrored from src/index.js:1992 (MODEL_IDS is
+// function-local there, not exported). Source of truth is src/index.js; keep in
+// sync. Used only for the P0-b realized-model mislabel guard (F3 §2 P0-b).
+const MODEL_IDS = { opus: "claude-opus-4-8", sonnet: "claude-sonnet-4-6", haiku: "claude-haiku-4-5-20251001", fable: "claude-fable-5" };
+
+// Extract the REALIZED model id the AUT actually ran on, from the `"model":
+// "claude-…"` field the stream-json `message` events carry. Picks the most
+// frequent id (defends against a stray id in nested output). Returns null if
+// the log carries no model field.
+function parseRealizedModel(log) {
+  if (!log) return null;
+  const counts = new Map();
+  for (const m of log.matchAll(/"model"\s*:\s*"(claude-[^"]+)"/g)) {
+    counts.set(m[1], (counts.get(m[1]) || 0) + 1);
+  }
+  let best = null; let bestN = 0;
+  for (const [id, n] of counts) if (n > bestN) { best = id; bestN = n; }
+  return best;
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "..");
@@ -572,6 +593,25 @@ async function runJob(job, client, opts) {
   scorecard.template_hash = currentHash;
   scorecard.scored_via = scoredVia;
   if (scoredVia === "programmatic") scorecard.judge_model = null;
+
+  // P0-b (F3 §2): persist the AUT's pinned tier + the realized model id, then
+  // guard against a silent default-model substitution (F1 B1/B3). MODEL_IDS[key]
+  // being undefined (no `--model` flag → session default) is exactly the
+  // failure this catches: a run labelled "fable" that actually ran the default.
+  const autEntry = TEMPLATES[job.agent_under_test];
+  const autModel = autEntry ? autEntry.model : undefined;
+  scorecard.aut_model = autModel ?? null;
+  const realizedModel = parseRealizedModel(post.log);
+  programmatic.realized_model = realizedModel;
+  scorecard.realized_model = realizedModel;
+  const expectedId = autModel ? MODEL_IDS[autModel] : undefined;
+  if (autModel && realizedModel && expectedId !== realizedModel) {
+    scorecard.cannot_grade = {
+      reason: "model_mislabel",
+      expected: expectedId ?? null,
+      got: realizedModel,
+    };
+  }
 
   const scorecardPath = path.join(runDir, "scorecard.json");
   await fs.writeFile(scorecardPath, JSON.stringify(scorecard, null, 2), "utf-8");

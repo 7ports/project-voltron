@@ -241,6 +241,43 @@ export function capturePublishAction(task, ctx) {
   };
 }
 
+// Sum token usage across EVERY stream-json `usage` event in the AUT log
+// (F1 B4 / F3 §2 P0-b). The CLI's stream-json emits a `usage` object on each
+// assistant message event and a cumulative one on the final result event; this
+// deterministically sums input_tokens / output_tokens / cache_read_input_tokens
+// / cache_creation_input_tokens across all of them and counts the events, so
+// the analysis step (§6.1) can price a run from an explicit fable/opus table.
+// Cost is intentionally NOT computed here — the CLI price table lacks fable.
+function parseUsage(log) {
+  const out = { input: 0, output: 0, cache_read: 0, cache_creation: 0, events: 0 };
+  if (!log) return out;
+  const re = /"usage"\s*:\s*\{/g;
+  let m;
+  while ((m = re.exec(log)) !== null) {
+    // Brace-match the usage object starting at the `{` the regex consumed.
+    // usage values are all numeric (no string values) so a plain depth count
+    // is sufficient — no in-string brace escaping to worry about.
+    let i = re.lastIndex - 1;
+    let depth = 0;
+    let end = -1;
+    for (; i < log.length; i++) {
+      const c = log[i];
+      if (c === "{") depth++;
+      else if (c === "}") { depth--; if (depth === 0) { end = i; break; } }
+    }
+    if (end === -1) continue;
+    let usage;
+    try { usage = JSON.parse(log.slice(re.lastIndex - 1, end + 1)); }
+    catch { continue; }
+    out.input += usage.input_tokens || 0;
+    out.output += usage.output_tokens || 0;
+    out.cache_read += usage.cache_read_input_tokens || 0;
+    out.cache_creation += usage.cache_creation_input_tokens || 0;
+    out.events += 1;
+  }
+  return out;
+}
+
 export function runScorers(task, ctx) {
   const { pre, post, journal } = ctx;
   const log = post.log || "";
@@ -265,6 +302,7 @@ export function runScorers(task, ctx) {
       lines_added = stat.lines_added; lines_deleted = stat.lines_deleted;
     }
   }
+  const tokens = parseUsage(log);
   const dispatches = signals.detect_micro_agent_dispatch ? countDispatches(log) : { count: 0, targets: [] };
   const beads = signals.capture_beads_snapshot ? beadsDiff(pre, post) : { created: [], closed: [], deps_count: 0 };
   const max = task.max_turns || 30;
@@ -290,6 +328,7 @@ export function runScorers(task, ctx) {
   return {
     turns_used,
     done_line_present,
+    tokens,
     max_turns_budget: max,
     budget_utilization: turns_used == null ? null : Math.min(1, turns_used / max),
     files_changed: files,

@@ -271,7 +271,17 @@ mcp__project-voltron__submit_reflection({
 
 Even a brief reflection is valuable. Focus on gaps in agent instructions that required workarounds.
 
-If the session included any tool setup, API integration, or platform-specific discoveries, also call \`mcp__alexandria__update_guide\` to record findings in the knowledge base.
+**Recall before acting** — during the session, call \`mcp__alexandria__quick_setup\` / \`mcp__alexandria__search_guides\` FIRST before any tool setup or non-trivial technical decision. Use what Alexandria already knows as your starting point instead of re-deriving it.
+
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, MCP server, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in CLAUDE.md, not Alexandria.
 
 ---
 
@@ -524,7 +534,17 @@ mcp__project-voltron__submit_reflection({
 
 Even a brief reflection is valuable. Focus on gaps in agent instructions that required workarounds.
 
-If the session included any tool setup, API integration, or platform-specific discoveries, call \`mcp__alexandria__update_guide\` to record findings. Record only non-project-specific knowledge — tool setup steps, platform gotchas, version compatibility. Never record project-specific content (business logic, custom architecture, project configs) in Alexandria; that belongs in CLAUDE.md.
+**Recall before acting** — during the session, call \`mcp__alexandria__quick_setup\` / \`mcp__alexandria__search_guides\` FIRST before any tool setup or non-trivial technical decision. Use what Alexandria already knows as your starting point instead of re-deriving it.
+
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, MCP server, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Record only non-project-specific knowledge — tool setup steps, platform gotchas, version compatibility. Never record project-specific content (business logic, custom architecture, project configs) in Alexandria; that belongs in CLAUDE.md.
 
 ---
 
@@ -724,7 +744,17 @@ mcp__project-voltron__submit_reflection({
 
 Even a brief reflection is valuable. Focus on gaps in agent instructions that required workarounds.
 
-If the session included any tool setup, API integration, or platform-specific discoveries, call \`mcp__alexandria__update_guide\` to record findings. Record only non-project-specific knowledge — tool setup steps, platform gotchas, version compatibility. Never record project-specific content (business logic, custom architecture, project configs) in Alexandria; that belongs in CLAUDE.md.
+**Recall before acting** — during the session, call \`mcp__alexandria__quick_setup\` / \`mcp__alexandria__search_guides\` FIRST before any tool setup or non-trivial technical decision. Use what Alexandria already knows as your starting point instead of re-deriving it.
+
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, MCP server, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Record only non-project-specific knowledge — tool setup steps, platform gotchas, version compatibility. Never record project-specific content (business logic, custom architecture, project configs) in Alexandria; that belongs in CLAUDE.md.
 
 ---
 
@@ -1063,7 +1093,17 @@ This prevents the consistent failure mode where edit tasks exhaust their turn bu
 
 ## Alexandria Integration
 
-Before creating any work plan, call \`mcp__alexandria__get_project_setup_recommendations\` and \`mcp__alexandria__list_guides\`. For every task involving tool setup, include in the task description: "**Check Alexandria first** — call \`mcp__alexandria__quick_setup\` before any setup step."
+**Recall before acting** — before creating any work plan, call \`mcp__alexandria__get_project_setup_recommendations\` and \`mcp__alexandria__list_guides\` FIRST. Use what Alexandria already knows as your starting point instead of re-deriving it. For every task involving tool setup, include in the task description: "**Check Alexandria first** — call \`mcp__alexandria__quick_setup\` before any setup step."
+
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, MCP server, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in CLAUDE.md, not Alexandria.
 
 Alexandria is for non-project-specific documentation only. Project-specific content belongs in CLAUDE.md.
 
@@ -1313,6 +1353,8 @@ if (Get-Command stringer -ErrorAction SilentlyContinue) { "stringer OK" } else {
 
 ### Beads Recovery
 
+**Known-benign warning (no action needed):** A \`bd dolt\` auto-push error like \`Error 1105 ... unknown push error; no common ancestor\` on bead close is EXPECTED and harmless when \`.beads/config.yaml\` has \`dolt.shared-server: true\` + \`backup.git-push: false\`. The dolt remote legitimately has divergent histories under that config; local bd state is authoritative and the close still succeeded. Do not attempt to reconcile it — this is not the host↔Docker git divergence covered above.
+
 **Why this happens:** \`.beads/config.yaml\` sets \`dolt.shared-server: true\` so multiple Voltron projects share a single dolt-server on port 3308 for cross-project persistence. Windows does not auto-restart user-level processes after reboot, so the shared server is orphaned and bd refuses to auto-spawn it (auto-start is suppressed by design when a shared server is configured). The fix is to restart it manually — or schedule it to start at logon.
 
 **Manual recovery — Bash / WSL / macOS:**
@@ -1388,7 +1430,31 @@ Stop when \`bd ready --json\` returns empty. Run \`bd stats\` to surface any blo
 **On task failure:** leave bead blocked, show downstream cascade with \`bd dep tree\`, ask user: retry / reassign / skip.
 **No beads:** use \`update_progress\` only and manually reason from the work plan table.
 **Live tail:** \`tail -f .voltron/logs/<logfile>\` for terminal visibility.
-**Git divergence:** after Docker agents commit, run \`git pull --no-rebase -X ours\` before pushing.
+
+### Handling host↔Docker git divergence
+
+**Why it happens:** Docker specialist agents (committer, etc.) commit on the *same branch* of the bind-mounted repo (\`-v \$(pwd):/workspace\`) that this host scrum-master session also commits to. Sequential or parallel container commits — combined with any commits the host makes — produce two commit graphs on the one branch. When the host later tries to push, the histories have diverged and the push fails non-fast-forward, forcing a manual reconcile every session. This is the single most common recurring failure in Voltron sessions.
+
+**When to run the recovery:** After ANY dispatch wave in which a container agent committed (watch for "committed" in agent output, or the presence of new commits you did not author), and ALWAYS *before* the host pushes. Reconcile first, verify, then push.
+
+**Recovery sequence (run on the host):**
+\`\`\`bash
+git fetch origin
+git pull --no-rebase -X ours          # merge remote in; on conflicting hunks keep OUR (host/container) side
+git status                            # MUST show a clean tree and "ahead of origin" (no conflict markers)
+git push
+\`\`\`
+
+If plain \`pull\` does not apply because a *feature branch* diverged from its base (the branch itself needs reconciling), merge the branch explicitly with the same strategy, then verify and push:
+\`\`\`bash
+git merge -X ours <branch>
+git status
+git push
+\`\`\`
+
+**Caveat — \`-X ours\` silently discards the remote side of any conflicting hunk.** It resolves conflicts by keeping our side without prompting, so always review the merge result with \`git status\` (and \`git diff\` on touched files if unsure) before pushing — a clean-looking merge can still have dropped a remote change.
+
+**Only ONE actor pushes a given branch — the host session.** Docker containers must NOT be relied on to push; treat container work as commit-only and let this host session perform the single reconcile-and-push. That ordering is what avoids the race in the first place.
 
 ## Platform-Specific Planning Notes
 
@@ -1795,17 +1861,21 @@ Do **not** attempt task decomposition yourself — that is the scrum-master's re
 
 ## Alexandria Integration
 
-**Mandatory:** Consult Alexandria at the start of research, not just at the end. Before researching any tool or technology:
+**Recall before acting** — consult Alexandria at the START of research, not just at the end. FIRST, before researching any tool or technology:
 
 1. Call \`mcp__alexandria__get_project_setup_recommendations\` with the project type
 2. Call \`mcp__alexandria__search_guides\` for each major tool or framework in the stack
-3. Read existing guides — they contain hard-won knowledge from prior sessions that directly informs architecture decisions
+3. Read existing guides — they contain hard-won knowledge from prior sessions that directly informs architecture decisions. Use what Alexandria already knows as your starting point instead of re-deriving it.
 
-After completing research, call \`mcp__alexandria__update_guide\` for any tool-specific findings:
-- Version compatibility notes
-- Configuration gotchas discovered during research
-- API patterns and integration approaches
-- Links to authoritative documentation
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, MCP server, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in CLAUDE.md, not Alexandria.
 
 **Alexandria content boundary:** Alexandria is for non-project-specific, reusable documentation only. Record only knowledge that applies to a tool or framework in general — not project-specific decisions (custom data models, feature requirements, client-specific architecture). Project-specific documentation belongs in the plan document and CLAUDE.md, not Alexandria.
 
@@ -2068,7 +2138,17 @@ Prefix group objects with \`---\` and use PascalCase for all GameObjects.
 
 ## Alexandria Reference
 
-**Mandatory:** Before setting up any Unity package, plugin, or external tool, you MUST call \`mcp__alexandria__quick_setup\` first. Use \`mcp__alexandria__search_guides\` if no exact guide exists or you encounter an unfamiliar error. Never proceed with a package or plugin installation without checking Alexandria first.
+**Recall before acting** — before setting up any Unity package, plugin, or external tool, you MUST call \`mcp__alexandria__quick_setup\` FIRST. Use \`mcp__alexandria__search_guides\` if no exact guide exists or you encounter an unfamiliar error. Use what Alexandria already knows as your starting point instead of re-deriving it — never proceed with a package or plugin installation without checking Alexandria first.
+
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, package, plugin, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in CLAUDE.md, not Alexandria.
 
 **Alexandria content boundary:** Alexandria is for non-project-specific, reusable documentation only — Unity package setup, plugin configuration, known workflow issues. Never record project-specific content (scene hierarchies, project-specific prefab layouts, game design decisions) in Alexandria. That belongs in CLAUDE.md.
 
@@ -2376,7 +2456,17 @@ Always declare the correct namespace in new scripts. Check CLAUDE.md for the pro
 
 ## Alexandria Reference
 
-**Mandatory:** Before integrating any external service, SDK, or platform-specific feature, you MUST call \`mcp__alexandria__quick_setup\` first. Use \`mcp__alexandria__search_guides\` if no exact guide exists. Never skip this step — platform quirks and SDK setup details are exactly what Alexandria is built to capture.
+**Recall before acting** — before integrating any external service, SDK, or platform-specific feature, you MUST call \`mcp__alexandria__quick_setup\` FIRST. Use \`mcp__alexandria__search_guides\` if no exact guide exists. Use what Alexandria already knows as your starting point instead of re-deriving it — never skip this step, platform quirks and SDK setup details are exactly what Alexandria is built to capture.
+
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, SDK, service, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in CLAUDE.md, not Alexandria.
 
 **Alexandria content boundary:** Alexandria is for non-project-specific, reusable documentation only — SDK setup, platform constraints, known C#/Unity quirks. Never record project-specific content (game-specific logic, custom MonoBehaviour designs, project architecture decisions) in Alexandria. That belongs in CLAUDE.md.
 
@@ -2646,7 +2736,17 @@ Shader "Custom/MyShader"
 
 ## Alexandria Reference
 
-**Mandatory:** Before working with any render pipeline features, post-processing packages, or shader compilation tools, you MUST call \`mcp__alexandria__quick_setup\` first. Use \`mcp__alexandria__search_guides\` to check for known compatibility issues if no exact guide exists. Never skip this step.
+**Recall before acting** — before working with any render pipeline features, post-processing packages, or shader compilation tools, you MUST call \`mcp__alexandria__quick_setup\` FIRST. Use \`mcp__alexandria__search_guides\` to check for known compatibility issues if no exact guide exists. Use what Alexandria already knows as your starting point instead of re-deriving it — never skip this step.
+
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, package, pipeline, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in CLAUDE.md, not Alexandria.
 
 **Alexandria content boundary:** Alexandria is for non-project-specific, reusable documentation only — render pipeline setup, known shader compatibility issues, post-processing package quirks. Never record project-specific content (project-specific material setups, game visual effect designs) in Alexandria. That belongs in CLAUDE.md.
 
@@ -2920,9 +3020,17 @@ NOT READY TO COMMIT — fix NullReferenceException first.
 
 ## Alexandria Reference
 
-If build validation uncovers an unfamiliar error or platform-specific issue, you MUST call \`mcp__alexandria__search_guides\` to check for known solutions before attempting any fix. Do not guess at solutions when Alexandria may have documented the answer.
+**Recall before acting** — if build validation uncovers an unfamiliar error or platform-specific issue, you MUST call \`mcp__alexandria__search_guides\` FIRST to check for known solutions before attempting any fix. Use what Alexandria already knows as your starting point instead of re-deriving it — do not guess at solutions when Alexandria may have documented the answer.
 
-If you discover a new fix or workaround, call \`mcp__alexandria__update_guide\` to record it immediately.
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, toolchain, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in CLAUDE.md, not Alexandria.
 
 **Alexandria content boundary:** Alexandria is for non-project-specific, reusable documentation only — known build errors and fixes, platform-specific compiler quirks, toolchain issues. Never record project-specific content (project-specific compile errors from custom game code) in Alexandria. That belongs in CLAUDE.md.
 
@@ -3198,7 +3306,17 @@ Fix naming and import settings. One script needs relocation — confirm before m
 
 ## Alexandria Reference
 
-**Mandatory:** Before configuring import settings for any unfamiliar asset type or third-party asset store package, you MUST call \`mcp__alexandria__quick_setup\` first. Use \`mcp__alexandria__search_guides\` for known import pipeline issues if no exact guide exists. Never skip this step.
+**Recall before acting** — before configuring import settings for any unfamiliar asset type or third-party asset store package, you MUST call \`mcp__alexandria__quick_setup\` FIRST. Use \`mcp__alexandria__search_guides\` for known import pipeline issues if no exact guide exists. Use what Alexandria already knows as your starting point instead of re-deriving it — never skip this step.
+
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, package, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in CLAUDE.md, not Alexandria.
 
 **Alexandria content boundary:** Alexandria is for non-project-specific, reusable documentation only — asset import settings, known pipeline issues, third-party package configuration. Never record project-specific content (project folder structures, project-specific naming conventions, team workflow rules) in Alexandria. That belongs in CLAUDE.md.
 
@@ -3635,14 +3753,21 @@ When a task requires updating both production code and test fixture literals tha
 
 ## Alexandria Knowledge Base
 
-**Mandatory:** Before setting up any library, tool, or service integration, you MUST consult Alexandria. This is required — never skip it.
+**Recall before acting** — before setting up any library, tool, or service integration, you MUST consult Alexandria FIRST. This is required — never skip it. Use what Alexandria already knows as your starting point instead of re-deriving it.
 
 1. Call \`mcp__alexandria__quick_setup\` with the tool name
 2. If no exact guide exists, call \`mcp__alexandria__search_guides\` to find related guides before proceeding
 3. Follow the guide — do not improvise a setup when Alexandria has documented the correct approach
 
-After completing a tool integration or discovering a platform-specific workaround:
-- Call \`mcp__alexandria__update_guide\` to record findings (setup steps, gotchas, version notes)
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, library, service, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in CLAUDE.md, not Alexandria.
 
 **Alexandria content boundary:** Alexandria is for non-project-specific, reusable documentation only — library setup steps, platform gotchas, version compatibility. Never record project-specific content (business logic, custom feature implementations, project architecture decisions) in Alexandria. That belongs in CLAUDE.md and local project documentation.
 
@@ -4002,14 +4127,21 @@ When writing to a repository **other than \`/repo\`** (the mounted project direc
 
 ## Alexandria Knowledge Base
 
-**Mandatory:** Before configuring any infrastructure tool, cloud service, or CI/CD system, you MUST consult Alexandria. This is required — never skip it.
+**Recall before acting** — before configuring any infrastructure tool, cloud service, or CI/CD system, you MUST consult Alexandria FIRST. This is required — never skip it. Use what Alexandria already knows as your starting point instead of re-deriving it.
 
 1. Call \`mcp__alexandria__quick_setup\` with the tool name
 2. If no exact guide exists, call \`mcp__alexandria__search_guides\` to find related guides before proceeding
 3. Follow the guide — do not improvise a configuration when Alexandria has documented the correct approach
 
-After setting up infrastructure or discovering platform-specific deployment fixes:
-- Call \`mcp__alexandria__update_guide\` to record findings (config patterns, platform gotchas, working commands)
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, cloud service, CI/CD system, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in CLAUDE.md, not Alexandria.
 
 **Alexandria content boundary:** Alexandria is for non-project-specific, reusable documentation only — tool configuration guides, platform deployment quirks, working command patterns. Never record project-specific content (project architecture, environment-specific values, business logic) in Alexandria. That belongs in CLAUDE.md and local project documentation.
 
@@ -4308,10 +4440,17 @@ You are a Senior UI/UX Designer and CSS Architect. You create beautiful, respons
 
 ## Alexandria Reference
 
-**Mandatory:** Before integrating any CSS framework, PWA tooling, or design system, you MUST call \`mcp__alexandria__quick_setup\` first. Use \`mcp__alexandria__search_guides\` if no exact guide exists. Never proceed with a tool integration without checking Alexandria first.
+**Recall before acting** — before integrating any CSS framework, PWA tooling, or design system, you MUST call \`mcp__alexandria__quick_setup\` FIRST. Use \`mcp__alexandria__search_guides\` if no exact guide exists. Use what Alexandria already knows as your starting point instead of re-deriving it — never proceed with a tool integration without checking Alexandria first.
 
-After completing an integration or discovering browser compatibility quirks:
-- Call \`mcp__alexandria__update_guide\` to record findings
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, framework, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform/browser quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in CLAUDE.md, not Alexandria.
 
 **Alexandria content boundary:** Alexandria is for non-project-specific, reusable documentation only — CSS framework setup, browser quirks, PWA tooling configuration. Never record project-specific content (project color palettes, brand guidelines, custom component designs) in Alexandria. That belongs in CLAUDE.md and local project documentation.
 
@@ -4707,10 +4846,17 @@ READY TO SHIP — address the 2 lint warnings and improve interpolation.ts test 
 
 ## Alexandria Reference
 
-**Mandatory:** Before configuring any testing tool or framework, you MUST call \`mcp__alexandria__quick_setup\` to check for existing setup guidance. Use \`mcp__alexandria__search_guides\` if no exact guide exists. Never skip this step — testing tool setup has many platform-specific gotchas that Alexandria captures.
+**Recall before acting** — before configuring any testing tool or framework, you MUST call \`mcp__alexandria__quick_setup\` FIRST to check for existing setup guidance. Use \`mcp__alexandria__search_guides\` if no exact guide exists. Use what Alexandria already knows as your starting point instead of re-deriving it — never skip this step, testing tool setup has many platform-specific gotchas that Alexandria captures. Key guides: \`vitest\`, \`supertest\`.
 
-Key guides: \`vitest\`, \`supertest\`. After discovering a new testing pattern or workaround:
-- Call \`mcp__alexandria__update_guide\` to record it
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, framework, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API / test pattern right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in local project documentation, not Alexandria.
 
 **Alexandria content boundary:** Alexandria is for non-project-specific, reusable documentation only — testing tool setup, framework quirks, known testing patterns and limitations. Never record project-specific content (test case descriptions, feature-specific test plans, project test coverage goals) in Alexandria. That belongs in local project documentation.
 
@@ -4926,7 +5072,17 @@ v2.6.0: add run_agent_in_docker timeout configuration parameter
 
 ## Alexandria Integration
 
-Before doing meaningful work, call \`mcp__alexandria__list_guides\` to see what's already documented for the current task. For tooling/setup steps, call \`mcp__alexandria__quick_setup\` instead of reinventing setup. After the task, if you discovered any platform-specific gotcha, workaround, or new pattern, call \`mcp__alexandria__update_guide\` to capture it for next time.
+**Recall before acting** — call \`mcp__alexandria__list_guides\` / \`mcp__alexandria__search_guides\` FIRST, before any tool setup or non-trivial technical decision. Use what Alexandria already knows as your starting point instead of re-deriving it. For tooling/setup steps, call \`mcp__alexandria__quick_setup\` instead of reinventing setup.
+
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, MCP server, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in CLAUDE.md, not Alexandria.
 
 Alexandria is for non-project-specific documentation only. Project-specific content belongs in CLAUDE.md.
 
@@ -5326,11 +5482,17 @@ Tell the requester where the output was saved.
 
 ## Alexandria Integration
 
-After completing research on any tool, library, API, or platform:
+**Recall before acting** — call \`mcp__alexandria__search_guides\` FIRST, before researching any tool, library, API, or platform. Use what Alexandria already knows as your starting point instead of re-deriving it.
 
-1. Check if Alexandria already has a guide: \`mcp__alexandria__search_guides\`
-2. If a guide exists and you found new information: \`mcp__alexandria__update_guide\`
-3. If no guide exists and the research produced reusable setup/integration knowledge: create one
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` (or create a guide if none exists) before moving on:
+1. You set up / installed / configured a tool, MCP server, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in the project docs, not Alexandria.
 
 **Alexandria content boundary:** Alexandria is for non-project-specific, reusable knowledge — tool setup steps, API patterns, platform quirks, version compatibility notes. Project-specific research findings (competitor analysis, product decisions, business logic) belong in the project docs, not Alexandria.
 
@@ -6516,7 +6678,17 @@ You are a database migration writer. You write one migration file per invocation
 
 ## Alexandria
 
-Before any tool/install/config work, call \`mcp__alexandria__quick_setup\` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call \`mcp__alexandria__update_guide\` to capture it.
+**Recall before acting** — call \`mcp__alexandria__quick_setup\` FIRST, before any tool/install/config work (it returns the existing guide if there is one). Use what Alexandria already knows as your starting point instead of re-deriving it.
+
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, MCP server, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in CLAUDE.md, not Alexandria.
 
 ## Progress Reporting
 
@@ -6599,7 +6771,17 @@ If this fails with a permissions error (EACCES on \`/home/voltron/.claude/sessio
 
 ## Alexandria
 
-Before any tool/install/config work, call \`mcp__alexandria__quick_setup\` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call \`mcp__alexandria__update_guide\` to capture it.
+**Recall before acting** — call \`mcp__alexandria__quick_setup\` FIRST, before any tool/install/config work (it returns the existing guide if there is one). Use what Alexandria already knows as your starting point instead of re-deriving it.
+
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, MCP server, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in CLAUDE.md, not Alexandria.
 
 ## Progress Reporting
 
@@ -6804,7 +6986,17 @@ You are an environment variable setter. You add one env var per invocation acros
 
 ## Alexandria
 
-Before any tool/install/config work, call \`mcp__alexandria__quick_setup\` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call \`mcp__alexandria__update_guide\` to capture it.
+**Recall before acting** — call \`mcp__alexandria__quick_setup\` FIRST, before any tool/install/config work (it returns the existing guide if there is one). Use what Alexandria already knows as your starting point instead of re-deriving it.
+
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, MCP server, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in CLAUDE.md, not Alexandria.
 
 ## Progress Reporting
 
@@ -6876,7 +7068,17 @@ You are a Docker configuration editor. You make one targeted edit to Docker file
 
 ## Alexandria
 
-Before any tool/install/config work, call \`mcp__alexandria__quick_setup\` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call \`mcp__alexandria__update_guide\` to capture it.
+**Recall before acting** — call \`mcp__alexandria__quick_setup\` FIRST, before any tool/install/config work (it returns the existing guide if there is one). Use what Alexandria already knows as your starting point instead of re-deriving it.
+
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, MCP server, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in CLAUDE.md, not Alexandria.
 
 ## Progress Reporting
 
@@ -7017,7 +7219,17 @@ You are a README section writer. You write or update one named section per invoc
 
 ## Alexandria
 
-Before any tool/install/config work, call \`mcp__alexandria__quick_setup\` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call \`mcp__alexandria__update_guide\` to capture it.
+**Recall before acting** — call \`mcp__alexandria__quick_setup\` FIRST, before any tool/install/config work (it returns the existing guide if there is one). Use what Alexandria already knows as your starting point instead of re-deriving it.
+
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, MCP server, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in CLAUDE.md, not Alexandria.
 
 ## Progress Reporting
 
@@ -7175,7 +7387,17 @@ Expected: 409  Received: 500
 
 ## Alexandria
 
-Before any tool/install/config work, call \`mcp__alexandria__quick_setup\` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call \`mcp__alexandria__update_guide\` to capture it.
+**Recall before acting** — call \`mcp__alexandria__quick_setup\` FIRST, before any tool/install/config work (it returns the existing guide if there is one). Use what Alexandria already knows as your starting point instead of re-deriving it.
+
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, MCP server, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in CLAUDE.md, not Alexandria.
 
 ## Progress Reporting
 
@@ -7254,7 +7476,17 @@ You are the lint runner. You run the linter and report all issues without auto-f
 
 ## Alexandria
 
-Before any tool/install/config work, call \`mcp__alexandria__quick_setup\` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call \`mcp__alexandria__update_guide\` to capture it.
+**Recall before acting** — call \`mcp__alexandria__quick_setup\` FIRST, before any tool/install/config work (it returns the existing guide if there is one). Use what Alexandria already knows as your starting point instead of re-deriving it.
+
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, MCP server, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in CLAUDE.md, not Alexandria.
 
 ## Progress Reporting
 
@@ -7332,7 +7564,17 @@ Output:
 
 ## Alexandria
 
-Before any tool/install/config work, call \`mcp__alexandria__quick_setup\` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call \`mcp__alexandria__update_guide\` to capture it.
+**Recall before acting** — call \`mcp__alexandria__quick_setup\` FIRST, before any tool/install/config work (it returns the existing guide if there is one). Use what Alexandria already knows as your starting point instead of re-deriving it.
+
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, MCP server, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in CLAUDE.md, not Alexandria.
 
 ## Progress Reporting
 
@@ -7813,7 +8055,17 @@ Do NOT run typecheck, build, full test suites, or a battery of post-commit verif
 
 ## Alexandria
 
-Before any tool/install/config work, call \`mcp__alexandria__quick_setup\` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call \`mcp__alexandria__update_guide\` to capture it.
+**Recall before acting** — call \`mcp__alexandria__quick_setup\` FIRST, before any tool/install/config work (it returns the existing guide if there is one). Use what Alexandria already knows as your starting point instead of re-deriving it.
+
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, MCP server, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in CLAUDE.md, not Alexandria.
 
 ## Progress Reporting
 
@@ -7914,7 +8166,17 @@ Generated with Voltron
 
 ## Alexandria
 
-Before any tool/install/config work, call \`mcp__alexandria__quick_setup\` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call \`mcp__alexandria__update_guide\` to capture it.
+**Recall before acting** — call \`mcp__alexandria__quick_setup\` FIRST, before any tool/install/config work (it returns the existing guide if there is one). Use what Alexandria already knows as your starting point instead of re-deriving it.
+
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, MCP server, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in CLAUDE.md, not Alexandria.
 
 ## Progress Reporting
 
@@ -8058,7 +8320,17 @@ After triggering:
 
 ## Alexandria
 
-Before any tool/install/config work, call \`mcp__alexandria__quick_setup\` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call \`mcp__alexandria__update_guide\` to capture it.
+**Recall before acting** — call \`mcp__alexandria__quick_setup\` FIRST, before any tool/install/config work (it returns the existing guide if there is one). Use what Alexandria already knows as your starting point instead of re-deriving it.
+
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, MCP server, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in CLAUDE.md, not Alexandria.
 
 ## Progress Reporting
 
@@ -8185,7 +8457,7 @@ On handoff, append this JSON block to your output so scrum-master can parse it:
     category: "agent",
     destination: ".claude/agents/code-analyst.md",
     tags: ["core"],
-    model: "opus",
+    model: "fable",
     content: `---
 name: code-analyst
 description: Codebase analysis coordinator (Tier 1). Directs Inspect-layer micro-agents to build a structured understanding of a codebase; produces persisted reports in .voltron/analyses/. Called before non-trivial implementation work.
@@ -8256,7 +8528,17 @@ The report persists in \`.voltron/analyses/\`. Never write findings only to resp
 
 ## Alexandria Integration
 
-Before doing meaningful work, call \`mcp__alexandria__list_guides\` to see what's already documented for the current task. For tooling/setup steps, call \`mcp__alexandria__quick_setup\` instead of reinventing setup. After the task, if you discovered any platform-specific gotcha, workaround, or new pattern, call \`mcp__alexandria__update_guide\` to capture it for next time.
+**Recall before acting** — call \`mcp__alexandria__list_guides\` / \`mcp__alexandria__search_guides\` FIRST, before any tool setup or non-trivial technical decision. Use what Alexandria already knows as your starting point instead of re-deriving it. For tooling/setup steps, call \`mcp__alexandria__quick_setup\` instead of reinventing setup.
+
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, MCP server, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in CLAUDE.md, not Alexandria.
 
 Alexandria is for non-project-specific documentation only. Project-specific content belongs in CLAUDE.md.
 
@@ -8354,7 +8636,17 @@ You are invoked by scrum-master only — not directly by micro-agents.
 
 ## Alexandria Integration
 
-Before doing meaningful work, call \`mcp__alexandria__list_guides\` to see what's already documented for the current task. For tooling/setup steps, call \`mcp__alexandria__quick_setup\` instead of reinventing setup. After the task, if you discovered any platform-specific gotcha, workaround, or new pattern, call \`mcp__alexandria__update_guide\` to capture it for next time.
+**Recall before acting** — call \`mcp__alexandria__list_guides\` / \`mcp__alexandria__search_guides\` FIRST, before any tool setup or non-trivial technical decision. Use what Alexandria already knows as your starting point instead of re-deriving it. For tooling/setup steps, call \`mcp__alexandria__quick_setup\` instead of reinventing setup.
+
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, MCP server, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in CLAUDE.md, not Alexandria.
 
 Alexandria is for non-project-specific documentation only. Project-specific content belongs in CLAUDE.md.
 
@@ -8445,7 +8737,17 @@ Never invent context or consequences — use only what was provided in the task.
 
 ## Alexandria
 
-Before any tool/install/config work, call \`mcp__alexandria__quick_setup\` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call \`mcp__alexandria__update_guide\` to capture it.
+**Recall before acting** — call \`mcp__alexandria__quick_setup\` FIRST, before any tool/install/config work (it returns the existing guide if there is one). Use what Alexandria already knows as your starting point instead of re-deriving it.
+
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, MCP server, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in CLAUDE.md, not Alexandria.
 
 ## Progress Reporting
 
@@ -8532,7 +8834,17 @@ Never invent behavior — document only what you read in the source.
 
 ## Alexandria
 
-Before any tool/install/config work, call \`mcp__alexandria__quick_setup\` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call \`mcp__alexandria__update_guide\` to capture it.
+**Recall before acting** — call \`mcp__alexandria__quick_setup\` FIRST, before any tool/install/config work (it returns the existing guide if there is one). Use what Alexandria already knows as your starting point instead of re-deriving it.
+
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, MCP server, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in CLAUDE.md, not Alexandria.
 
 ## Progress Reporting
 
@@ -8608,7 +8920,17 @@ Create a Mermaid diagram and write it to \`docs/diagrams/{name}.mmd\`.
 
 ## Alexandria
 
-Before any tool/install/config work, call \`mcp__alexandria__quick_setup\` (it returns the existing guide if there is one). After discovering anything tool-specific not already documented, call \`mcp__alexandria__update_guide\` to capture it.
+**Recall before acting** — call \`mcp__alexandria__quick_setup\` FIRST, before any tool/install/config work (it returns the existing guide if there is one). Use what Alexandria already knows as your starting point instead of re-deriving it.
+
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, MCP server, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in CLAUDE.md, not Alexandria.
 
 ## Progress Reporting
 
@@ -8697,7 +9019,17 @@ If not installed, output: "Stringer is not installed — skipping baseline. Inst
 
 ## Alexandria Integration
 
-Before doing meaningful work, call \`mcp__alexandria__list_guides\` to see what's already documented for the current task. For tooling/setup steps, call \`mcp__alexandria__quick_setup\` instead of reinventing setup. After the task, if you discovered any platform-specific gotcha, workaround, or new pattern, call \`mcp__alexandria__update_guide\` to capture it for next time.
+**Recall before acting** — call \`mcp__alexandria__list_guides\` / \`mcp__alexandria__search_guides\` FIRST, before any tool setup or non-trivial technical decision. Use what Alexandria already knows as your starting point instead of re-deriving it. For tooling/setup steps, call \`mcp__alexandria__quick_setup\` instead of reinventing setup.
+
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, MCP server, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in CLAUDE.md, not Alexandria.
 
 Alexandria is for non-project-specific documentation only. Project-specific content belongs in CLAUDE.md.
 
@@ -8782,7 +9114,17 @@ Read the Stringer baseline and run a cheap delta check to report what has change
 
 ## Alexandria Integration
 
-Before doing meaningful work, call \`mcp__alexandria__list_guides\` to see what's already documented for the current task. For tooling/setup steps, call \`mcp__alexandria__quick_setup\` instead of reinventing setup. After the task, if you discovered any platform-specific gotcha, workaround, or new pattern, call \`mcp__alexandria__update_guide\` to capture it for next time.
+**Recall before acting** — call \`mcp__alexandria__list_guides\` / \`mcp__alexandria__search_guides\` FIRST, before any tool setup or non-trivial technical decision. Use what Alexandria already knows as your starting point instead of re-deriving it. For tooling/setup steps, call \`mcp__alexandria__quick_setup\` instead of reinventing setup.
+
+**Write-back triggers** — after ANY of these, call \`mcp__alexandria__update_guide\` before moving on:
+1. You set up / installed / configured a tool, MCP server, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like \`<your-project>\`, \`<API_KEY>\`, \`<path/to/repo>\`. Purely project-specific content belongs in CLAUDE.md, not Alexandria.
 
 Alexandria is for non-project-specific documentation only. Project-specific content belongs in CLAUDE.md.
 

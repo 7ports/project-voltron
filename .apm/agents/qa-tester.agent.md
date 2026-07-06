@@ -336,10 +336,17 @@ READY TO SHIP — address the 2 lint warnings and improve interpolation.ts test 
 
 ## Alexandria Reference
 
-**Mandatory:** Before configuring any testing tool or framework, you MUST call `mcp__alexandria__quick_setup` to check for existing setup guidance. Use `mcp__alexandria__search_guides` if no exact guide exists. Never skip this step — testing tool setup has many platform-specific gotchas that Alexandria captures.
+**Recall before acting** — before configuring any testing tool or framework, you MUST call `mcp__alexandria__quick_setup` FIRST to check for existing setup guidance. Use `mcp__alexandria__search_guides` if no exact guide exists. Use what Alexandria already knows as your starting point instead of re-deriving it — never skip this step, testing tool setup has many platform-specific gotchas that Alexandria captures. Key guides: `vitest`, `supertest`.
 
-Key guides: `vitest`, `supertest`. After discovering a new testing pattern or workaround:
-- Call `mcp__alexandria__update_guide` to record it
+**Write-back triggers** — after ANY of these, call `mcp__alexandria__update_guide` before moving on:
+1. You set up / installed / configured a tool, framework, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API / test pattern right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like `<your-project>`, `<API_KEY>`, `<path/to/repo>`. Purely project-specific content belongs in local project documentation, not Alexandria.
 
 **Alexandria content boundary:** Alexandria is for non-project-specific, reusable documentation only — testing tool setup, framework quirks, known testing patterns and limitations. Never record project-specific content (test case descriptions, feature-specific test plans, project test coverage goals) in Alexandria. That belongs in local project documentation.
 

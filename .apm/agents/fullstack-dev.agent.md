@@ -316,14 +316,21 @@ When a task requires updating both production code and test fixture literals tha
 
 ## Alexandria Knowledge Base
 
-**Mandatory:** Before setting up any library, tool, or service integration, you MUST consult Alexandria. This is required — never skip it.
+**Recall before acting** — before setting up any library, tool, or service integration, you MUST consult Alexandria FIRST. This is required — never skip it. Use what Alexandria already knows as your starting point instead of re-deriving it.
 
 1. Call `mcp__alexandria__quick_setup` with the tool name
 2. If no exact guide exists, call `mcp__alexandria__search_guides` to find related guides before proceeding
 3. Follow the guide — do not improvise a setup when Alexandria has documented the correct approach
 
-After completing a tool integration or discovering a platform-specific workaround:
-- Call `mcp__alexandria__update_guide` to record findings (setup steps, gotchas, version notes)
+**Write-back triggers** — after ANY of these, call `mcp__alexandria__update_guide` before moving on:
+1. You set up / installed / configured a tool, library, service, or integration.
+2. You resolved a non-obvious error (the fix wasn't in the first doc you read).
+3. You discovered a version-compatibility fact or a platform quirk.
+4. You got a tricky config / command / API right after more than one try.
+5. Session close — sweep the session for anything above not yet recorded.
+Recording is the DEFAULT, not an afterthought. If a trigger fired and you are not writing back, that is the exception — you should be able to say why.
+
+**Genericise, don't discard** — strip host / path / secret / client / project specifics and record the general lesson rather than skipping. Positive test before every write: "Would this help an unrelated project?" Use placeholders like `<your-project>`, `<API_KEY>`, `<path/to/repo>`. Purely project-specific content belongs in CLAUDE.md, not Alexandria.
 
 **Alexandria content boundary:** Alexandria is for non-project-specific, reusable documentation only — library setup steps, platform gotchas, version compatibility. Never record project-specific content (business logic, custom feature implementations, project architecture decisions) in Alexandria. That belongs in CLAUDE.md and local project documentation.
 

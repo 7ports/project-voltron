@@ -679,6 +679,11 @@ node scripts/setup.js</code></pre>
           <p>Residual risk: the proxy does not inspect <code>Privileged</code> or <code>PidMode</code> in the create body. Close that gap with the optional OPA AuthZ plugin in <code>voltron/socket-proxy/opa-authz/</code>. Only run Voltron on a trusted developer machine and with prompts you trust.</p>
         </div>
 
+        <div class="callout" role="note">
+          <strong>Strengthened Alexandria write-back contract (v3.20.0)</strong>
+          <p>Every agent role that touches Alexandria now shares one canonical contract instead of soft, vague phrasing ("record findings if you learn something"). <strong>Recall before acting:</strong> agents call <code>quick_setup</code> / <code>search_guides</code> / <code>list_guides</code> <em>first</em>, before any tool setup or non-trivial technical decision, and start from what Alexandria already knows instead of re-deriving it. <strong>Write-back triggers:</strong> a fixed five-item list makes recording the default — after any tool/MCP setup, any non-obvious error fix, any version/platform quirk, any tricky config landed after more than one try, and at session close. If a trigger fired and the agent is not writing back, that is the exception it must justify. <strong>Genericise, don't discard:</strong> strip host/path/secret/client/project specifics and record the general lesson (using placeholders like <code>&lt;your-project&gt;</code>, <code>&lt;API_KEY&gt;</code>) rather than skipping; the existing content-boundary rule — purely project-specific knowledge belongs in CLAUDE.md, not Alexandria — is preserved verbatim in every block. This release also expands the scrum-master's host↔Docker git-divergence guidance into a full subsection (why it happens, when to reconcile, the ordered <code>fetch → pull --no-rebase -X ours → verify → push</code> sequence, the <code>-X ours</code> data-loss caveat, and the host-only-push rule), and annotates the benign <code>bd dolt</code> "no common ancestor" auto-push warning as expected under shared-server config.</p>
+        </div>
+
         <figure class="diagram diagram--beads" role="img" aria-labelledby="dgm-beads-t dgm-beads-d">
           <svg viewBox="0 0 960 380" xmlns="http://www.w3.org/2000/svg">
             <title id="dgm-beads-t">A beads dependency graph</title>

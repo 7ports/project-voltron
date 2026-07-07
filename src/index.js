@@ -2061,13 +2061,25 @@ async function dispatchOneAgent(spec, shared, opts = {}) {
   const hostTmpdir = process.env.VOLTRON_HOST_TMPDIR || tmpDir;
   const hostTmpFile = hostJoin(hostTmpdir, tmpFilename);
 
+  // v3.20.1: the host gitconfig is bind-mounted READ-ONLY at a NON-global path
+  //   (/etc/voltron/host.gitconfig) instead of onto the container's global-config
+  //   path (~/.gitconfig). The old RO mount onto ~/.gitconfig made EVERY global git
+  //   write inside the container fail with EBUSY ("Device or resource busy"):
+  //   `git config --global ...`, `gh auth setup-git`, and the ghBootstrap below.
+  //   That surfaced as committer warnings, false max_turns failures, and ~10-min
+  //   git 'busy-lock' hangs. We now point GIT_CONFIG_GLOBAL at a WRITABLE file and
+  //   `[include]` the RO host config from it (seeded in gitGlobalSeed below), so host
+  //   identity + credential.helper + includeIf are still inherited (read) while
+  //   global writes succeed. Repo-local committer identity fallback is untouched.
+  const HOST_GITCONFIG_CONTAINER_PATH = "/etc/voltron/host.gitconfig";
+  const GIT_CONFIG_GLOBAL_PATH = "/home/voltron/.gitconfig";
   const gitConfigHostPath = hostJoin(homeDir, ".gitconfig");
   const gitConfigCheckPath = isNested ? "/home/voltron/.gitconfig" : gitConfigHostPath;
   let gitConfigMount = [];
   if (!isNested) {
     try {
       await fs.access(gitConfigCheckPath);
-      gitConfigMount = ["--mount", `type=bind,source=${gitConfigHostPath},target=/home/voltron/.gitconfig,readonly`];
+      gitConfigMount = ["--mount", `type=bind,source=${gitConfigHostPath},target=${HOST_GITCONFIG_CONTAINER_PATH},readonly`];
     } catch {}
   }
 
@@ -2169,6 +2181,11 @@ async function dispatchOneAgent(spec, shared, opts = {}) {
     "-e", `VOLTRON_HOST_HOME=${homeDir}`,
     "-e", `VOLTRON_HOST_TMPDIR=${hostTmpdir}`,
     "-e", `VOLTRON_DEPTH=${currentDepth + 1}`,
+    // v3.20.1: point git's global config at a WRITABLE file so `git config --global`,
+    //   `gh auth setup-git`, and ghBootstrap no longer hit EBUSY on the (previously
+    //   RO-mounted) ~/.gitconfig. gitGlobalSeed (in the container command) creates
+    //   this file and [include]s the RO host config mounted at HOST_GITCONFIG_CONTAINER_PATH.
+    "-e", `GIT_CONFIG_GLOBAL=${GIT_CONFIG_GLOBAL_PATH}`,
   ];
   if (canDispatch) {
     voltronEnvArgs.push("-e", `DOCKER_HOST=${PROXY_DOCKER_HOST}`);
@@ -2201,6 +2218,15 @@ async function dispatchOneAgent(spec, shared, opts = {}) {
   // the printf writes to a file, never stdout. See docs/voltron-git-credentials-plan.md.
   const ghBootstrap = `if [ -n "\$GH_TOKEN" ]; then mkdir -p ~/.config/gh; printf 'github.com:\\n    oauth_token: %s\\n    git_protocol: https\\n' "\$GH_TOKEN" > ~/.config/gh/hosts.yml; chmod 600 ~/.config/gh/hosts.yml; gh auth setup-git >/dev/null 2>&1 || git config --global credential.helper '!f() { echo "username=x-access-token"; echo "password=\$GH_TOKEN"; }; f'; fi`;
 
+  // v3.20.1: seed the WRITABLE global git config that GIT_CONFIG_GLOBAL points at,
+  //   and [include] the RO host gitconfig mounted at HOST_GITCONFIG_CONTAINER_PATH.
+  //   Must run BEFORE ghBootstrap so `gh auth setup-git` / `git config --global`
+  //   writes land in the writable file instead of the old EBUSY-prone RO mount.
+  //   Idempotent: only appends the include once. host.gitconfig may be absent
+  //   (nested dispatch or no host gitconfig) — then git just gets an empty writable
+  //   global config, which still accepts writes.
+  const gitGlobalSeed = `export GIT_CONFIG_GLOBAL="\${GIT_CONFIG_GLOBAL:-${GIT_CONFIG_GLOBAL_PATH}}"; touch "\$GIT_CONFIG_GLOBAL" 2>/dev/null || true; if [ -f ${HOST_GITCONFIG_CONTAINER_PATH} ] && ! grep -qF '${HOST_GITCONFIG_CONTAINER_PATH}' "\$GIT_CONFIG_GLOBAL" 2>/dev/null; then printf '[include]\\n\\tpath = ${HOST_GITCONFIG_CONTAINER_PATH}\\n' >> "\$GIT_CONFIG_GLOBAL"; fi`;
+
   const dockerArgs = [
     "run", "--rm",
     "--name", containerName,
@@ -2212,7 +2238,7 @@ async function dispatchOneAgent(spec, shared, opts = {}) {
     ...mountArgs,
     "voltron-agent",
     "-c",
-    `{ ${ghBootstrap}; echo "[entry] $(date -Is) host=$(hostname) user=$(whoami)"; echo "[claude-version] $(claude --version 2>&1)"; echo "[exec] $(date -Is) starting prompt"; claude --dangerously-skip-permissions ${modelFlag} ${mcpConfigFlag} ${settingsFlag} --append-system-prompt-file ${sysPromptPathInContainer} --exclude-dynamic-system-prompt-sections --max-turns ${max_turns} --output-format stream-json --verbose -p "$(cat ${taskFilePathInContainer})" 2>&1; CLAUDE_EXIT=\$?; echo "[exit] $(date -Is) code=\$CLAUDE_EXIT"; exit \$CLAUDE_EXIT; } | tee /workspace/.voltron/logs/${logFilename}; exit \${PIPESTATUS[0]}`,
+    `{ ${gitGlobalSeed}; ${ghBootstrap}; echo "[entry] $(date -Is) host=$(hostname) user=$(whoami)"; echo "[claude-version] $(claude --version 2>&1)"; echo "[exec] $(date -Is) starting prompt"; claude --dangerously-skip-permissions ${modelFlag} ${mcpConfigFlag} ${settingsFlag} --append-system-prompt-file ${sysPromptPathInContainer} --exclude-dynamic-system-prompt-sections --max-turns ${max_turns} --output-format stream-json --verbose -p "$(cat ${taskFilePathInContainer})" 2>&1; CLAUDE_EXIT=\$?; echo "[exit] $(date -Is) code=\$CLAUDE_EXIT"; exit \$CLAUDE_EXIT; } | tee /workspace/.voltron/logs/${logFilename}; exit \${PIPESTATUS[0]}`,
   ];
 
   // 7. Spawn + wait. abortSignal (when batch fail_fast cancels siblings) sends

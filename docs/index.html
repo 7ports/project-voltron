@@ -689,6 +689,11 @@ node scripts/setup.js</code></pre>
           <p>A batch of field reflections sharpened four templates. <strong>scrum-master</strong> now treats a <code>max_turns</code>/timeout exit as "not automatically a failure" — verify the working tree (or grep the acceptance token) before blocking a bead or redoing work, and prefer a cheap verify-repair pass, since the most common false-failure is an agent that finishes its edits then exhausts turns mid-validation; it also notes that on large Windows bind-mounts container-side git can itself hang (validate via grep, commit host-side). Any Voltron version-bump dispatch now carries an explicit acceptance criterion to run <code>npm run build:apm</code> and keep <code>git diff --exit-code .apm apm.yml</code> clean, or CI's APM manifest drift gate goes red on merge. <strong>harness-engineer</strong> gains a matching drift-gate reminder plus a "deploy a single version to main" cherry-pick recipe for isolating one shippable version off stacked WIP. <strong>qa-tester</strong> extends fixture fidelity to internal formats — a green test built on a fabricated payload the real system never emits masks the bug; source fixtures from real captures and verify field names at every parse → state → transport → frontend hop.</p>
         </div>
 
+        <div class="callout" role="note">
+          <strong>Beads/Dolt reliability fix (v3.21.0)</strong>
+          <p>The beads issue-tracker dependency is now <strong>non-blocking</strong> — a runtime behavior-contract change so a flaky or unavailable tracker can never strand a session. Three layered fixes: the pre-flight readiness gate now keys on <code>bd ready --json</code> exit 0 (a real health probe) instead of a presence check; stale pid/lock files left by a crashed prior run are detected and cleared automatically rather than wedging startup; and if the beads server is genuinely down, the session <em>degrades gracefully</em> — progress is reported through <code>update_progress</code> and work proceeds, instead of hard-failing (STOP) the whole session on a tracking-layer outage.</p>
+        </div>
+
         <figure class="diagram diagram--beads" role="img" aria-labelledby="dgm-beads-t dgm-beads-d">
           <svg viewBox="0 0 960 380" xmlns="http://www.w3.org/2000/svg">
             <title id="dgm-beads-t">A beads dependency graph</title>

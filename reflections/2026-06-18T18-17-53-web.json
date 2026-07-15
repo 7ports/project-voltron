@@ -1,0 +1,27 @@
+{
+  "timestamp": "2026-06-18T18:17:53.829Z",
+  "project_name": "Voltron Glimpse",
+  "project_type": "web",
+  "session_summary": "Verified a reported \"step output not rendering\" bug, fixed it, and released v0.1.2. code-analyst traced the path and found the root cause: src/parsers/logs.js had a charCodeAt(0)!==91 fast-path that dropped every stream-JSON ({-starting) log line, so [STEP N]/[DONE] markers embedded in JSON text were never parsed — the prior v0.1.1 fix (2ad42ab) only fixed offset-seeding, and its green test used a synthetic plain-text fixture that masked the bug. fullstack-dev fixed the parser to mine markers from both plain-text and stream-JSON, added a real stream-JSON fixture + regression test (proven to fail pre-fix); 139/139 tests pass. Committed (baa3dd4), bumped to 0.1.2, release-committed (f043068), pushed branch + tag v0.1.2 to origin. bd stats: 83 total, 83 closed, 0 open/blocked.",
+  "agents_used": [
+    "code-analyst",
+    "fullstack-dev",
+    "committer",
+    "config-editor",
+    "branch-manager"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "committer",
+      "needs_improvement": "On the first fix-commit dispatch, committer hit its 10-turn max_turns DURING post-commit validation (it spent turns force-adding a gitignored *.log fixture and hit a 'could not write config file .gitconfig: Device or resource busy' warning), so it exited code=1 even though the commit had already landed correctly. This produced a false-failure that required the orchestrator to manually verify git state.",
+      "suggested_change": "Have committer (1) do all post-commit validation in a SINGLE combined command to conserve turns, and (2) treat a non-zero exit AFTER a confirmed successful 'git commit' as success — i.e. verify HEAD before declaring failure. Also document the .gitconfig 'Device or resource busy' warning as benign in the container."
+    },
+    {
+      "agent": "fullstack-dev",
+      "needs_improvement": "Worked well — correctly used a real production log as the fixture source and proved the test fails pre-fix.",
+      "suggested_change": "None needed for this task."
+    }
+  ],
+  "overall_notes": "Key lesson reinforced: a green test suite that uses a fabricated fixture in a format the real system never emits is worse than no test — it actively masks a production bug. The redesign value here was code-analyst verifying field-name matches across the full path (parse->state->transport->frontend) and isolating the break to the very first hop. Tooling note: committer's max_turns false-failure (above) cost an extra verification round; the gitignored-fixture force-add is a recurring friction point. No Alexandria guide updates this session (no new tool setup).",
+  "processed": true
+}

@@ -1,0 +1,29 @@
+{
+  "timestamp": "2026-07-07T08:35:34.488Z",
+  "project_name": "project-voltron",
+  "project_type": "general",
+  "session_summary": "Diagnosed and fixed the recurring 'aggressive micro-agent dispatch + committer git-environment' failures. code-analyst root-caused it (mining reflections per user instruction) to the host ~/.gitconfig bind-mounted READ-ONLY onto the container global-config path (src/index.js), causing EBUSY 'Device or resource busy' on all global git writes (git config --global, gh auth setup-git, ghBootstrap) → committer warnings, false max_turns failures, and ~10-min busy-lock hangs that masqueraded as dispatch failures. User hypothesis B (shared gitconfig) CONFIRMED across 4-5 reflections (2026-06-17/18/22, 2026-07-06-unity); hypothesis A (socket-proxy) REFUTED (proxy already fail-safed). harness-engineer shipped v3.20.1 (commit 78c7198): mount host gitconfig RO at /etc/voltron/host.gitconfig + writable GIT_CONFIG_GLOBAL with an [include] of the host file. Committed + pushed to fable-eval-prereqs. Fix requires Claude Code restart (MCP server, no hot-reload) to take effect. Not yet deployed to main.",
+  "agents_used": [
+    "code-analyst",
+    "harness-engineer",
+    "committer"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "code-analyst",
+      "worked_well": "Given two competing user hypotheses (proxy vs shared gitconfig), it tested BOTH and returned clear verdicts (B confirmed with reflection counts + file:line, A refuted with the fail-safe evidence), plus an exact single fix target and a note that the same root cause explained the 'dispatch hang' symptom. Mining reflections as explicitly requested surfaced the frequency signal.",
+      "needs_improvement": "None."
+    },
+    {
+      "agent": "harness-engineer",
+      "worked_well": "Implemented the non-trivial container-plumbing fix precisely (non-global mount + GIT_CONFIG_GLOBAL + idempotent include seed run before ghBootstrap), preserved the repo-local identity safety net and proxy logic, self-validated all 5 checks, and gave a clean before/after of the mount line.",
+      "needs_improvement": "None."
+    },
+    {
+      "agent": "committer",
+      "worked_well": "Explicit 4-path staging kept the commit scoped to the fix despite untracked reflections and hook-modified .claude files present."
+    }
+  ],
+  "overall_notes": "KEY GOTCHA for future sessions: symptoms attributed to 'micro-agent dispatch' or 'the proxy' were actually the read-only gitconfig mount causing git EBUSY busy-lock hangs — a reminder to check container git-env before blaming the dispatcher. The scrum-master's own div-guidance and proxy fail-safe were fine. Also: fixes to src/index.js (the MCP server) do NOT hot-reload — they require a Claude Code restart, so this session's fix is committed/pushed but not yet live. Recorded the generic lesson to Alexandria (reference: docker-gitconfig-readonly-mount-ebusy) and a project-specific note to beads memory (voltron-container-gitconfig-ebusy-fix). Tools touched: Docker bind mounts, git config --global, gh auth setup-git, GIT_CONFIG_GLOBAL.",
+  "processed": true
+}

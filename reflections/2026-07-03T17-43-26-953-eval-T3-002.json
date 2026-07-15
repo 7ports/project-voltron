@@ -1,0 +1,84 @@
+{
+  "timestamp": "2026-07-03T17-43-26-953",
+  "project_name": "voltron-eval-harness",
+  "project_type": "general",
+  "session_summary": "Eval T3-002 (orchestration-no-code) — AUT=code-analyst. Aggregates: correctness 0.5 / decomposition 1 / tier_discipline 1 / reflection_honesty null / doc_hygiene null",
+  "agents_used": [
+    "code-analyst",
+    "doc-writer"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "code-analyst",
+      "worked_well": "",
+      "needs_improvement": "correctness.no_code_changed: No source code touched; only two workspace markdown artifacts (.voltron analysis + journal) changed, matching the rubric's PARTIAL 'only doc files changed' band rather than the empty-array MET.",
+      "suggested_change": "Address: correctness.no_code_changed (PARTIAL)"
+    }
+  ],
+  "overall_notes": "",
+  "processed": true,
+  "eval_metadata": {
+    "task_id": "T3-002",
+    "kind": "deep",
+    "rubric_version": "1.0.0",
+    "rubric_path": "voltron-evals/rubrics/T3-002.md",
+    "template_versions": {
+      "code-analyst": "3.19.0",
+      "doc-writer": "3.19.0"
+    },
+    "template_hash": "sha256:922d60c8deb561dd66aadbb08f733a25d74ab49e0873c8aeb9775f83706f2a33",
+    "scored_via": "judge",
+    "scores": {
+      "correctness": 0.5,
+      "decomposition": 1,
+      "tier_discipline": 1,
+      "reflection_honesty": null,
+      "doc_hygiene": null
+    },
+    "programmatic": {
+      "turns_used": 14,
+      "done_line_present": true,
+      "tokens": {
+        "input": 22356,
+        "output": 18291,
+        "cache_read": 3906861,
+        "cache_creation": 224281,
+        "events": 74
+      },
+      "max_turns_budget": 30,
+      "budget_utilization": 0.4666666666666667,
+      "files_changed": [
+        ".voltron/analyses/2026-07-03T17-40-53-backlog-3card-work-plan.md",
+        ".voltron/journal/2026-07-03.md"
+      ],
+      "file_count": 2,
+      "lines_added": 0,
+      "lines_deleted": 0,
+      "sub_dispatches": 11,
+      "sub_dispatch_targets": [
+        "doc-writer"
+      ],
+      "beads_created": [],
+      "beads_closed": [],
+      "beads_deps_count": 10,
+      "journal": {
+        "count": 0,
+        "kinds": {}
+      },
+      "reflection_submitted": false,
+      "docs_updated": null,
+      "editor_handoff_emitted": false,
+      "commit_dispatched_via_committer": false,
+      "has_step_lines": true,
+      "alexandria_calls": null,
+      "alexandria_call_before_first_write": null,
+      "first_file_write_step": null,
+      "test_command_exit": null,
+      "verdict_per_fixture": null,
+      "publish_action": null,
+      "realized_model": "claude-fable-5"
+    },
+    "judge_model": "claude-opus-4-8",
+    "scorecard_path": "voltron-evals\\results\\T3-002\\2026-07-03T17-35-32-338\\scorecard.json"
+  }
+}

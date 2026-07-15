@@ -181,6 +181,7 @@ describe('interpolatePosition', () => {
 - Test database queries against a test database (not mocks)
 - Test SSE/WebSocket connections with real server instances
 - **For external API integrations:** record a real response as a fixture file (e.g. `__fixtures__/weatherResponse.json`) by curling the live endpoint once. Never invent field names — invented names produce green tests against silently broken integrations (e.g. `wind_spd` instead of the real `avg_wnd_spd_10m_pst2mts`)
+- **Fixture fidelity applies to internal formats too — a green test built on a fabricated fixture the real system never emits is worse than no test; it actively masks the bug.** When a bug touches a data-flow chain (parse → state → transport → frontend), source the fixture from a real captured payload and verify field names match at every hop — a mismatch anywhere breaks silently while a fixture in the wrong shape keeps the suite green. Any regression test for such a bug MUST be proven to fail before the fix and pass after.
 
 **E2E tests:**
 - Happy path for critical user journeys

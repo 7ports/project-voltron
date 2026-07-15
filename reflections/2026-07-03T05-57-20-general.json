@@ -1,0 +1,13 @@
+{
+  "timestamp": "2026-07-03T05:57:20.925Z",
+  "project_name": "project-voltron",
+  "project_type": "unknown",
+  "session_summary": "Phase 1-2: Fable-5 evaluation planning. Dispatched code-analyst (F1 baseline) + project-planner (F2 hyper-specialist plan) in parallel via batch, then project-planner (F3 run plan) after F1. Deliverables: voltron-evals/analysis/F1/F2/F3. Key discovery: fable-vs-opus eval is blocked on harness instrumentation (claude-fable-5 absent from MODEL_IDS at src/index.js:1992 → silent default-model substitution; no per-run token/cost accounting in scorecards). Held at decision gate for user approval before harness-engineer Phase 0 + spend on 2x-cost runs.",
+  "agents_used": [
+    "code-analyst",
+    "project-planner"
+  ],
+  "agent_feedback": [],
+  "overall_notes": "The existing opus->sonnet parity machinery (s3.3 gate, voltron-judge, template-pinned model) was directly reusable for the inverse question after inverting the gate to Δ_min=0.10·(C-1). Batch dispatch of code-analyst+project-planner parallelized correctly (entry timestamps 8s apart). Latent harness correctness trap: a new model id pinned in a template silently falls back to the default model instead of erroring — worth a runner-level guard regardless of this eval.",
+  "processed": true
+}

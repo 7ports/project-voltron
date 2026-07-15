@@ -1,0 +1,18 @@
+{
+  "timestamp": "2026-07-06T16:29:03.269Z",
+  "project_name": "project-alexandria",
+  "project_type": "general",
+  "session_summary": "Deploy + cross-repo phase. Merged alexandria-vectordb -> main via PR #3 using `git merge -X ours` (host-side, sanctioned by the scrum-master divergence protocol) to auto-resolve divergent guide-viewer/rebrand conflicts against a stale, diverged main; main-push deploy workflow ran green and published to GitHub Pages (rebrand + strengthened write-back contract now live). Cross-repo project-voltron mirror was NOT executable from this session and was handed off. bd stats: 76 total, 74 closed, 2 open (cross-repo handoff + optional rebrand polish).",
+  "agents_used": [
+    "(none this phase — host-side git/gh deploy orchestration + recon)"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "scrum-master",
+      "needs_improvement": "The scrum-master template has no guidance for CROSS-REPO requests. run_agent_in_docker mounts `-v $(pwd):/workspace` (confirmed in project-voltron/src/templates.js:10133), so a Docker agent dispatched from repo A physically cannot edit repo B, and container agents get only a read-only .gitconfig (no GitHub push creds). This wasn't recognized until mid-execution.",
+      "suggested_change": "Add a 'Cross-repo work' rule: when a task targets a different repo than $(pwd), the scrum-master must (1) recognize it up front, (2) state that run_agent_in_docker mounts only the current project, and (3) produce a turnkey handoff (a ready-to-paste /scrum-master prompt) for the user to run from the target repo's directory — rather than attempting a dispatch that cannot reach the other repo."
+    }
+  ],
+  "overall_notes": "Deploy mechanics for project-alexandria: GitHub Pages deploys on push to main via .github/workflows/deploy-pages.yml, which rebuilds the manifest + sqlite-vec index + 3D embedding map and self-commits a [skip ci] sync — so a main merge self-heals stale docs/data artifacts (the PR-event embedding-drift-check is a non-blocking guard that fails when guides change without regenerated artifacts). Merging a long-diverged feature branch to main needed `-X ours` since the branch was the active superset. gh auth is host-only (7ports); container agents can't push. Worth an Alexandria guide on 'GitHub Pages deploy from a diverged branch'.",
+  "processed": true
+}

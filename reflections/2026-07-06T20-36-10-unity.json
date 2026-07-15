@@ -1,0 +1,36 @@
+{
+  "timestamp": "2026-07-06T20:36:10.824Z",
+  "project_name": "project-cucumber",
+  "project_type": "unity",
+  "session_summary": "Phase: combat/level-up/VFX batch + feedback fixes. Shipped (committed 55ac6a6a, 0b1f0973, 74f22cd0): projectile range cull (no fade, destroyed at max range), player HP + 2s contact damage, level-up event→random 3-of-5 stat menu (+10%) with pause + 1s pre-menu delay, player/UI/floating-text juice, enemy death blood, Game Over + restart. Editor wiring across 2 scene-architect runs. Particle materials were rendering magenta (null ParticleSystemRenderer material under URP 2D) — fixed with a Sprites/Default material. All C# grep-validated + compile-clean; interactive Play-Mode still user-run.",
+  "agents_used": [
+    "project-planner",
+    "csharp-dev",
+    "scene-architect",
+    "shader-artist",
+    "build-validator",
+    "committer",
+    "config-editor",
+    "code-analyst"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "build-validator",
+      "needs_improvement": "It cannot inject player input, so for input-driven games it just enters Play Mode and WAITS for something to happen — it can confirm compile + no-NRE-on-entry but cannot exercise gameplay (contact damage, XP pickup, level-up). The user called this a major issue. The template implies it can run a Play-Mode 'smoke test' of gameplay, which overpromises.",
+      "suggested_change": "Template should state the input-injection limitation explicitly and offer a harness pattern: drive the player via execute_script (move transform / force enemy overlap / add XP) or a temporary debug auto-play component, rather than passively waiting. Distinguish 'compile+load gate' (always possible) from 'gameplay smoke test' (needs an input/driver harness)."
+    },
+    {
+      "agent": "shader-artist",
+      "needs_improvement": "Its coplay-mcp grant is inspect/material-only (no create_game_object/add_component/create_prefab/execute_script), so it CANNOT author ParticleSystem prefabs — it had to hand the whole VFX-authoring job to scene-architect. This makes 'shader-artist authors particles' (per its own routing) impossible in practice.",
+      "suggested_change": "Either grant shader-artist the component/prefab/execute_script tools needed to author ParticleSystems, or update routing so particle-system AUTHORING is assigned to scene-architect and shader-artist is scoped to material/shader files + visual review only."
+    },
+    {
+      "agent": "csharp-dev",
+      "worked_well": "Reliable, fast, grep-validated single-file edits when given pre-computed anchors. Correctly handled the flagged traps (fire-rate cooldown subtraction; pooled-enemy prune).",
+      "needs_improvement": "Several csharp-dev (and committer) Docker runs HUNG for ~10 min on the container '~/.gitconfig: Device or resource busy' lock + slow bind-mount when they wandered into git/subagent calls. Adding 'do NOT run git, do NOT spawn subagents' to the task prompt reliably prevented the hang.",
+      "suggested_change": "Bake a 'file-edit only: no git, no subagents' guard into the csharp-dev template, and fix the container ~/.gitconfig mount (read-only or per-container) so git isn't 'device or resource busy'."
+    }
+  ],
+  "overall_notes": "Recurring infra pain: (1) Docker committer unusable this session — slow ~450-file staging + container ~/.gitconfig busy lock; all commits done host-side (55ac6a6a/0b1f0973/74f22cd0). (2) beads dolt server down all session (port-bind failure) — manual update_progress tracking. (3) 'user desires to invoke agent X' injected reminders repeatedly suggested irrelevant agents (file-patch-runner/readme-section-writer/stringer-baseline-builder) that never matched the actual work; ignored each time. Alexandria guides written this session: coplay-unity-plugin (corrected from unity-mcp), unity-urp-2d-particle-materials (null particle material → magenta under URP 2D). Tools: coplay-mcp (Editor), project-voltron (Docker), alexandria.",
+  "processed": true
+}

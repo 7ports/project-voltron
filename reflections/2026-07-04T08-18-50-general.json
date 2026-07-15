@@ -1,0 +1,28 @@
+{
+  "timestamp": "2026-07-04T08:18:50.796Z",
+  "project_name": "project-alexandria",
+  "project_type": "general",
+  "session_summary": "Two streams shipped & pushed to origin/alexandria-vectordb. (1) Rebranded the docs site to the Project Voltron brand family — new A-in-front logo/favicon (layer-swap of the V/A ambigram), cyan→amber duotone wordmark, Voltron palette across 3 pages (commit 5aeb4ff, visually verified via headless Chrome). (2) Strengthened Alexandria's write-back contract — MCP server `instructions` on connect, empty-result write-back nudge, trigger-based recording + genericise guardrail across onboarding.json/CLAUDE.md/README/guide-template (commit b2713d7, 23/23 mcp-server tests pass). bd stats: 76 total, 74 closed, 2 open (both intentionally-deferred follow-ups). Flow: project-planner (design) → file-patch-runner/fullstack-dev/config-editor (edits) → test-runner → committer, all via run_agent_in_docker(_batch).",
+  "agents_used": [
+    "project-planner",
+    "file-patch-runner",
+    "fullstack-dev",
+    "config-editor",
+    "test-runner",
+    "committer"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "config-editor",
+      "needs_improvement": "On a JSON edit task it completed all edits and validated JSON by step 7, then spent turns 8-19 re-running grep variants to satisfy an acceptance check (searching for 'genericise' vs 'genericize' casing) and hit max_turns without emitting [DONE] — reported as FAILED despite the work being correct (verified externally). Wasted ~half its budget on redundant self-verification.",
+      "suggested_change": "Add guidance to stop verifying once a check passes once; cap acceptance re-checks (e.g. run each grep at most twice, accept case-insensitive match on first success). Emit [DONE] as soon as the primary validation (JSON.parse + one grep per criterion) passes rather than exhaustively probing spelling variants."
+    },
+    {
+      "agent": "project-planner",
+      "needs_improvement": "Nothing — produced two excellent first-hand design docs (fetched the live Voltron repo for exact palette+SVG; audited the MCP server for the unused `instructions` field). Verbatim prose in the doc let downstream agents apply changes without re-authoring.",
+      "suggested_change": "None."
+    }
+  ],
+  "overall_notes": "Headless Chrome on Windows needs file:///C:/... URLs, not git-bash /c/... paths — first screenshots silently captured ERR_FILE_NOT_FOUND pages. Worth an Alexandria guide note. run_agent_in_docker_batch parallelized cleanly (3-agent wave in 70s, 4-agent wave in 133s). Tools: project-voltron MCP, alexandria (recall returned nothing for branding), bd/beads.",
+  "processed": true
+}

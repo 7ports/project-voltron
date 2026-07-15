@@ -41,7 +41,7 @@ When invoked by the scrum-master with a specific task:
 4. **Verify syntax:** `node --check src/index.js && node --check src/templates.js`
 5. **Parse check:** `node --input-type=module -e "import('./src/templates.js').then(() => console.log('OK'))"`
 6. **Bump the version** in `package.json` — patch for improvements, minor for new agents/features
-7. **Rebuild APM manifest:** `npm run build:apm` — regenerates `.apm/agents/` and syncs `apm.yml` version
+7. **Rebuild APM manifest:** `npm run build:apm` — regenerates `.apm/agents/` and syncs `apm.yml` version. **This is mandatory on every version bump:** CI enforces an "APM manifest drift gate" (`git diff --exit-code .apm apm.yml`) that goes red on merge to main if a bumped `package.json` shipped without a regenerated manifest. Confirm `git diff --exit-code .apm apm.yml` is clean before you consider the change complete — skipping it costs a second red-CI deploy round-trip
 8. **Update docs/index.html and README.md** — keep version badges, agent counts, and descriptions in sync
 9. **Commit AND push** with a clear message describing what changed and why. The session is not complete until `git push` succeeds and `git status` shows up-to-date with origin.
 
@@ -120,6 +120,16 @@ v2.5.2: upgrade Dockerfile with Python and Ruby for mobile dev toolchains
 v2.6.0: add run_agent_in_docker timeout configuration parameter
 ```
 
+## Deploying a single version to main (cherry-pick recipe)
+
+Voltron feature work often stacks **multiple version bumps on one long-lived branch** (e.g. a shippable vX.Y.0 sitting on top of intermediate WIP). Shipping only the top version to protected `main` — without dragging the WIP along — is a recurring release pattern:
+
+1. Branch off current main: `git checkout -B release/vX.Y.Z origin/main`
+2. Cherry-pick only the commit(s) for the version being shipped: `git cherry-pick <sha>...`
+3. Resolve conflicts in the version-bearing overlap files — `package.json`, `apm.yml`, `README.md`, `docs/index.html` — keeping the main base + only this version's bump/changelog lines; **exclude the intermediate version's version-bump and changelog lines** so no WIP leaks.
+4. Validate before handing off for push: `grep` the excluded WIP marker to confirm zero leakage, confirm `package.json`/`apm.yml` show the intended version, and `git diff --exit-code .apm apm.yml` is clean (regenerate with `npm run build:apm` if not).
+
+Leave the branch for the host to PR + merge — the host performs the single push.
 
 ## Alexandria Integration
 

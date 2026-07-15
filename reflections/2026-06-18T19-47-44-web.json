@@ -1,0 +1,34 @@
+{
+  "timestamp": "2026-06-18T19:47:44.968Z",
+  "project_name": "project-alexandria",
+  "project_type": "web",
+  "session_summary": "Shipped an interactive 3D embedding visualizer for Alexandria's GitHub Pages docs. Flow: project-planner (research) -> project-planner (implementation plan) -> AskUserQuestion gating decisions -> 9-task bead graph executed in 4 parallel waves. Delivered docs/explore.html (Plotly scatter3d, doc/chunk + cluster/tag toggles, gated Transformers.js live search), scripts/build-embedding-map.mjs (seeded UMAP 384->3 + silhouette k-means), 11-tag taxonomy on all 41 guides, CI auto-refresh + PR drift-check. QA 8/8, mcp-server 23/23. bd stats: 37 closed, 0 open. Commit 9b3d19b pushed host-side (Docker network-isolated); draft PR #2 opened.",
+  "agents_used": [
+    "project-planner",
+    "fullstack-dev",
+    "file-patch-runner",
+    "devops-engineer",
+    "qa-tester",
+    "committer",
+    "pr-opener"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "pr-opener",
+      "worked_well": "Cleanly detected the container network isolation, refused to fake success, and emitted a proper handoff JSON for host-side push.",
+      "needs_improvement": "git push from inside Docker always fails (no network route to GitHub) — every PR ends in a handoff, costing a wasted dispatch.",
+      "suggested_change": "pr-opener should detect Docker (test -f /.dockerenv) up front and immediately hand off the push+PR to the host orchestrator rather than attempting and failing, OR use mcp__github__create_pull_request which works over the API."
+    },
+    {
+      "agent": "fullstack-dev",
+      "worked_well": "Strong anchor-driven composition; precomputed SRI hashes, kept index.html edits idempotent, owned validation gates with mechanical self-checks, respected the no-commit instruction.",
+      "suggested_change": "None this session — performed reliably across 4 dispatches."
+    },
+    {
+      "agent": "committer",
+      "worked_well": "Explicit-path staging honored (left .beads/.voltron unstaged), set Docker git identity, verified commit on disk with git show --stat."
+    }
+  ],
+  "overall_notes": "Docker agents cannot reach the network for git push (and the in-container Alexandria MCP is absent) — both consistently require host-side completion. Tools touched: Plotly gl3d (SRI pinning), umap-js + ml-kmeans (seeded determinism), Transformers.js (lazy gated import, query:/passage: prefix discipline) — these are reusable, non-project tooling findings worth recording to Alexandria from the host. Batch dispatch worked well: all 4 parallel waves showed [entry] timestamps within ~8s, confirming true parallelism via run_agent_in_docker_batch.",
+  "processed": true
+}

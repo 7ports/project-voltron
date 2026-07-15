@@ -1,0 +1,33 @@
+{
+  "timestamp": "2026-07-08T20:08:34.727Z",
+  "project_name": "project-cucumber",
+  "project_type": "unity",
+  "session_summary": "Shipped many gameplay batches (x10 rebalance, projectile-size stat, 5 boss-drop weapon items + status subsystem, time-based progression, wall collision, timer, XP tweaks, item-choice menu) then did a config/docs refresh. Verified Voltron configs (all green; beads/dolt recovered). Root-caused and fixed a false-logic incident: the scrum-master COMMAND template says 'Never use the Agent tool' AND prescribes user-mediated delegation for Editor agents, which directly contradicts the project CLAUDE.md 'Editor exception' (scrum-master DOES dispatch scene-architect/build-validator via the host Agent tool). This ambiguity made me twice wrongly refuse to dispatch scene-architect mid-session. Fixed locally via a persistent memory note + a dated CLAUDE.md Project Decision.",
+  "agents_used": [
+    "project-planner",
+    "csharp-dev",
+    "scene-architect",
+    "committer",
+    "doc-writer",
+    "readme-section-writer"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "scrum-master",
+      "needs_improvement": "The command template's absolute 'Never use the Agent tool' rule, plus its 'Delegating Unity Editor-required tasks -> user-mediated delegation' section, directly contradict the Unity CLAUDE.md Editor exception (scrum-master dispatches scene-architect/build-validator via the host Agent tool). This contradiction caused a live false-logic incident where the orchestrator refused to dispatch scene-architect it had already dispatched earlier the same session.",
+      "suggested_change": "In the scrum-master template, carve out the Unity Editor exception explicitly next to the 'Never use the Agent tool' rule: 'EXCEPTION — for Unity projects, scene-architect and build-validator run via the host Agent tool because Docker cannot host a live Unity Editor; dispatch them directly, do not hand them to the user.' And reframe 'user-mediated delegation' as a fallback only when the harness truly can't invoke the Agent tool, not the default."
+    },
+    {
+      "agent": "doc-writer",
+      "needs_improvement": "Timed out (10-min container cap) on a single-file CLAUDE.md doc update without visibly editing; as a Tier-1 coordinator it appears to spawn git-running micro-agents that hang on a large bind-mounted repo (Docker Desktop Windows).",
+      "suggested_change": "For single-file doc edits, prefer a direct-editing path (Read/Edit/Write) over coordinator fan-out; and honor a 'no git / no sub-dispatch' instruction so it doesn't hang."
+    },
+    {
+      "agent": "readme-section-writer",
+      "worked_well": "It DID apply the full CLAUDE.md update correctly (edits persisted on the bind mount).",
+      "needs_improvement": "It reported failure/timeout after the edits already landed — the container hung at/after the grep-validation step, likely on git or session-init noise, so a completed edit looked like a failure."
+    }
+  ],
+  "overall_notes": "Recurring environment issue on Docker Desktop for Windows with a large Unity repo bind-mounted: container-side git (status/diff/add) hangs, and file-editing agents frequently 'time out' AFTER their edits have already landed on disk — so the orchestrator must verify the working tree before treating a timeout as a failure, and commit host-side. Rebuilding the voltron-agent image fixed a separate 'gitconfig Device or resource busy' error but did NOT fix the working-tree-scan hang (it's filesystem-perf, not the image). Workaround adopted all session: instruct agents 'no git commands, validate via grep', and the host session does all commits/pushes. tools: docker, bd/dolt, coplay-mcp, alexandria.",
+  "processed": true
+}

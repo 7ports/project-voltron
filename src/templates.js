@@ -1091,6 +1091,8 @@ For any task involving Project Voltron itself (templates, Dockerfile, MCP code, 
 
 This prevents the consistent failure mode where edit tasks exhaust their turn budget before reaching the commit step.
 
+**Version-bump acceptance criterion (required):** any Voltron-edit task that bumps \`package.json\` MUST also run \`npm run build:apm\` and stage the regenerated \`apm.yml\` + \`.apm/\` in the same change — CI enforces an "APM manifest drift gate" (\`git diff --exit-code .apm apm.yml\`) that goes red on merge to main if the manifest wasn't regenerated. Include "ran \`npm run build:apm\`, \`git diff --exit-code .apm apm.yml\` clean" as an explicit acceptance criterion so it can't be skipped (a miss here costs a second red-CI deploy round-trip).
+
 ## Alexandria Integration
 
 **Recall before acting** — before creating any work plan, call \`mcp__alexandria__get_project_setup_recommendations\` and \`mcp__alexandria__list_guides\` FIRST. Use what Alexandria already knows as your starting point instead of re-deriving it. For every task involving tool setup, include in the task description: "**Check Alexandria first** — call \`mcp__alexandria__quick_setup\` before any setup step."
@@ -1428,6 +1430,8 @@ After producing the work plan table and bead graph, register every task: call \`
 Stop when \`bd ready --json\` returns empty. Run \`bd stats\` to surface any blocked tasks.
 
 **On task failure:** leave bead blocked, show downstream cascade with \`bd dep tree\`, ask user: retry / reassign / skip.
+
+**A timeout / max_turns exit is NOT automatically a failure — verify the working tree before treating it as one.** The single most common false-failure: an agent completes all its edits (or its commit) on disk, then exhausts its turn budget mid-validation and exits non-zero — so a landed change looks failed. Before blocking the bead or re-dispatching the work: check the tree (\`git status --porcelain\`, \`git log -1 --stat\`, or grep the acceptance token the task defined). If the edits landed, treat it as success or dispatch a **cheap verify-repair pass** ("confirm X is present; if so emit [DONE], else fix") rather than redoing the whole task. Only genuinely-absent work is a real failure. On large Windows bind-mounted repos, container-side git (\`status\`/\`diff\`/\`add\`) can itself hang for minutes even with a healthy image (filesystem-perf, not the git-config fix) — for file-edit tasks on such repos, instruct agents "validate via grep, no git commands, no sub-dispatches" and let this host session do the commit.
 **No beads:** use \`update_progress\` only and manually reason from the work plan table.
 **Live tail:** \`tail -f .voltron/logs/<logfile>\` for terminal visibility.
 
@@ -4691,6 +4695,7 @@ describe('interpolatePosition', () => {
 - Test database queries against a test database (not mocks)
 - Test SSE/WebSocket connections with real server instances
 - **For external API integrations:** record a real response as a fixture file (e.g. \`__fixtures__/weatherResponse.json\`) by curling the live endpoint once. Never invent field names — invented names produce green tests against silently broken integrations (e.g. \`wind_spd\` instead of the real \`avg_wnd_spd_10m_pst2mts\`)
+- **Fixture fidelity applies to internal formats too — a green test built on a fabricated fixture the real system never emits is worse than no test; it actively masks the bug.** When a bug touches a data-flow chain (parse → state → transport → frontend), source the fixture from a real captured payload and verify field names match at every hop — a mismatch anywhere breaks silently while a fixture in the wrong shape keeps the suite green. Any regression test for such a bug MUST be proven to fail before the fix and pass after.
 
 **E2E tests:**
 - Happy path for critical user journeys
@@ -4990,7 +4995,7 @@ When invoked by the scrum-master with a specific task:
 4. **Verify syntax:** \`node --check src/index.js && node --check src/templates.js\`
 5. **Parse check:** \`node --input-type=module -e "import('./src/templates.js').then(() => console.log('OK'))"\`
 6. **Bump the version** in \`package.json\` — patch for improvements, minor for new agents/features
-7. **Rebuild APM manifest:** \`npm run build:apm\` — regenerates \`.apm/agents/\` and syncs \`apm.yml\` version
+7. **Rebuild APM manifest:** \`npm run build:apm\` — regenerates \`.apm/agents/\` and syncs \`apm.yml\` version. **This is mandatory on every version bump:** CI enforces an "APM manifest drift gate" (\`git diff --exit-code .apm apm.yml\`) that goes red on merge to main if a bumped \`package.json\` shipped without a regenerated manifest. Confirm \`git diff --exit-code .apm apm.yml\` is clean before you consider the change complete — skipping it costs a second red-CI deploy round-trip
 8. **Update docs/index.html and README.md** — keep version badges, agent counts, and descriptions in sync
 9. **Commit AND push** with a clear message describing what changed and why. The session is not complete until \`git push\` succeeds and \`git status\` shows up-to-date with origin.
 
@@ -5069,6 +5074,16 @@ v2.5.2: upgrade Dockerfile with Python and Ruby for mobile dev toolchains
 v2.6.0: add run_agent_in_docker timeout configuration parameter
 \`\`\`
 
+## Deploying a single version to main (cherry-pick recipe)
+
+Voltron feature work often stacks **multiple version bumps on one long-lived branch** (e.g. a shippable vX.Y.0 sitting on top of intermediate WIP). Shipping only the top version to protected \`main\` — without dragging the WIP along — is a recurring release pattern:
+
+1. Branch off current main: \`git checkout -B release/vX.Y.Z origin/main\`
+2. Cherry-pick only the commit(s) for the version being shipped: \`git cherry-pick <sha>...\`
+3. Resolve conflicts in the version-bearing overlap files — \`package.json\`, \`apm.yml\`, \`README.md\`, \`docs/index.html\` — keeping the main base + only this version's bump/changelog lines; **exclude the intermediate version's version-bump and changelog lines** so no WIP leaks.
+4. Validate before handing off for push: \`grep\` the excluded WIP marker to confirm zero leakage, confirm \`package.json\`/\`apm.yml\` show the intended version, and \`git diff --exit-code .apm apm.yml\` is clean (regenerate with \`npm run build:apm\` if not).
+
+Leave the branch for the host to PR + merge — the host performs the single push.
 
 ## Alexandria Integration
 

@@ -1,0 +1,24 @@
+{
+  "timestamp": "2026-07-06T20:26:57.337Z",
+  "project_name": "project-voltron",
+  "project_type": "general",
+  "session_summary": "Phase 3 (push + deploy): Shipped v3.20.0 to main/production. (1) committer committed the auto-update-hook's .claude runtime sync (19f3976), pushed to fable-eval-prereqs. (2) Per user decision to deploy only non-WIP work, harness-engineer cherry-picked the 2 v3.20.0 commits onto a fresh release/v3.20.0 branch off main, resolving 4 version/doc conflicts to exclude the v3.19.0 fable-eval work and its docs (validated: no claude-fable-5 leakage, src/index.js + voltron-evals untouched, version 3.20.0, 34 write-back blocks). (3) Host opened PR #66 and merged to main; GitHub Pages + CI both green — docs deployed. v3.19.0 fable-eval WIP stays on fable-eval-prereqs. bd stats at close: 196 total issues, ~13 open, 0 of this session's 7 tasks left open.",
+  "agents_used": [
+    "committer",
+    "harness-engineer"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "harness-engineer",
+      "worked_well": "Handled non-trivial git surgery cleanly: created a release branch off main, cherry-picked 2 commits, resolved 4-file version/doc conflicts exactly as directed (excluded v3.19.0 fable content), and self-validated all 6 acceptance checks including grep-for-leakage guards. Left the repo on the release branch and correctly did NOT push (host-only push respected).",
+      "needs_improvement": "None — the precise conflict-resolution rules (which files, keep-main-base-plus-v3.20.0-only, exact version) were essential; a vaguer task would likely have mis-resolved the docs.",
+      "suggested_change": "Consider adding a short 'cherry-pick a version onto main excluding intermediate WIP' recipe to the harness-engineer template, since stacked-version-branch isolation is a recurring Voltron release pattern."
+    },
+    {
+      "agent": "committer",
+      "worked_well": "Path-scoped staging (git add of 3 explicit files) kept untracked reflections/eval-results out of the commit; fast on haiku."
+    }
+  ],
+  "overall_notes": "Deploy pattern worth codifying: Voltron feature work often stacks multiple version bumps on one long-lived branch (here v3.19.0 fable-eval WIP under v3.20.0 shippable). Shipping only the top version to protected main requires cherry-pick-onto-main-off-a-fresh-branch + conflict resolution excluding the intermediate version's version-bump and changelog lines (overlap files: package.json, apm.yml, README.md, docs/index.html). The new host↔Docker git-divergence guidance shipped this session did NOT fire here because dispatch was serialized (committer then host) — the single-actor-push discipline held. Tools: gh pr create/merge from host worked (main branch protection mergeStateStatus=UNSTABLE but MERGEABLE — non-required checks pending did not block); GitHub Pages 'pages build and deployment' auto-ran on main merge.",
+  "processed": true
+}

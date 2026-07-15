@@ -1,0 +1,17 @@
+{
+  "timestamp": "2026-06-24T18:32:58.629Z",
+  "project_name": "project-voltron",
+  "project_type": "unknown",
+  "session_summary": "S1 Phase B (socket-proxy) + emergency beads-install fix. Beads fix merged to main (PR #65, v3.17.3); Phase B built + committed + PR #64 open (v3.18.0), gated on a live nested-dispatch test.",
+  "agents_used": [
+    "scrum-master",
+    "code-analyst",
+    "researcher",
+    "harness-engineer",
+    "doc-writer",
+    "committer"
+  ],
+  "agent_feedback": [],
+  "overall_notes": "Tools: Docker (build-timeout + bootstrap-deadlock), gastownhall/beads (npm @beads/bd postinstall broken; v1.0.4 release binary works), wollomatic/socket-proxy. Phase B proxy reroute is unvalidated live (running MCP server uses pre-Phase-B code).",
+  "processed": true
+}

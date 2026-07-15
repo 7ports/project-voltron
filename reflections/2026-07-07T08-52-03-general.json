@@ -1,0 +1,19 @@
+{
+  "timestamp": "2026-07-07T08:52:03.959Z",
+  "project_name": "project-voltron",
+  "project_type": "general",
+  "session_summary": "Deployed the v3.20.1 gitconfig-EBUSY fix to main. Isolated the single fix commit onto release/v3.20.1 off main (clean cherry-pick, no fable-eval WIP leakage), PR #67 merged → main v3.20.1. Caught a follow-on CI failure: the 'APM manifest drift gate' (git diff --exit-code .apm apm.yml) went red because the version bump didn't regenerate apm.yml. Fixed by npm run build:apm (commit fc73561 on branch, cherry-picked to main as PR #68). main now at 6c24a87, package.json + apm.yml both 3.20.1, CI green, Pages deploying. fable-eval WIP still isolated on fable-eval-prereqs. Fix requires Claude Code restart (MCP server) to activate.",
+  "agents_used": [
+    "harness-engineer"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "harness-engineer",
+      "worked_well": "Clean single-commit cherry-pick isolation off main (auto-merged, no fable-5 conflict, self-validated 6 checks including fable-leakage grep). APM regen task validated against the EXACT CI gate command (git diff --exit-code .apm apm.yml) so the fix was provably complete before push.",
+      "needs_improvement": "The original v3.20.1 fix task bumped package.json but did not regenerate the APM manifest, which broke the CI drift gate on main and required a second deploy round-trip (PR #68).",
+      "suggested_change": "Add to the harness-engineer template: 'ANY change that bumps package.json version MUST also run npm run build:apm and commit the regenerated apm.yml + .apm/agents in the same change — CI enforces a drift gate via git diff --exit-code .apm apm.yml.' Also worth adding a version-bump checklist item to the scrum-master's Voltron-edit dispatch guidance."
+    }
+  ],
+  "overall_notes": "PROCESS GOTCHA to codify: a version bump in package.json requires regenerating the APM manifest (npm run build:apm) or CI's 'APM manifest drift gate' fails on merge to main. When dispatching any Voltron version-bump edit, include 'run npm run build:apm and stage apm.yml + .apm' as an acceptance criterion. This cost an extra deploy round-trip this session (PR #67 red → PR #68 green). Deploy pattern (cherry-pick single fix commit onto release branch off main, exclude WIP, PR, merge, delete branch, restore working branch) continues to work well. Reminder: src/index.js fixes need a Claude Code restart to take effect.",
+  "processed": true
+}

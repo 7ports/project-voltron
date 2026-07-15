@@ -1,0 +1,31 @@
+{
+  "timestamp": "2026-07-06T16:59:37.135Z",
+  "project_name": "project-voltron",
+  "project_type": "general",
+  "session_summary": "Shipped v3.20.0 (commit f5e70ae, pushed to origin/fable-eval-prereqs). Two deliverables: (1) mirrored Alexandria's strengthened write-back contract (recall-before-acting + 5-item write-back trigger list + genericise-don't-discard) into all 34 Alexandria-referencing agent role blocks in src/templates.js, preserving existing content boundaries; (2) diagnosed and fixed a recurring git/sub-agent problem — root cause was host↔Docker git-history divergence after container commits (5 reflections). Added a full 'Handling host↔Docker git divergence' subsection to the scrum-master command file + template, annotated the benign beads-dolt 'no common ancestor' warning, and corrected a now-stale beads memory claiming publish agents can never push from Docker (auth fixed in v3.14).",
+  "agents_used": [
+    "harness-engineer",
+    "code-analyst",
+    "committer"
+  ],
+  "agent_feedback": [
+    {
+      "agent": "harness-engineer",
+      "worked_well": "Split edit-only vs commit-only dispatches worked perfectly — both edit tasks completed well within budget (48 and 20 turns) and self-validated with the required grep counts before [DONE]. Handled a large 34-block cross-template edit plus a second file-sync edit cleanly, and correctly left the tree uncommitted for the separate committer step.",
+      "needs_improvement": "Line-number anchors provided by the parallel code-analyst were stale because harness-engineer's own prior edits shifted them; had to instruct 'locate by content, not line number'.",
+      "suggested_change": "Template already handles this well via re-grep; no change needed."
+    },
+    {
+      "agent": "code-analyst",
+      "worked_well": "Diagnosis-only framing produced a ranked, frequency-counted failure list with file:line evidence and exact fix locations — directly actionable by the follow-up harness-engineer with no re-investigation. Correctly distinguished active bug (divergence) from benign noise (dolt no-common-ancestor) from already-fixed (v3.14 auth) and flagged a stale persisted memory.",
+      "needs_improvement": "None this session."
+    },
+    {
+      "agent": "committer",
+      "worked_well": "Used git add -u exactly as instructed, staged only the 36 tracked modifications, and explicitly verified no untracked reflections/eval files were bundled. Ran on haiku, fast (33s) and cheap.",
+      "needs_improvement": "None."
+    }
+  ],
+  "overall_notes": "Parallel batch dispatch (harness-engineer edit + code-analyst investigate) via run_agent_in_docker_batch worked correctly — both [entry] timestamps within ~8s (16:39:54 / 16:40:02), confirming true parallelism, wall time 450s vs ~660s sequential. Tooling: the beads dolt auto-push 'Error 1105 ... no common ancestor' warning fires on every bd write but is benign under shared-server:true + git-push:false (now documented in the scrum-master template). Alexandria onboarding.json is the source of truth mirrored this session.",
+  "processed": true
+}

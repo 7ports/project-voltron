@@ -1718,11 +1718,14 @@ server.tool(
     }
 
 
-    // v3.4.0: hard-mandatory dependency checks for beads, stringer, alexandria.
-    // Each missing dep is a blocking failure surfaced prominently in the report.
+    // Hard-mandatory dependency checks for stringer and alexandria. beads is
+    // NON-BLOCKING: when it is unavailable (binary missing OR shared dolt-server
+    // unreachable) the session must DEGRADE to `update_progress`-only task
+    // tracking and CONTINUE — it must never hard-block a whole Voltron session.
     const blockingFailures = [];
+    const warnings = [];
 
-    // ─── beads ─── dependency-aware task tracking (required by scrum-master)
+    // ─── beads ─── dependency-aware task tracking (NON-BLOCKING — degrades to update_progress)
     let beadsStatus = "";
     let beadsInstalled = false;
     try {
@@ -1733,10 +1736,13 @@ server.tool(
     if (beadsInstalled) {
       beadsStatus = "✓ Installed";
     } else {
-      beadsStatus = "❌ NOT INSTALLED — mandatory. Run: `npm install -g @beads/bd` (or `brew install beads`)";
-      blockingFailures.push({
+      // Non-blocking: warn and degrade rather than STOP. Session continues on
+      // `update_progress`-only tracking; dependency-aware bead graphs are simply
+      // unavailable until beads is restored.
+      beadsStatus = "⚠ NOT AVAILABLE — non-blocking. Session DEGRADES to `update_progress`-only task tracking and CONTINUES. To restore bead graphs: `npm install -g @beads/bd` (or `brew install beads`)";
+      warnings.push({
         name: "beads",
-        why: "scrum-master requires beads for dependency-aware task tracking; without it, the bead graph cannot enforce task dependencies and the work plan reverts to manual sequencing.",
+        why: "beads (bd) binary is missing or the shared dolt-server is unreachable. beads is NOT a hard requirement — the session degrades to `update_progress`-only task tracking and continues; dependency-aware bead graphs are unavailable until beads is restored.",
         install: "npm install -g @beads/bd",
         alt: "brew install beads (macOS / Linux)",
       });
@@ -1867,13 +1873,36 @@ server.tool(
       "",
     ].join("\n");
 
+    // Non-blocking warnings (e.g. beads unavailable): the session CONTINUES in a
+    // degraded mode. Kept separate from blockingFailures so it never STOPs.
+    const warningSection = warnings.length === 0 ? "" : [
+      "",
+      "---",
+      "",
+      "## ⚠ NON-BLOCKING WARNINGS (session continues in degraded mode)",
+      "",
+      "These do NOT block the session. Voltron will CONTINUE with reduced functionality:",
+      "",
+      ...warnings.flatMap(f => [
+        `### ${f.name}`,
+        "",
+        `**Impact:** ${f.why}`,
+        "",
+        `**To restore:** \`${f.install}\``,
+        ...(f.alt ? ["", `**Alternative:** ${f.alt}`] : []),
+        "",
+      ]),
+      "beads degradation is expected behavior — task tracking falls back to `update_progress`. Install beads to re-enable dependency-aware bead graphs.",
+      "",
+    ].join("\n");
+
     const report = [
       "## Project Voltron Health Check",
       "",
       `- **MCP Server:** ${mcpStatus}`,
       `- **Allowlist:** ${allowStatus}`,
       `- **Deny rules:** ${denyStatus}`,
-      `- **beads (mandatory):** ${beadsStatus}`,
+      `- **beads (non-blocking — degrades to update_progress):** ${beadsStatus}`,
       `- **Stringer (mandatory):** ${stringerStatus}`,
       `- **Alexandria (mandatory):** ${alexandriaStatus}`,
       `- **Trello MCP:** ${trelloStatus}`,
@@ -1889,6 +1918,7 @@ server.tool(
             ? "_Nothing to update — installation is fully configured._"
             : "**Allowlist updated.** Restart Claude Code to apply the new permissions."),
       blockingSection,
+      warningSection,
     ].join("\n");
 
     return { content: [{ type: "text", text: report }] };

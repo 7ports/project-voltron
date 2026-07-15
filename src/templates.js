@@ -1305,11 +1305,16 @@ test -f Dockerfile.voltron && echo "Dockerfile OK" || echo "DOCKERFILE MISSING" 
 test -f "$HOME/.claude/.credentials.json" && echo "credentials OK" || echo "CREDENTIALS MISSING"  # mounted auth file?
 command -v bd >/dev/null 2>&1 && echo "beads OK" || echo "BEADS MISSING"               # beads CLI installed?
 if command -v bd >/dev/null 2>&1; then \\
-  bd dolt status 2>&1 | grep -qi "running" && echo "bd dolt OK" || { \\
-    echo "bd dolt down — auto-recovering..."; bd dolt start; \\
-    bd dolt status 2>&1 | grep -qi "running" && echo "bd dolt RECOVERED" || echo "BEADS SERVER DOWN"; \\
-  }; \\
-  bd ready --json >/dev/null 2>&1 && echo "bd ready OK" || echo "BEADS READY FAILED"; \\
+  if bd ready --json >/dev/null 2>&1; then echo "bd dolt OK"; \\
+  else \\
+    echo "bd dolt down — auto-recovering..."; bd dolt start >/dev/null 2>&1; \\
+    if bd ready --json >/dev/null 2>&1; then echo "bd dolt RECOVERED"; \\
+    else \\
+      echo "bd dolt still down — clearing stale pid/lock and retrying..."; \\
+      rm -f .beads/dolt-server.pid .beads/dolt-server.lock; bd dolt start >/dev/null 2>&1; \\
+      bd ready --json >/dev/null 2>&1 && echo "bd dolt RECOVERED" || echo "BEADS SERVER DOWN"; \\
+    fi; \\
+  fi; \\
 fi
 command -v stringer >/dev/null 2>&1 && echo "stringer OK" || echo "STRINGER MISSING"   # stringer CLI (mandatory)?
 node -e "process.exit(JSON.parse(require('fs').readFileSync(require('os').homedir()+'/.claude.json')).mcpServers?.alexandria ? 0 : 1)" 2>/dev/null && echo "alexandria OK" || echo "ALEXANDRIA MISSING"  # Alexandria MCP (mandatory)?
@@ -1322,31 +1327,37 @@ if (Test-Path Dockerfile.voltron) { "Dockerfile OK" } else { "DOCKERFILE MISSING
 if (Test-Path "$env:USERPROFILE/.claude/.credentials.json") { "credentials OK" } else { "CREDENTIALS MISSING" }
 if (Get-Command bd -ErrorAction SilentlyContinue) {
   "beads OK"
-  $status = (bd dolt status 2>&1 | Out-String)
-  if ($status -match 'running') {
+  bd ready --json 2>&1 | Out-Null
+  if ($LASTEXITCODE -eq 0) {
     "bd dolt OK"
   } else {
     "bd dolt down - auto-recovering..."
     bd dolt start 2>&1 | Out-Null
-    $status = (bd dolt status 2>&1 | Out-String)
-    if ($status -match 'running') { "bd dolt RECOVERED" } else { "BEADS SERVER DOWN" }
+    bd ready --json 2>&1 | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+      "bd dolt RECOVERED"
+    } else {
+      "bd dolt still down - clearing stale pid/lock and retrying..."
+      Remove-Item -Force .beads/dolt-server.pid, .beads/dolt-server.lock -ErrorAction SilentlyContinue
+      bd dolt start 2>&1 | Out-Null
+      bd ready --json 2>&1 | Out-Null
+      if ($LASTEXITCODE -eq 0) { "bd dolt RECOVERED" } else { "BEADS SERVER DOWN" }
+    }
   }
-  bd ready --json 2>&1 | Out-Null
-  if ($LASTEXITCODE -eq 0) { "bd ready OK" } else { "BEADS READY FAILED" }
 } else {
   "BEADS MISSING"
 }
 if (Get-Command stringer -ErrorAction SilentlyContinue) { "stringer OK" } else { "STRINGER MISSING" }
 \`\`\`
 
-**Mandatory dependencies — STOP and install if any are missing.** Voltron will not function correctly without all three (beads, stringer, alexandria); these are not optional, and the user expectation is that scaffolding/setup accounts for them.
+**Mandatory dependencies — STOP and install if missing:** stringer and alexandria are hard requirements; Voltron will not function correctly without them. **beads is NON-BLOCKING** — if it is missing or its shared dolt-server is down, DEGRADE to \`update_progress\`-only task tracking and CONTINUE the session (surfacing a warning); never hard-block a whole session on beads.
 
 - **Docker missing** → "Docker is not installed or not running. Install Docker Desktop, then retry."
 - **Dockerfile missing** → "Run \`mcp__project-voltron__scaffold_project\` first."
 - **CREDENTIALS MISSING** → Docker agents will fail with "No auth available". Auth is mounted into the container from \`~/.claude/.credentials.json\` (read-only) — this file is the *only* supported auth path for Voltron agents; the \`CLAUDE_CODE_OAUTH_TOKEN\` env var on the host is NOT used. On **Unix / macOS**: run \`claude setup-token\` once to materialize the file. On **Windows**: \`claude setup-token\` does NOT write this file, so you must create/refresh \`~/.claude/.credentials.json\` manually — paste your current OAuth token into it (matching the JSON shape Claude Code uses on macOS) and update it whenever the token rotates. STOP and resolve before launching any agent.
-- **beads MISSING (mandatory)** → bd binary not on PATH. STOP. Tell the user: "beads is mandatory and not installed. Run \`curl -fsSL https://raw.githubusercontent.com/gastownhall/beads/main/scripts/install.sh | bash\` (or \`brew install beads\`) and retry. Do not proceed without it."
+- **beads MISSING (non-blocking)** → bd binary not on PATH. Do NOT stop. DEGRADE to \`update_progress\`-only task tracking and CONTINUE, surfacing a warning: "beads is not installed; running with \`update_progress\`-only tracking. To restore dependency-aware bead graphs, run \`curl -fsSL https://raw.githubusercontent.com/gastownhall/beads/main/scripts/install.sh | bash\` (or \`brew install beads\`)."
 - **bd dolt down — auto-recovering...** → expected output when the shared-server (\`dolt.shared-server: true\` in \`.beads/config.yaml\`) was orphaned by a reboot. Auto-recovery via \`bd dolt start\` runs inline; no action needed if followed by **bd dolt RECOVERED**.
-- **BEADS SERVER DOWN (auto-recovery failed)** → bd is installed but \`bd dolt start\` did not bring the server up. STOP. See the **Beads Recovery** section below; run \`bd dolt status\` manually for the actual error, then check for stale \`.beads/dolt-server.pid\`/\`.lock\` files. Do not proceed until \`bd ready --json\` returns cleanly.
+- **BEADS SERVER DOWN (auto-recovery failed)** → bd is installed but the automated recovery — stale \`.beads/dolt-server.pid\`/\`.lock\` cleanup followed by a second \`bd dolt start\` retry, all verified via \`bd ready --json\` — still could not bring the server up. Do NOT hard-stop: beads is non-blocking. DEGRADE to \`update_progress\`-only task tracking and CONTINUE the session, surfacing a warning that dependency-aware bead graphs are unavailable until beads is restored. You may still consult the **Beads Recovery** section below to fix it out-of-band (run \`bd dolt status\` for the actual error), but session work proceeds without waiting on it.
 - **BEADS READY FAILED** → server is up but \`bd ready --json\` errored — usually a database schema mismatch or stale lock. Run \`bd doctor\` and surface the output to the user.
 - **stringer MISSING (mandatory)** → STOP. Tell the user: "stringer is mandatory and not installed. Run \`go install github.com/davetashner/stringer/cmd/stringer@latest\` (or download a release binary from https://github.com/davetashner/stringer/releases/latest, or \`brew install davetashner/tap/stringer\` on macOS) and retry. Do not proceed without it."
 - **alexandria MISSING (mandatory)** → STOP. Tell the user: "Alexandria MCP is mandatory and not registered. Clone https://github.com/7ports/project-alexandria, run \`npm install\` in mcp-server/, then add it to \`~/.claude.json\` mcpServers as \`{ \"command\": \"node\", \"args\": [\"<path>/mcp-server/index.js\"] }\` and restart Claude Code. Do not proceed without it."
@@ -1393,7 +1404,7 @@ To uninstall the scheduled task:
 Unregister-ScheduledTask -TaskName "BeadsDoltAutoStart" -Confirm:$false
 \`\`\`
 
-**Stale state cleanup (rare):** If \`bd dolt start\` itself fails because of stale pid/lock files, and \`bd dolt status\` confirms nothing is actually running on port 3308, remove the stale state and retry:
+**Stale state cleanup (now automated first-line):** The pre-flight already performs this automatically — when the first \`bd dolt start\` does not make \`bd ready --json\` succeed, it removes \`.beads/dolt-server.pid\`/\`.lock\` and retries \`bd dolt start\` once more before declaring the server down. Run it manually only if you are recovering out-of-band. If \`bd dolt start\` fails because of stale pid/lock files, and \`bd dolt status\` confirms nothing is actually running on port 3308, remove the stale state and retry:
 
 Bash / WSL / macOS:
 \`\`\`bash
